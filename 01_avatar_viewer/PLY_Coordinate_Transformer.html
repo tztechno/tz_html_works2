@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PLY Coordinate Transformer</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .container {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      padding: 40px;
+      max-width: 600px;
+      width: 100%;
+    }
+    
+    h1 {
+      color: #2d3748;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+    
+    .subtitle {
+      color: #718096;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+    
+    .section {
+      margin-bottom: 25px;
+    }
+    
+    .section-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #2d3748;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+    }
+    
+    .section-title::before {
+      content: '';
+      width: 4px;
+      height: 20px;
+      background: #667eea;
+      margin-right: 10px;
+      border-radius: 2px;
+    }
+    
+    .file-input-wrapper {
+      position: relative;
+      overflow: hidden;
+      display: inline-block;
+      width: 100%;
+    }
+    
+    .file-input-wrapper input[type=file] {
+      position: absolute;
+      left: -9999px;
+    }
+    
+    .file-input-label {
+      display: block;
+      padding: 15px 20px;
+      background: #f7fafc;
+      border: 2px dashed #cbd5e0;
+      border-radius: 10px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+      color: #4a5568;
+    }
+    
+    .file-input-label:hover {
+      background: #edf2f7;
+      border-color: #667eea;
+      color: #667eea;
+    }
+    
+    .file-input-label.has-file {
+      background: #667eea;
+      border-color: #667eea;
+      color: white;
+    }
+    
+    .coord-inputs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 10px;
+    }
+    
+    .coord-input-group {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .coord-input-group label {
+      font-size: 12px;
+      color: #718096;
+      margin-bottom: 5px;
+      font-weight: 500;
+    }
+    
+    .coord-input-group input {
+      padding: 10px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: border-color 0.3s;
+    }
+    
+    .coord-input-group input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    
+    .transform-btn {
+      width: 100%;
+      padding: 15px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      margin-top: 20px;
+    }
+    
+    .transform-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+    }
+    
+    .transform-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .status {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 10px;
+      font-size: 14px;
+      display: none;
+    }
+    
+    .status.info {
+      background: #ebf8ff;
+      color: #2c5282;
+      border-left: 4px solid #3182ce;
+    }
+    
+    .status.success {
+      background: #f0fff4;
+      color: #22543d;
+      border-left: 4px solid #38a169;
+    }
+    
+    .status.error {
+      background: #fff5f5;
+      color: #742a2a;
+      border-left: 4px solid #e53e3e;
+    }
+    
+    .formula {
+      background: #f7fafc;
+      padding: 15px;
+      border-radius: 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      color: #2d3748;
+      margin-top: 15px;
+      border: 1px solid #e2e8f0;
+    }
+    
+    .formula-title {
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #667eea;
+    }
+    
+    .debug-output {
+      margin-top: 15px;
+      padding: 10px;
+      background: #1a202c;
+      color: #68d391;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 11px;
+      max-height: 200px;
+      overflow-y: auto;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔄 PLY Coordinate Transformer</h1>
+    <p class="subtitle">Transform PLY file center to world origin position</p>
+    
+    <div class="section">
+      <div class="section-title">1. Select PLY File</div>
+      <div class="file-input-wrapper">
+        <input type="file" id="plyFile" accept=".ply" />
+        <label for="plyFile" class="file-input-label" id="fileLabel">
+          📁 Click to select PLY file
+        </label>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">2. Enter Current Center (from Step 0)</div>
+      <div class="coord-inputs">
+        <div class="coord-input-group">
+          <label for="centerX">X (m)</label>
+          <input type="number" id="centerX" step="0.001" placeholder="0.3" value="0.3" />
+        </div>
+        <div class="coord-input-group">
+          <label for="centerY">Y (m)</label>
+          <input type="number" id="centerY" step="0.001" placeholder="1.4" value="1.4" />
+        </div>
+        <div class="coord-input-group">
+          <label for="centerZ">Z (m)</label>
+          <input type="number" id="centerZ" step="0.001" placeholder="1.1" value="1.1" />
+        </div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">3. Enter World Origin (in camera space)</div>
+      <div class="coord-inputs">
+        <div class="coord-input-group">
+          <label for="originX">X (m)</label>
+          <input type="number" id="originX" step="0.001" placeholder="0.0" value="0.0" />
+        </div>
+        <div class="coord-input-group">
+          <label for="originY">Y (m)</label>
+          <input type="number" id="originY" step="0.001" placeholder="0.0" value="0.0" />
+        </div>
+        <div class="coord-input-group">
+          <label for="originZ">Z (m)</label>
+          <input type="number" id="originZ" step="0.001" placeholder="-2.530" value="-2.530" />
+        </div>
+      </div>
+    </div>
+    
+    <div class="formula">
+      <div class="formula-title">Transformation Formula:</div>
+      new_coord = (x, y, z) - center + world_origin
+    </div>
+    
+    <button class="transform-btn" id="transformBtn" disabled>
+      ✨ Transform & Download
+    </button>
+    
+    <div class="status" id="status"></div>
+    <div class="debug-output" id="debugOutput"></div>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById('plyFile');
+    const fileLabel = document.getElementById('fileLabel');
+    const transformBtn = document.getElementById('transformBtn');
+    const statusDiv = document.getElementById('status');
+    const debugOutput = document.getElementById('debugOutput');
+    
+    let plyFileData = null;
+    let plyFileName = '';
+    
+    function addDebug(msg) {
+      debugOutput.style.display = 'block';
+      debugOutput.textContent += msg + '\n';
+      debugOutput.scrollTop = debugOutput.scrollHeight;
+      console.log(msg);
+    }
+    
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        plyFileName = file.name;
+        fileLabel.textContent = `✓ ${file.name}`;
+        fileLabel.classList.add('has-file');
+        debugOutput.textContent = '';
+        debugOutput.style.display = 'none';
+        
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          plyFileData = event.target.result;
+          transformBtn.disabled = false;
+          showStatus('File loaded successfully! Ready to transform.', 'success');
+        };
+        reader.readAsArrayBuffer(file);
+      }
+    });
+    
+    transformBtn.addEventListener('click', async () => {
+      if (!plyFileData) {
+        showStatus('Please select a PLY file first', 'error');
+        return;
+      }
+      
+      transformBtn.disabled = true;
+      debugOutput.textContent = '';
+      showStatus('Processing...', 'info');
+      
+      try {
+        // Get transformation parameters
+        const offsetX = parseFloat(document.getElementById('centerX').value) - parseFloat(document.getElementById('originX').value);
+        const offsetY = parseFloat(document.getElementById('centerY').value) - parseFloat(document.getElementById('originY').value);
+        const offsetZ = parseFloat(document.getElementById('centerZ').value) - parseFloat(document.getElementById('originZ').value);
+        
+        addDebug(`Offset to apply: (${offsetX.toFixed(3)}, ${offsetY.toFixed(3)}, ${offsetZ.toFixed(3)})`);
+        
+        // Parse PLY file
+        const uint8Array = new Uint8Array(plyFileData);
+        
+        // Find header end
+        let headerEnd = 0;
+        const decoder = new TextDecoder('utf-8');
+        
+        for (let i = 0; i < Math.min(10000, uint8Array.length - 10); i++) {
+          if (uint8Array[i] === 101 && // 'e'
+              uint8Array[i + 1] === 110 && // 'n'
+              uint8Array[i + 2] === 100 && // 'd'
+              uint8Array[i + 3] === 95 && // '_'
+              uint8Array[i + 4] === 104 && // 'h'
+              uint8Array[i + 5] === 101 && // 'e'
+              uint8Array[i + 6] === 97 && // 'a'
+              uint8Array[i + 7] === 100 && // 'd'
+              uint8Array[i + 8] === 101 && // 'e'
+              uint8Array[i + 9] === 114) { // 'r'
+            headerEnd = i + 11;
+            break;
+          }
+        }
+        
+        if (headerEnd === 0) {
+          throw new Error('Could not find PLY header end');
+        }
+        
+        // Parse header
+        const headerBytes = uint8Array.slice(0, headerEnd);
+        const headerText = decoder.decode(headerBytes);
+        const headerLines = headerText.split('\n').map(l => l.trim());
+        
+        addDebug(`Header size: ${headerEnd} bytes`);
+        
+        // Find vertex count and properties
+        let vertexCount = 0;
+        let xIndex = -1, yIndex = -1, zIndex = -1;
+        let currentPropIndex = 0;
+        let inVertexElement = false;
+        
+        for (const line of headerLines) {
+          if (line.startsWith('element vertex')) {
+            vertexCount = parseInt(line.split(' ')[2]);
+            inVertexElement = true;
+            currentPropIndex = 0;
+            addDebug(`Vertex count: ${vertexCount}`);
+          } else if (line.startsWith('element') && inVertexElement) {
+            inVertexElement = false;
+          } else if (inVertexElement && line.startsWith('property')) {
+            const parts = line.split(/\s+/);
+            const propType = parts[1];
+            const propName = parts[2];
+            
+            if (propName === 'x') xIndex = currentPropIndex;
+            if (propName === 'y') yIndex = currentPropIndex;
+            if (propName === 'z') zIndex = currentPropIndex;
+            
+            currentPropIndex++;
+          }
+        }
+        
+        if (xIndex === -1 || yIndex === -1 || zIndex === -1) {
+          throw new Error(`Could not find x,y,z properties. Found indices: x=${xIndex}, y=${yIndex}, z=${zIndex}`);
+        }
+        
+        addDebug(`Property indices - x: ${xIndex}, y: ${yIndex}, z: ${zIndex}`);
+        
+        // Calculate byte offsets for x, y, z (assuming float = 4 bytes each)
+        const xByteOffset = xIndex * 4;
+        const yByteOffset = yIndex * 4;
+        const zByteOffset = zIndex * 4;
+        
+        // Calculate vertex size from first vertex to next
+        const vertexDataStart = headerEnd;
+        const totalDataSize = uint8Array.length - headerEnd;
+        const vertexSize = Math.floor(totalDataSize / vertexCount);
+        
+        addDebug(`Vertex size: ${vertexSize} bytes`);
+        addDebug(`X offset: ${xByteOffset}, Y offset: ${yByteOffset}, Z offset: ${zByteOffset}`);
+        
+        // Create output array (copy entire file)
+        const output = new Uint8Array(plyFileData.byteLength);
+        output.set(uint8Array);
+        
+        const dataView = new DataView(output.buffer);
+        
+        // Transform coordinates
+        let transformCount = 0;
+        
+        for (let i = 0; i < vertexCount; i++) {
+          const vertexOffset = vertexDataStart + (i * vertexSize);
+          
+          // Read original coordinates
+          const origX = dataView.getFloat32(vertexOffset + xByteOffset, true);
+          const origY = dataView.getFloat32(vertexOffset + yByteOffset, true);
+          const origZ = dataView.getFloat32(vertexOffset + zByteOffset, true);
+          
+          // Transform
+          const newX = origX - offsetX;
+          const newY = origY - offsetY;
+          const newZ = origZ - offsetZ;
+          
+          // Write back
+          dataView.setFloat32(vertexOffset + xByteOffset, newX, true);
+          dataView.setFloat32(vertexOffset + yByteOffset, newY, true);
+          dataView.setFloat32(vertexOffset + zByteOffset, newZ, true);
+          
+          // Log first vertex
+          if (i === 0) {
+            addDebug(`First vertex transformation:`);
+            addDebug(`  Before: (${origX.toFixed(3)}, ${origY.toFixed(3)}, ${origZ.toFixed(3)})`);
+            addDebug(`  After:  (${newX.toFixed(3)}, ${newY.toFixed(3)}, ${newZ.toFixed(3)})`);
+          }
+          
+          transformCount++;
+        }
+        
+        addDebug(`Transformed ${transformCount} vertices`);
+        
+        // Download
+        const blob = new Blob([output], { type: 'application/octet-stream' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = plyFileName.replace('.ply', '_transformed.ply');
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        showStatus(`✓ Success! Downloaded: ${a.download}`, 'success');
+        transformBtn.disabled = false;
+        
+      } catch (error) {
+        addDebug(`ERROR: ${error.message}`);
+        showStatus(`Error: ${error.message}`, 'error');
+        transformBtn.disabled = false;
+      }
+    });
+    
+    function showStatus(message, type) {
+      statusDiv.textContent = message;
+      statusDiv.className = `status ${type}`;
+      statusDiv.style.display = 'block';
+    }
+  </script>
+</body>
+</html>
