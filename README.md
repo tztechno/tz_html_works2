@@ -6,3 +6,6 @@ https://github.com/tztechno/tztechno.github.io/tz_html_works2/01_avatar_viewer/P
 
 https://github.com/tztechno/tztechno.github.io/tz_html_works2/01_avatar_viewer/PLY_Coordinate_Transformer.html (centering)
 
+https://github.com/tztechno/tztechno.github.io/tz_html_works2/01_avatar_viewer/PLY_Box_Eraser.html 
+
+
