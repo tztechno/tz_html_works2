@@ -1,0 +1,1592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PLY Box Eraser Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        header {
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            color: white;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        h1 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .subtitle {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+        
+        main {
+            flex: 1;
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+            max-width: 1800px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        
+        #canvas-container {
+            flex: 1;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            position: relative;
+            min-height: 600px;
+        }
+        
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #controls {
+            width: 350px;
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            overflow-y: auto;
+            max-height: calc(100vh - 140px);
+        }
+        
+        .control-section {
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .control-section:last-child {
+            border-bottom: none;
+        }
+        
+        .control-section h3 {
+            font-size: 16px;
+            color: #667eea;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            font-size: 13px;
+            color: #555;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        .value-display {
+            color: #667eea;
+            font-weight: 600;
+            float: right;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #e0e0e0;
+            outline: none;
+            appearance: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            background: #764ba2;
+        }
+        
+        button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-success {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+        }
+        
+        .btn-warning {
+            background: #FF9800;
+            color: white;
+        }
+        
+        .btn-warning:hover {
+            background: #F57C00;
+        }
+        
+        .btn-danger {
+            background: #f44336;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #da190b;
+        }
+        
+        #file-input-area {
+            border: 3px dashed #667eea;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f8f9ff;
+        }
+        
+        #file-input-area:hover {
+            background: #eef1ff;
+            border-color: #764ba2;
+        }
+        
+        #file-input-area.drag-over {
+            background: #e3e8ff;
+            border-color: #4CAF50;
+        }
+        
+        #file-input {
+            display: none;
+        }
+        
+        .file-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        
+        .stats {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .stats-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+        }
+        
+        .stats-value {
+            font-weight: 600;
+            color: #667eea;
+        }
+        
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 12px;
+            border-radius: 5px;
+            font-size: 12px;
+            color: #1976D2;
+            margin-top: 15px;
+        }
+        
+        .warning-box {
+            background: #fff3e0;
+            border-left: 4px solid #FF9800;
+            padding: 12px;
+            border-radius: 5px;
+            font-size: 12px;
+            color: #E65100;
+            margin-top: 15px;
+        }
+        
+        .success-box {
+            background: #e8f5e9;
+            border-left: 4px solid #4CAF50;
+            padding: 12px;
+            border-radius: 5px;
+            font-size: 12px;
+            color: #2e7d32;
+            margin-top: 15px;
+        }
+        
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            display: none;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🗑️ PLY Box Eraser Tool</h1>
+        <p class="subtitle">Remove points inside a box from your PLY file</p>
+    </header>
+    
+    <main>
+        <div id="canvas-container">
+            <canvas id="three-canvas"></canvas>
+            <div id="loading">
+                <div class="spinner"></div>
+                <p>Loading PLY file...</p>
+            </div>
+        </div>
+        
+        <div id="controls">
+            <div class="control-section">
+                <h3>📁 Load PLY File</h3>
+                <div id="file-input-area">
+                    <div class="file-icon">📦</div>
+                    <p style="margin: 10px 0; color: #667eea; font-weight: 600;">
+                        Click or Drop PLY File Here
+                    </p>
+                    <p style="font-size: 12px; color: #999;">
+                        Supports binary and ASCII PLY formats
+                    </p>
+                </div>
+                <input type="file" id="file-input" accept=".ply">
+                
+                <div id="file-stats" class="stats" style="display: none; margin-top: 15px;">
+                    <div class="stats-item">
+                        <span>Filename:</span>
+                        <span class="stats-value" id="filename">-</span>
+                    </div>
+                    <div class="stats-item">
+                        <span>Original Points:</span>
+                        <span class="stats-value" id="original-points">-</span>
+                    </div>
+                    <div class="stats-item">
+                        <span>Current Points:</span>
+                        <span class="stats-value" id="total-points">-</span>
+                    </div>
+                    <div class="stats-item">
+                        <span>Color Info:</span>
+                        <span class="stats-value" id="color-info">-</span>
+                    </div>
+                    <div class="stats-item">
+                        <span>Selected for Removal:</span>
+                        <span class="stats-value" id="removed-points">0</span>
+                    </div>
+                    <div class="stats-item">
+                        <span>After Removal:</span>
+                        <span class="stats-value" id="remaining-points">-</span>
+                    </div>
+                    <div class="stats-item" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd;">
+                        <span>Total Deletions:</span>
+                        <span class="stats-value" id="deletion-count">0</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="control-section" id="box-controls" style="display: none;">
+                <h3>📐 Box Size</h3>
+                <div class="control-group">
+                    <label>Width (X): <span class="value-display" id="box-x-val">2.0</span> m</label>
+                    <input type="range" id="box-x" min="0.1" max="50" step="0.1" value="2">
+                </div>
+                <div class="control-group">
+                    <label>Height (Y): <span class="value-display" id="box-y-val">2.0</span> m</label>
+                    <input type="range" id="box-y" min="0.1" max="50" step="0.1" value="2">
+                </div>
+                <div class="control-group">
+                    <label>Depth (Z): <span class="value-display" id="box-z-val">2.0</span> m</label>
+                    <input type="range" id="box-z" min="0.1" max="50" step="0.1" value="2">
+                </div>
+            </div>
+            
+            <div class="control-section" id="box-position-controls" style="display: none;">
+                <h3>🎯 Box Position</h3>
+                <div class="control-group">
+                    <label>X Position: <span class="value-display" id="pos-x-val">0.0</span> m</label>
+                    <input type="range" id="pos-x" min="-25" max="25" step="0.1" value="0">
+                </div>
+                <div class="control-group">
+                    <label>Y Position: <span class="value-display" id="pos-y-val">0.0</span> m</label>
+                    <input type="range" id="pos-y" min="-25" max="25" step="0.1" value="0">
+                </div>
+                <div class="control-group">
+                    <label>Z Position: <span class="value-display" id="pos-z-val">0.0</span> m</label>
+                    <input type="range" id="pos-z" min="-25" max="25" step="0.1" value="0">
+                </div>
+            </div>
+            
+            <div class="control-section" id="box-rotation-controls" style="display: none;">
+                <h3>🔄 Box Rotation</h3>
+                <div class="control-group">
+                    <label>Rotate X: <span class="value-display" id="rot-x-val">0</span>°</label>
+                    <input type="range" id="rot-x" min="-180" max="180" step="1" value="0">
+                </div>
+                <div class="control-group">
+                    <label>Rotate Y: <span class="value-display" id="rot-y-val">0</span>°</label>
+                    <input type="range" id="rot-y" min="-180" max="180" step="1" value="0">
+                </div>
+                <div class="control-group">
+                    <label>Rotate Z: <span class="value-display" id="rot-z-val">0</span>°</label>
+                    <input type="range" id="rot-z" min="-180" max="180" step="1" value="0">
+                </div>
+            </div>
+            
+            <div class="control-section" id="action-controls" style="display: none;">
+                <h3>⚡ Actions</h3>
+                
+                <div class="control-group">
+                    <label>Point Size: <span class="value-display" id="point-size-val">0.03</span></label>
+                    <input type="range" id="point-size" min="0.01" max="1.0" step="0.01" value="0.03">
+                </div>
+                
+                <button class="btn-danger" id="apply-deletion-btn" style="background: #f44336; font-size: 16px; padding: 14px;">
+                    🗑️ Apply Deletion (Remove Box Area)
+                </button>
+                
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                    <button class="btn-warning" id="undo-btn" style="width: 50%;">
+                        ↶ Undo Last
+                    </button>
+                    <button class="btn-warning" id="reset-all-btn" style="width: 50%;">
+                        🔄 Reset All
+                    </button>
+                </div>
+                
+                <button class="btn-warning" id="reset-box-btn" style="margin-top: 10px;">
+                    Reset Box Position
+                </button>
+                
+                <button class="btn-success" id="export-btn" style="margin-top: 20px; font-size: 16px; padding: 14px;">
+                    💾 Export Final Result
+                </button>
+                
+                <div class="warning-box">
+                    <strong>⚠️ Workflow:</strong><br>
+                    1. Position red box over area to delete<br>
+                    2. Click "Apply Deletion"<br>
+                    3. Repeat for other areas<br>
+                    4. Click "Export Final Result"
+                </div>
+                
+                <div class="info-box">
+                    <strong>💡 Controls:</strong><br>
+                    • Left Mouse: Rotate view<br>
+                    • Right Mouse: Pan<br>
+                    • Scroll: Zoom<br>
+                    • Red box = deletion area<br>
+                    <br>
+                    <strong>🐛 Debug:</strong><br>
+                    Press F12 to see console logs
+                </div>
+                
+                <div id="success-message" class="success-box" style="display: none;">
+                    ✅ File exported successfully!
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // OrbitControls
+        class OrbitControls {
+            constructor(camera, domElement) {
+                this.camera = camera;
+                this.domElement = domElement;
+                this.target = new THREE.Vector3();
+                this.enabled = true;
+                this.minDistance = 0.1;
+                this.maxDistance = 1000;
+                
+                this.rotateSpeed = 1.0;
+                this.zoomSpeed = 1.0;
+                this.panSpeed = 1.0;
+                
+                this._state = 'none';
+                this._prevPosition = { x: 0, y: 0 };
+                this._spherical = new THREE.Spherical();
+                this._sphericalDelta = new THREE.Spherical();
+                this._scale = 1;
+                this._panOffset = new THREE.Vector3();
+                
+                this._setupEventListeners();
+                this.update();
+            }
+            
+            _setupEventListeners() {
+                this.domElement.addEventListener('mousedown', (e) => this._onMouseDown(e));
+                this.domElement.addEventListener('wheel', (e) => this._onMouseWheel(e), { passive: false });
+                this.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
+            }
+            
+            _onMouseDown(e) {
+                if (!this.enabled) return;
+                
+                e.preventDefault();
+                
+                if (e.button === 0) {
+                    this._state = 'rotate';
+                } else if (e.button === 2) {
+                    this._state = 'pan';
+                }
+                
+                this._prevPosition = { x: e.clientX, y: e.clientY };
+                
+                const onMouseMove = (e) => this._onMouseMove(e);
+                const onMouseUp = () => {
+                    this._state = 'none';
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                };
+                
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            }
+            
+            _onMouseMove(e) {
+                if (!this.enabled) return;
+                
+                const dx = e.clientX - this._prevPosition.x;
+                const dy = e.clientY - this._prevPosition.y;
+                
+                if (this._state === 'rotate') {
+                    const theta = -2 * Math.PI * dx / this.domElement.clientHeight * this.rotateSpeed;
+                    const phi = -2 * Math.PI * dy / this.domElement.clientHeight * this.rotateSpeed;
+                    this._sphericalDelta.theta += theta;
+                    this._sphericalDelta.phi += phi;
+                } else if (this._state === 'pan') {
+                    this._pan(dx, dy);
+                }
+                
+                this._prevPosition = { x: e.clientX, y: e.clientY };
+                this.update();
+            }
+            
+            _onMouseWheel(e) {
+                if (!this.enabled) return;
+                e.preventDefault();
+                
+                if (e.deltaY < 0) {
+                    this._scale /= 0.95;
+                } else {
+                    this._scale *= 0.95;
+                }
+                
+                this.update();
+            }
+            
+            _pan(deltaX, deltaY) {
+                const offset = new THREE.Vector3();
+                const targetDistance = this.camera.position.distanceTo(this.target);
+                
+                offset.copy(this.camera.position).sub(this.target);
+                const targetLength = offset.length() * Math.tan((this.camera.fov / 2) * Math.PI / 180);
+                
+                const panLeft = new THREE.Vector3();
+                const panUp = new THREE.Vector3();
+                
+                panLeft.setFromMatrixColumn(this.camera.matrix, 0);
+                panLeft.multiplyScalar(-2 * deltaX * targetLength / this.domElement.clientHeight);
+                
+                panUp.setFromMatrixColumn(this.camera.matrix, 1);
+                panUp.multiplyScalar(2 * deltaY * targetLength / this.domElement.clientHeight);
+                
+                this._panOffset.add(panLeft).add(panUp);
+            }
+            
+            update() {
+                const offset = new THREE.Vector3();
+                offset.copy(this.camera.position).sub(this.target);
+                
+                this._spherical.setFromVector3(offset);
+                this._spherical.theta += this._sphericalDelta.theta;
+                this._spherical.phi += this._sphericalDelta.phi;
+                this._spherical.phi = Math.max(0.01, Math.min(Math.PI - 0.01, this._spherical.phi));
+                this._spherical.radius *= this._scale;
+                this._spherical.radius = Math.max(this.minDistance, Math.min(this.maxDistance, this._spherical.radius));
+                
+                this.target.add(this._panOffset);
+                offset.setFromSpherical(this._spherical);
+                this.camera.position.copy(this.target).add(offset);
+                this.camera.lookAt(this.target);
+                
+                this._sphericalDelta.set(0, 0, 0);
+                this._scale = 1;
+                this._panOffset.set(0, 0, 0);
+            }
+        }
+        
+        // Global variables
+        let scene, camera, renderer, controls;
+        let pointCloud, boxHelper;
+        let plyData = null;
+        let originalVertices = []; // Always keep original
+        let currentVertices = []; // Current state after deletions
+        let deletionHistory = []; // History for undo
+        let deletionCount = 0;
+        let currentFilename = '';
+        let pointSize = 0.03; // Smaller default for Gaussian Splatting
+        
+        // Initialize Three.js
+        function init() {
+            const canvas = document.getElementById('three-canvas');
+            const container = document.getElementById('canvas-container');
+            
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a1a); // Dark background for better visibility
+            
+            camera = new THREE.PerspectiveCamera(
+                60,
+                container.clientWidth / container.clientHeight,
+                0.1,
+                1000
+            );
+            camera.position.set(5, 5, 5);
+            
+            renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            
+            controls = new OrbitControls(camera, canvas);
+            
+            // Add lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
+            directionalLight.position.set(10, 10, 10);
+            scene.add(directionalLight);
+            
+            // Add grid (dimmer for dark background)
+            const gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x2a2a2a);
+            scene.add(gridHelper);
+            
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            });
+            
+            animate();
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        
+        // PLY Parser with enhanced debugging
+        class PLYParser {
+            parsePLY(arrayBuffer) {
+                const decoder = new TextDecoder('utf-8');
+                const text = decoder.decode(arrayBuffer);
+                const headerEnd = text.indexOf('end_header');
+                
+                if (headerEnd === -1) {
+                    throw new Error('Invalid PLY file: no end_header found');
+                }
+                
+                const headerText = text.substring(0, headerEnd + 10);
+                
+                console.log('=== PLY HEADER ===');
+                console.log(headerText);
+                console.log('==================');
+                
+                const lines = headerText.split('\n');
+                let vertexCount = 0;
+                const properties = [];
+                let format = 'ascii';
+                
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    
+                    if (trimmed.startsWith('format')) {
+                        format = trimmed.includes('ascii') ? 'ascii' : 'binary';
+                        console.log('Format:', format);
+                    } else if (trimmed.startsWith('element vertex')) {
+                        vertexCount = parseInt(trimmed.split(/\s+/)[2]);
+                        console.log('Vertex count:', vertexCount);
+                    } else if (trimmed.startsWith('property')) {
+                        const parts = trimmed.split(/\s+/);
+                        properties.push({ 
+                            type: parts[1], 
+                            name: parts[2] 
+                        });
+                    }
+                }
+                
+                console.log('Properties:', properties.map(p => `${p.name} (${p.type})`).join(', '));
+                
+                const vertices = [];
+                const isBinary = format === 'binary';
+                
+                if (isBinary) {
+                    this._parseBinaryPLY(arrayBuffer, headerEnd + 11, vertexCount, properties, vertices);
+                } else {
+                    this._parseAsciiPLY(text, headerEnd + 11, vertexCount, properties, vertices);
+                }
+                
+                // Detailed debug of first 3 vertices
+                console.log('=== FIRST 3 VERTICES ===');
+                for (let i = 0; i < Math.min(3, vertices.length); i++) {
+                    console.log(`Vertex ${i}:`, vertices[i]);
+                }
+                
+                // Check color value ranges
+                if (vertices.length > 0) {
+                    const colorKeys = ['red', 'green', 'blue', 'r', 'g', 'b', 'diffuse_red', 'diffuse_green', 'diffuse_blue'];
+                    const foundColors = colorKeys.filter(key => key in vertices[0]);
+                    
+                    if (foundColors.length > 0) {
+                        console.log('=== COLOR ANALYSIS ===');
+                        console.log('Found color properties:', foundColors);
+                        
+                        // Sample first 10 vertices
+                        const samples = vertices.slice(0, Math.min(10, vertices.length));
+                        const colorValues = samples.map(v => ({
+                            r: v[foundColors[0]] || v.red || v.r || 0,
+                            g: v[foundColors[1]] || v.green || v.g || 0,
+                            b: v[foundColors[2]] || v.blue || v.b || 0
+                        }));
+                        
+                        console.log('Color samples:', colorValues);
+                        
+                        // Determine range
+                        const maxColor = Math.max(...colorValues.flatMap(c => [c.r, c.g, c.b]));
+                        const minColor = Math.min(...colorValues.flatMap(c => [c.r, c.g, c.b]));
+                        console.log('Color range:', { min: minColor, max: maxColor });
+                        console.log('Likely format:', maxColor > 1.5 ? '0-255 (byte)' : '0-1 (normalized)');
+                    } else {
+                        console.log('⚠️ NO COLOR PROPERTIES FOUND');
+                        console.log('Available properties:', Object.keys(vertices[0]));
+                    }
+                }
+                
+                return { vertices, properties, vertexCount };
+            }
+            
+            _parseBinaryPLY(arrayBuffer, dataStart, vertexCount, properties, vertices) {
+                console.log('Parsing binary PLY, data starts at byte:', dataStart);
+                
+                const dataView = new DataView(arrayBuffer, dataStart);
+                let offset = 0;
+                
+                // Calculate vertex size
+                let vertexSize = 0;
+                for (const prop of properties) {
+                    vertexSize += this._getTypeSize(prop.type);
+                }
+                console.log('Vertex size:', vertexSize, 'bytes');
+                
+                for (let i = 0; i < vertexCount; i++) {
+                    const vertex = {};
+                    let localOffset = 0;
+                    
+                    for (const prop of properties) {
+                        const value = this._readValue(dataView, offset + localOffset, prop.type);
+                        vertex[prop.name] = value;
+                        localOffset += this._getTypeSize(prop.type);
+                    }
+                    
+                    vertices.push(vertex);
+                    offset += vertexSize;
+                }
+            }
+            
+            _getTypeSize(type) {
+                const sizes = {
+                    'float': 4, 'float32': 4,
+                    'double': 8,
+                    'int': 4, 'int32': 4,
+                    'uint': 4, 'uint32': 4,
+                    'short': 2, 'int16': 2,
+                    'ushort': 2, 'uint16': 2,
+                    'char': 1, 'int8': 1,
+                    'uchar': 1, 'uint8': 1
+                };
+                return sizes[type] || 1;
+            }
+            
+            _readValue(dataView, offset, type) {
+                switch (type) {
+                    case 'float':
+                    case 'float32':
+                        return dataView.getFloat32(offset, true);
+                    case 'double':
+                        return dataView.getFloat64(offset, true);
+                    case 'int':
+                    case 'int32':
+                        return dataView.getInt32(offset, true);
+                    case 'uint':
+                    case 'uint32':
+                        return dataView.getUint32(offset, true);
+                    case 'short':
+                    case 'int16':
+                        return dataView.getInt16(offset, true);
+                    case 'ushort':
+                    case 'uint16':
+                        return dataView.getUint16(offset, true);
+                    case 'char':
+                    case 'int8':
+                        return dataView.getInt8(offset);
+                    case 'uchar':
+                    case 'uint8':
+                        return dataView.getUint8(offset);
+                    default:
+                        console.warn('Unknown type:', type);
+                        return 0;
+                }
+            }
+            
+            _parseAsciiPLY(text, headerEnd, vertexCount, properties, vertices) {
+                console.log('Parsing ASCII PLY');
+                
+                const dataText = text.substring(headerEnd);
+                const lines = dataText.split('\n').filter(line => line.trim() !== '');
+                
+                console.log('Data lines available:', lines.length);
+                
+                for (let i = 0; i < Math.min(vertexCount, lines.length); i++) {
+                    const values = lines[i].trim().split(/\s+/);
+                    const vertex = {};
+                    
+                    for (let j = 0; j < properties.length && j < values.length; j++) {
+                        const prop = properties[j];
+                        const value = values[j];
+                        
+                        if (prop.type.includes('int') || prop.type === 'uchar' || prop.type === 'uint8') {
+                            vertex[prop.name] = parseInt(value);
+                        } else {
+                            vertex[prop.name] = parseFloat(value);
+                        }
+                    }
+                    
+                    vertices.push(vertex);
+                }
+            }
+            
+            createPLY(vertices, properties) {
+                let header = 'ply\n';
+                header += 'format binary_little_endian 1.0\n';
+                header += `element vertex ${vertices.length}\n`;
+                
+                properties.forEach(prop => {
+                    header += `property ${prop.type} ${prop.name}\n`;
+                });
+                
+                header += 'end_header\n';
+                
+                const headerBytes = new TextEncoder().encode(header);
+                const vertexSize = properties.reduce((sum, prop) => {
+                    return sum + this._getTypeSize(prop.type);
+                }, 0);
+                
+                const buffer = new ArrayBuffer(headerBytes.length + vertices.length * vertexSize);
+                const view = new DataView(buffer);
+                
+                // Write header
+                for (let i = 0; i < headerBytes.length; i++) {
+                    view.setUint8(i, headerBytes[i]);
+                }
+                
+                // Write vertices
+                let offset = headerBytes.length;
+                for (const vertex of vertices) {
+                    for (const prop of properties) {
+                        const value = vertex[prop.name] || 0;
+                        this._writeValue(view, offset, value, prop.type);
+                        offset += this._getTypeSize(prop.type);
+                    }
+                }
+                
+                return buffer;
+            }
+            
+            _writeValue(dataView, offset, value, type) {
+                switch (type) {
+                    case 'float':
+                    case 'float32':
+                        dataView.setFloat32(offset, value, true);
+                        break;
+                    case 'double':
+                        dataView.setFloat64(offset, value, true);
+                        break;
+                    case 'int':
+                    case 'int32':
+                        dataView.setInt32(offset, value, true);
+                        break;
+                    case 'uint':
+                    case 'uint32':
+                        dataView.setUint32(offset, value, true);
+                        break;
+                    case 'short':
+                    case 'int16':
+                        dataView.setInt16(offset, value, true);
+                        break;
+                    case 'ushort':
+                    case 'uint16':
+                        dataView.setUint16(offset, value, true);
+                        break;
+                    case 'char':
+                    case 'int8':
+                        dataView.setInt8(offset, value);
+                        break;
+                    case 'uchar':
+                    case 'uint8':
+                        dataView.setUint8(offset, value);
+                        break;
+                }
+            }
+        }
+        
+        // Load PLY file
+        function loadPLY(file) {
+            document.getElementById('loading').style.display = 'block';
+            currentFilename = file.name;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const parser = new PLYParser();
+                    plyData = parser.parsePLY(e.target.result);
+                    originalVertices = [...plyData.vertices];
+                    currentVertices = [...plyData.vertices];
+                    deletionHistory = [];
+                    deletionCount = 0;
+                    
+                    // Detect color info
+                    let colorStatus = 'No color';
+                    if (originalVertices.length > 0) {
+                        const v = originalVertices[0];
+                        if ('f_dc_0' in v && 'f_dc_1' in v && 'f_dc_2' in v) {
+                            colorStatus = '✓ Gaussian Splatting (SH)';
+                        } else if ('red' in v && 'green' in v && 'blue' in v) {
+                            colorStatus = '✓ RGB';
+                        } else if ('r' in v && 'g' in v && 'b' in v) {
+                            colorStatus = '✓ RGB';
+                        } else if ('diffuse_red' in v) {
+                            colorStatus = '✓ RGB';
+                        }
+                    }
+                    
+                    displayPointCloud(currentVertices);
+                    createBox();
+                    updateStats();
+                    
+                    document.getElementById('file-stats').style.display = 'block';
+                    document.getElementById('box-controls').style.display = 'block';
+                    document.getElementById('box-position-controls').style.display = 'block';
+                    document.getElementById('box-rotation-controls').style.display = 'block';
+                    document.getElementById('action-controls').style.display = 'block';
+                    
+                    document.getElementById('filename').textContent = file.name;
+                    document.getElementById('original-points').textContent = plyData.vertices.length.toLocaleString();
+                    document.getElementById('total-points').textContent = currentVertices.length.toLocaleString();
+                    document.getElementById('color-info').textContent = colorStatus;
+                    document.getElementById('deletion-count').textContent = '0';
+                    
+                    document.getElementById('loading').style.display = 'none';
+                } catch (error) {
+                    alert('Error loading PLY file: ' + error.message);
+                    console.error('Error details:', error);
+                    document.getElementById('loading').style.display = 'none';
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+        
+        // Display point cloud with enhanced color debugging (Gaussian Splatting support)
+        function displayPointCloud(vertices) {
+            if (pointCloud) {
+                scene.remove(pointCloud);
+            }
+            
+            console.log('=== DISPLAY POINT CLOUD ===');
+            console.log('Vertices to display:', vertices.length);
+            
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(vertices.length * 3);
+            const colors = new Float32Array(vertices.length * 3);
+            
+            // Comprehensive color detection
+            let hasColor = false;
+            let colorProps = { r: null, g: null, b: null };
+            let colorScale = 1.0;
+            let isGaussianSplatting = false;
+            
+            // Spherical Harmonics constant for Gaussian Splatting
+            const SH_C0 = 0.28209479177387814;
+            
+            if (vertices.length > 0) {
+                const v = vertices[0];
+                
+                // Check for Gaussian Splatting format (f_dc_0, f_dc_1, f_dc_2)
+                if ('f_dc_0' in v && 'f_dc_1' in v && 'f_dc_2' in v) {
+                    colorProps = { r: 'f_dc_0', g: 'f_dc_1', b: 'f_dc_2' };
+                    hasColor = true;
+                    isGaussianSplatting = true;
+                    console.log('✓ Gaussian Splatting format detected');
+                    console.log('  Using f_dc_0, f_dc_1, f_dc_2 (Spherical Harmonics)');
+                    console.log('  Sample SH coefficients:', {
+                        f_dc_0: v.f_dc_0,
+                        f_dc_1: v.f_dc_1,
+                        f_dc_2: v.f_dc_2
+                    });
+                } else {
+                    // Try standard color property names
+                    const colorMappings = [
+                        { r: 'red', g: 'green', b: 'blue' },
+                        { r: 'r', g: 'g', b: 'b' },
+                        { r: 'diffuse_red', g: 'diffuse_green', b: 'diffuse_blue' },
+                        { r: 'R', g: 'G', b: 'B' }
+                    ];
+                    
+                    for (const mapping of colorMappings) {
+                        if (mapping.r in v && mapping.g in v && mapping.b in v) {
+                            colorProps = mapping;
+                            hasColor = true;
+                            
+                            // Determine scale
+                            const maxVal = Math.max(v[mapping.r], v[mapping.g], v[mapping.b]);
+                            colorScale = maxVal > 1.5 ? 255.0 : 1.0;
+                            
+                            console.log('✓ Standard color found:', mapping);
+                            console.log('  Scale:', colorScale === 255 ? '0-255' : '0-1');
+                            console.log('  Sample:', {
+                                r: v[mapping.r],
+                                g: v[mapping.g],
+                                b: v[mapping.b]
+                            });
+                            break;
+                        }
+                    }
+                }
+                
+                if (!hasColor) {
+                    console.warn('⚠️ NO COLOR FOUND');
+                    console.log('Available properties:', Object.keys(v));
+                }
+            }
+            
+            // Process vertices
+            let colorStats = { minR: 999, maxR: -999, minG: 999, maxG: -999, minB: 999, maxB: -999 };
+            
+            for (let i = 0; i < vertices.length; i++) {
+                const v = vertices[i];
+                
+                // Positions
+                positions[i * 3] = v.x || 0;
+                positions[i * 3 + 1] = v.y || 0;
+                positions[i * 3 + 2] = v.z || 0;
+                
+                // Colors
+                if (hasColor) {
+                    let r, g, b;
+                    
+                    if (isGaussianSplatting) {
+                        // Convert Spherical Harmonics to RGB
+                        // Formula: color = 0.5 + SH_C0 * f_dc_i
+                        r = 0.5 + SH_C0 * v[colorProps.r];
+                        g = 0.5 + SH_C0 * v[colorProps.g];
+                        b = 0.5 + SH_C0 * v[colorProps.b];
+                    } else {
+                        // Standard RGB
+                        r = v[colorProps.r] / colorScale;
+                        g = v[colorProps.g] / colorScale;
+                        b = v[colorProps.b] / colorScale;
+                    }
+                    
+                    // Clamp to 0-1
+                    r = Math.max(0, Math.min(1, r));
+                    g = Math.max(0, Math.min(1, g));
+                    b = Math.max(0, Math.min(1, b));
+                    
+                    colors[i * 3] = r;
+                    colors[i * 3 + 1] = g;
+                    colors[i * 3 + 2] = b;
+                    
+                    // Track stats
+                    if (i < 100) {
+                        colorStats.minR = Math.min(colorStats.minR, r);
+                        colorStats.maxR = Math.max(colorStats.maxR, r);
+                        colorStats.minG = Math.min(colorStats.minG, g);
+                        colorStats.maxG = Math.max(colorStats.maxG, g);
+                        colorStats.minB = Math.min(colorStats.minB, b);
+                        colorStats.maxB = Math.max(colorStats.maxB, b);
+                    }
+                } else {
+                    // Default light gray
+                    colors[i * 3] = 0.7;
+                    colors[i * 3 + 1] = 0.7;
+                    colors[i * 3 + 2] = 0.7;
+                }
+            }
+            
+            if (hasColor) {
+                console.log('Color stats (first 100 vertices):');
+                console.log('  R:', colorStats.minR.toFixed(3), '-', colorStats.maxR.toFixed(3));
+                console.log('  G:', colorStats.minG.toFixed(3), '-', colorStats.maxG.toFixed(3));
+                console.log('  B:', colorStats.minB.toFixed(3), '-', colorStats.maxB.toFixed(3));
+            }
+            
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            
+            const material = new THREE.PointsMaterial({
+                size: pointSize,
+                vertexColors: true,
+                sizeAttenuation: true
+            });
+            
+            pointCloud = new THREE.Points(geometry, material);
+            scene.add(pointCloud);
+            
+            console.log('✓ Point cloud added to scene');
+            
+            // Center camera on point cloud (only on first load)
+            if (!boxHelper) {
+                geometry.computeBoundingBox();
+                const center = new THREE.Vector3();
+                geometry.boundingBox.getCenter(center);
+                controls.target.copy(center);
+                
+                const size = new THREE.Vector3();
+                geometry.boundingBox.getSize(size);
+                const maxDim = Math.max(size.x, size.y, size.z);
+                camera.position.set(center.x + maxDim, center.y + maxDim, center.z + maxDim);
+                controls.update();
+                
+                console.log('Camera centered on point cloud');
+            }
+        }
+        
+        // Create box helper
+        function createBox() {
+            if (boxHelper) {
+                scene.remove(boxHelper);
+            }
+            
+            const boxSize = {
+                x: parseFloat(document.getElementById('box-x').value),
+                y: parseFloat(document.getElementById('box-y').value),
+                z: parseFloat(document.getElementById('box-z').value)
+            };
+            
+            const boxPos = {
+                x: parseFloat(document.getElementById('pos-x').value),
+                y: parseFloat(document.getElementById('pos-y').value),
+                z: parseFloat(document.getElementById('pos-z').value)
+            };
+            
+            const boxRot = {
+                x: parseFloat(document.getElementById('rot-x').value) * Math.PI / 180,
+                y: parseFloat(document.getElementById('rot-y').value) * Math.PI / 180,
+                z: parseFloat(document.getElementById('rot-z').value) * Math.PI / 180
+            };
+            
+            const geometry = new THREE.BoxGeometry(boxSize.x, boxSize.y, boxSize.z);
+            const edges = new THREE.EdgesGeometry(geometry);
+            const material = new THREE.LineBasicMaterial({ color: 0xff0000, linewidth: 2 });
+            boxHelper = new THREE.LineSegments(edges, material);
+            
+            boxHelper.position.set(boxPos.x, boxPos.y, boxPos.z);
+            boxHelper.rotation.set(boxRot.x, boxRot.y, boxRot.z);
+            
+            scene.add(boxHelper);
+        }
+        
+        // Filter vertices (remove inside box) from current state
+        function filterVertices() {
+            const boxSize = {
+                x: parseFloat(document.getElementById('box-x').value),
+                y: parseFloat(document.getElementById('box-y').value),
+                z: parseFloat(document.getElementById('box-z').value)
+            };
+            
+            const boxPos = {
+                x: parseFloat(document.getElementById('pos-x').value),
+                y: parseFloat(document.getElementById('pos-y').value),
+                z: parseFloat(document.getElementById('pos-z').value)
+            };
+            
+            const boxRot = {
+                x: parseFloat(document.getElementById('rot-x').value) * Math.PI / 180,
+                y: parseFloat(document.getElementById('rot-y').value) * Math.PI / 180,
+                z: parseFloat(document.getElementById('rot-z').value) * Math.PI / 180
+            };
+            
+            const halfSize = {
+                x: boxSize.x / 2,
+                y: boxSize.y / 2,
+                z: boxSize.z / 2
+            };
+            
+            const rotationMatrix = new THREE.Matrix4();
+            rotationMatrix.makeRotationFromEuler(new THREE.Euler(boxRot.x, boxRot.y, boxRot.z));
+            const inverseRotationMatrix = new THREE.Matrix4().copy(rotationMatrix).invert();
+            
+            const filteredVertices = currentVertices.filter(vertex => {
+                const localPos = new THREE.Vector3(
+                    vertex.x - boxPos.x,
+                    vertex.y - boxPos.y,
+                    vertex.z - boxPos.z
+                );
+                
+                localPos.applyMatrix4(inverseRotationMatrix);
+                
+                const inside = (
+                    Math.abs(localPos.x) <= halfSize.x &&
+                    Math.abs(localPos.y) <= halfSize.y &&
+                    Math.abs(localPos.z) <= halfSize.z
+                );
+                
+                return !inside; // Keep vertices OUTSIDE the box
+            });
+            
+            return filteredVertices;
+        }
+        
+        // Apply deletion (remove points in box from current state)
+        function applyDeletion() {
+            console.log('=== applyDeletion function called ===');
+            console.log('Current vertices count:', currentVertices.length);
+            
+            const beforeCount = currentVertices.length;
+            const afterVertices = filterVertices();
+            const afterCount = afterVertices.length;
+            const removedCount = beforeCount - afterCount;
+            
+            console.log('Before:', beforeCount);
+            console.log('After:', afterCount);
+            console.log('To be removed:', removedCount);
+            
+            if (removedCount === 0) {
+                console.warn('No points in the box');
+                alert('No points in the box. Adjust box position/size.');
+                return;
+            }
+            
+            // Confirm deletion
+            const proceed = confirm(
+                `Remove ${removedCount.toLocaleString()} points?\n\n` +
+                `Before: ${beforeCount.toLocaleString()}\n` +
+                `After: ${afterCount.toLocaleString()}\n\n` +
+                `You can undo this operation.`
+            );
+            
+            if (!proceed) {
+                console.log('User cancelled deletion');
+                return;
+            }
+            
+            console.log('Proceeding with deletion...');
+            
+            // Save current state to history
+            deletionHistory.push([...currentVertices]);
+            console.log('Saved to history. History length:', deletionHistory.length);
+            
+            // Update current vertices
+            currentVertices = afterVertices;
+            deletionCount++;
+            
+            console.log('Updated currentVertices. New count:', currentVertices.length);
+            console.log('Deletion count:', deletionCount);
+            
+            // Update display
+            console.log('Updating display...');
+            displayPointCloud(currentVertices);
+            updateStats();
+            
+            // Reset box position
+            console.log('Resetting box position...');
+            resetBoxPosition();
+            
+            console.log(`✓ Deletion ${deletionCount}: Removed ${removedCount} points`);
+            console.log(`  Remaining: ${afterCount} points`);
+            console.log('=== applyDeletion complete ===');
+        }
+        
+        // Undo last deletion
+        function undoLastDeletion() {
+            console.log('=== undoLastDeletion called ===');
+            console.log('History length:', deletionHistory.length);
+            
+            if (deletionHistory.length === 0) {
+                console.warn('No deletions to undo');
+                alert('No deletions to undo');
+                return;
+            }
+            
+            // Restore previous state
+            currentVertices = deletionHistory.pop();
+            deletionCount = Math.max(0, deletionCount - 1);
+            
+            console.log('Restored previous state');
+            console.log('Current vertices:', currentVertices.length);
+            console.log('Deletion count:', deletionCount);
+            
+            // Update display
+            displayPointCloud(currentVertices);
+            updateStats();
+            
+            console.log('✓ Undone last deletion');
+            console.log('=== undoLastDeletion complete ===');
+        }
+        
+        // Reset all deletions
+        function resetAllDeletions() {
+            console.log('=== resetAllDeletions called ===');
+            console.log('Current deletion count:', deletionCount);
+            
+            if (deletionCount === 0) {
+                console.warn('No deletions to reset');
+                alert('No deletions to reset');
+                return;
+            }
+            
+            const proceed = confirm(
+                `Reset all ${deletionCount} deletion(s)?\n\n` +
+                `This will restore the original ${originalVertices.length.toLocaleString()} points.`
+            );
+            
+            if (!proceed) {
+                console.log('User cancelled reset');
+                return;
+            }
+            
+            console.log('Resetting to original state...');
+            
+            // Restore original
+            currentVertices = [...originalVertices];
+            deletionHistory = [];
+            deletionCount = 0;
+            
+            console.log('Reset complete');
+            console.log('Current vertices:', currentVertices.length);
+            
+            // Update display
+            displayPointCloud(currentVertices);
+            updateStats();
+            
+            console.log('✓ Reset to original state');
+            console.log('=== resetAllDeletions complete ===');
+        }
+        
+        // Reset box position to default
+        function resetBoxPosition() {
+            console.log('=== resetBoxPosition called ===');
+            
+            ['box-x', 'box-y', 'box-z'].forEach(id => {
+                document.getElementById(id).value = 2;
+                document.getElementById(id + '-val').textContent = '2.0';
+            });
+            ['pos-x', 'pos-y', 'pos-z'].forEach(id => {
+                document.getElementById(id).value = 0;
+                document.getElementById(id + '-val').textContent = '0.0';
+            });
+            ['rot-x', 'rot-y', 'rot-z'].forEach(id => {
+                document.getElementById(id).value = 0;
+                document.getElementById(id + '-val').textContent = '0';
+            });
+            createBox();
+            updateStats();
+            
+            console.log('✓ Box position reset');
+            console.log('=== resetBoxPosition complete ===');
+        }
+        
+        // Update statistics
+        function updateStats() {
+            const filtered = filterVertices();
+            const removed = currentVertices.length - filtered.length;
+            
+            document.getElementById('original-points').textContent = originalVertices.length.toLocaleString();
+            document.getElementById('total-points').textContent = currentVertices.length.toLocaleString();
+            document.getElementById('removed-points').textContent = removed.toLocaleString();
+            document.getElementById('remaining-points').textContent = filtered.length.toLocaleString();
+            document.getElementById('deletion-count').textContent = deletionCount;
+        }
+        
+        // Export PLY
+        function exportPLY() {
+            console.log('=== exportPLY function called ===');
+            console.log('Current vertices count:', currentVertices.length);
+            console.log('Deletion count:', deletionCount);
+            
+            if (currentVertices.length === 0) {
+                console.error('Cannot export: no vertices');
+                alert('Warning: All points have been removed. Cannot export empty file.');
+                return;
+            }
+            
+            if (deletionCount === 0) {
+                const proceed = confirm(
+                    'No deletions have been applied.\n\n' +
+                    'Export original file as-is?'
+                );
+                if (!proceed) {
+                    console.log('User cancelled export');
+                    return;
+                }
+            }
+            
+            console.log('Creating PLY buffer...');
+            const parser = new PLYParser();
+            const plyBuffer = parser.createPLY(currentVertices, plyData.properties);
+            console.log('PLY buffer created, size:', plyBuffer.byteLength, 'bytes');
+            
+            const blob = new Blob([plyBuffer], { type: 'application/octet-stream' });
+            const url = URL.createObjectURL(blob);
+            
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
+            const suffix = deletionCount > 0 ? `_cleaned_${deletionCount}x_${timestamp}` : `_copy_${timestamp}`;
+            const filename = currentFilename.replace('.ply', '') + suffix + '.ply';
+            
+            console.log('Downloading file:', filename);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            link.click();
+            
+            URL.revokeObjectURL(url);
+            
+            document.getElementById('success-message').style.display = 'block';
+            setTimeout(() => {
+                document.getElementById('success-message').style.display = 'none';
+            }, 3000);
+            
+            console.log(`✓ Exported: ${currentVertices.length.toLocaleString()} points`);
+            console.log(`  Original: ${originalVertices.length.toLocaleString()} points`);
+            console.log(`  Removed: ${(originalVertices.length - currentVertices.length).toLocaleString()} points (${((1 - currentVertices.length / originalVertices.length) * 100).toFixed(1)}%)`);
+            console.log('=== exportPLY complete ===');
+        }
+        
+        // Setup UI event listeners
+        function setupUI() {
+            const fileInputArea = document.getElementById('file-input-area');
+            const fileInput = document.getElementById('file-input');
+            
+            fileInputArea.addEventListener('click', () => fileInput.click());
+            
+            fileInputArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                fileInputArea.classList.add('drag-over');
+            });
+            
+            fileInputArea.addEventListener('dragleave', () => {
+                fileInputArea.classList.remove('drag-over');
+            });
+            
+            fileInputArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                fileInputArea.classList.remove('drag-over');
+                const files = e.dataTransfer.files;
+                if (files.length > 0 && files[0].name.endsWith('.ply')) {
+                    loadPLY(files[0]);
+                }
+            });
+            
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    loadPLY(e.target.files[0]);
+                }
+            });
+            
+            // Box size sliders
+            ['x', 'y', 'z'].forEach(axis => {
+                const slider = document.getElementById('box-' + axis);
+                const display = document.getElementById('box-' + axis + '-val');
+                slider.addEventListener('input', (e) => {
+                    display.textContent = parseFloat(e.target.value).toFixed(1);
+                    createBox();
+                    updateStats();
+                });
+            });
+            
+            // Position sliders
+            ['x', 'y', 'z'].forEach(axis => {
+                const slider = document.getElementById('pos-' + axis);
+                const display = document.getElementById('pos-' + axis + '-val');
+                slider.addEventListener('input', (e) => {
+                    display.textContent = parseFloat(e.target.value).toFixed(1);
+                    createBox();
+                    updateStats();
+                });
+            });
+            
+            // Rotation sliders
+            ['x', 'y', 'z'].forEach(axis => {
+                const slider = document.getElementById('rot-' + axis);
+                const display = document.getElementById('rot-' + axis + '-val');
+                slider.addEventListener('input', (e) => {
+                    display.textContent = parseFloat(e.target.value).toFixed(0);
+                    createBox();
+                    updateStats();
+                });
+            });
+            
+            // Action buttons with detailed logging
+            console.log('Setting up action buttons...');
+            
+            const applyDeletionBtn = document.getElementById('apply-deletion-btn');
+            const undoBtn = document.getElementById('undo-btn');
+            const resetAllBtn = document.getElementById('reset-all-btn');
+            const resetBoxBtn = document.getElementById('reset-box-btn');
+            const exportBtn = document.getElementById('export-btn');
+            
+            console.log('Button elements:', {
+                applyDeletionBtn: !!applyDeletionBtn,
+                undoBtn: !!undoBtn,
+                resetAllBtn: !!resetAllBtn,
+                resetBoxBtn: !!resetBoxBtn,
+                exportBtn: !!exportBtn
+            });
+            
+            if (applyDeletionBtn) {
+                applyDeletionBtn.addEventListener('click', () => {
+                    console.log('=== APPLY DELETION CLICKED ===');
+                    applyDeletion();
+                });
+                console.log('✓ Apply deletion button listener added');
+            } else {
+                console.error('❌ Apply deletion button not found!');
+            }
+            
+            if (undoBtn) {
+                undoBtn.addEventListener('click', () => {
+                    console.log('=== UNDO CLICKED ===');
+                    undoLastDeletion();
+                });
+                console.log('✓ Undo button listener added');
+            }
+            
+            if (resetAllBtn) {
+                resetAllBtn.addEventListener('click', () => {
+                    console.log('=== RESET ALL CLICKED ===');
+                    resetAllDeletions();
+                });
+                console.log('✓ Reset all button listener added');
+            }
+            
+            if (resetBoxBtn) {
+                resetBoxBtn.addEventListener('click', () => {
+                    console.log('=== RESET BOX CLICKED ===');
+                    resetBoxPosition();
+                });
+                console.log('✓ Reset box button listener added');
+            }
+            
+            if (exportBtn) {
+                exportBtn.addEventListener('click', () => {
+                    console.log('=== EXPORT CLICKED ===');
+                    exportPLY();
+                });
+                console.log('✓ Export button listener added');
+            }
+            
+            // Point size slider
+            const pointSizeSlider = document.getElementById('point-size');
+            const pointSizeDisplay = document.getElementById('point-size-val');
+            if (pointSizeSlider && pointSizeDisplay) {
+                pointSizeSlider.addEventListener('input', (e) => {
+                    pointSize = parseFloat(e.target.value);
+                    pointSizeDisplay.textContent = pointSize.toFixed(2);
+                    if (pointCloud) {
+                        pointCloud.material.size = pointSize;
+                        pointCloud.material.needsUpdate = true;
+                    }
+                });
+            }
+        }
+        
+        // Initialize
+        console.log('Initializing PLY Box Eraser Tool...');
+        init();
+        setupUI();
+        console.log('Initialization complete. Ready to load files.');
+    </script>
+</body>
+</html>
