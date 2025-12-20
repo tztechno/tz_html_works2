@@ -4,7 +4,7 @@ https://tztechno.github.io/tz_html_works2/01_avatar_viewer/index.html (fbx viewe
 
 https://tztechno.github.io/tz_html_works2/01_avatar_viewer/FBX_Viewer.html (=index.html)
 
-https://tztechno.github.io/tz_html_works2/01_avatar_viewer/PLY_Viewer.html
+https://tztechno.github.io/tz_html_works2/01_avatar_viewer/PLY_Viewer.html (control size and ratio)
 
 https://tztechno.github.io/tz_html_works2/01_avatar_viewer/PLY_Coordinate_Transformer.html (centering)
 
