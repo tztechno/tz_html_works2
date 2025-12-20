@@ -10,7 +10,8 @@ https://tztechno.github.io/tz_html_works2/01_avatar_viewer/PLY_Coordinate_Transf
 
 https://tztechno.github.io/tz_html_works2/01_avatar_viewer/PLY_Box_Eraser.html 
 
-https://tztechno.github.io/tz_html_works2/02_snow_fall/index.html
+https://tztechno.github.io/tz_html_works2/02_snow_fall/index2.html
+
 
 
 
