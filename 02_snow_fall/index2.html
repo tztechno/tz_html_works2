@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Snow Background Only</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: auto;
+            min-height: 100vh;
+        }
+        
+        #snowCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 5;
+        }
+        
+        .content {
+            position: relative;
+            z-index: 10;
+            padding: 20px;
+            color: #333;
+            font-family: Arial, sans-serif;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="snowCanvas"></canvas>
+    
+    <div class="content">
+        <h1>雪が舞う背景</h1>
+        <p>このページでは、空中で舞う雪の効果だけを表示しています。</p>
+        <p>地面に積もる雪の処理は削除しました。</p>
+        <p>クリックすると雪が追加されます。</p>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('snowCanvas');
+            const ctx = canvas.getContext('2d');
+            let snowflakes = [];
+
+            // キャンバスのリサイズ
+            const resizeCanvas = () => {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            };
+
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            // 雪の生成
+            const createSnowflake = (x = null, y = null) => {
+                const flake = {
+                    x: x !== null ? x : Math.random() * canvas.width,
+                    y: y !== null ? y : -10,
+                    size: 3 + Math.random() * 7,
+                    speed: 1 + Math.random() * 2,
+                    swaySpeed: 0.01 + Math.random() * 0.02,
+                    swayAmount: 20 + Math.random() * 30,
+                    swayOffset: Math.random() * Math.PI * 2,
+                    rotation: Math.random() * Math.PI * 2,
+                    rotationSpeed: (Math.random() - 0.5) * 0.02,
+                    opacity: 0.6 + Math.random() * 0.4
+                };
+                snowflakes.push(flake);
+                return flake;
+            };
+
+            // 雪の描画（簡略化版）
+            const drawSnowflake = (flake) => {
+                ctx.save();
+                ctx.translate(flake.x, flake.y);
+                ctx.rotate(flake.rotation);
+                
+                ctx.beginPath();
+                for (let i = 0; i < 6; i++) {
+                    const angle = (Math.PI * 2 / 6) * i;
+                    const radius = flake.size / 2;
+                    const x = Math.cos(angle) * radius;
+                    const y = Math.sin(angle) * radius;
+                    
+                    if (i === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                }
+                ctx.closePath();
+                
+                ctx.fillStyle = `rgba(180, 220, 255, ${flake.opacity})`;
+                ctx.fill();
+                
+                ctx.restore();
+            };
+
+            // 雪の更新
+            const updateSnowflakes = () => {
+                // 画面を少しだけクリア（トレイル効果）
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // 新しい雪を追加
+                if (Math.random() < 0.1 && snowflakes.length < 100) {
+                    createSnowflake();
+                }
+
+                // 既存の雪を更新
+                snowflakes.forEach((flake, index) => {
+                    // 落下
+                    flake.y += flake.speed;
+                    
+                    // 横揺れ
+                    flake.swayOffset += flake.swaySpeed;
+                    flake.x += Math.sin(flake.swayOffset) * 0.3;
+                    
+                    // 回転
+                    flake.rotation += flake.rotationSpeed;
+                    
+                    // 画面外に出たら削除
+                    if (flake.y > canvas.height + 10 || 
+                        flake.x < -10 || 
+                        flake.x > canvas.width + 10) {
+                        snowflakes.splice(index, 1);
+                    } else {
+                        drawSnowflake(flake);
+                    }
+                });
+            };
+
+            // クリックで雪を追加
+            document.addEventListener('click', (e) => {
+                for (let i = 0; i < 5; i++) {
+                    setTimeout(() => {
+                        createSnowflake(e.clientX + (Math.random() - 0.5) * 50, e.clientY);
+                    }, i * 50);
+                }
+            });
+
+            // アニメーションループ
+            const animate = () => {
+                updateSnowflakes();
+                requestAnimationFrame(animate);
+            };
+
+            // 初期の雪を作成
+            for (let i = 0; i < 30; i++) {
+                createSnowflake();
+            }
+
+            animate();
+        });
+    </script>
+</body>
+</html>
