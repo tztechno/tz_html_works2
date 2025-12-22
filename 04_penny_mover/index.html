@@ -97,33 +97,86 @@
             color: #666;
             line-height: 1.6;
         }
-        .legend {
-            display: flex;
-            gap: 15px;
-            margin-top: 10px;
-            font-size: 12px;
+        .text-controls {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
         }
-        .legend-item {
+        .text-input-group {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .text-input-group input {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .coin-text-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            background: white;
+        }
+        .coin-text-item {
             display: flex;
+            justify-content: space-between;
             align-items: center;
+            padding: 5px 10px;
+            margin-bottom: 5px;
+            background: #f8f9fa;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .coin-text-item:hover {
+            background: #e9ecef;
+        }
+        .coin-text-item.selected {
+            background: #cce5ff;
+            border-left: 3px solid #2196f3;
+        }
+        .coin-number {
+            font-weight: bold;
+            color: #333;
+            margin-right: 10px;
+        }
+        .coin-text {
+            flex-grow: 1;
+            font-family: monospace;
+        }
+        .text-buttons {
+            display: flex;
             gap: 5px;
         }
-        .legend-dot {
-            width: 15px;
-            height: 15px;
-            border-radius: 50%;
-            border: 2px solid #333;
+        .text-btn {
+            padding: 3px 8px;
+            font-size: 12px;
+            border: none;
+            border-radius: 3px;
+            background: #6c757d;
+            color: white;
+            cursor: pointer;
         }
-        .value-display {
-            font-size: 13px;
-            color: #666;
-            margin-top: 2px;
+        .text-btn:hover {
+            background: #5a6268;
+        }
+        .text-btn.edit {
+            background: #17a2b8;
+        }
+        .text-btn.edit:hover {
+            background: #138496;
         }
     </style>
 </head>
 <body>
-    <h1>🪙 Coin Arrangement Tool</h1>
-    <p style="text-align: center; color: #666;">Drag 16 coins freely. Numbers are displayed in the center of each coin.</p>
+    <h1>🪙 Coin Arrangement Tool with Text</h1>
+    <p style="text-align: center; color: #666;">Drag 16 coins freely. Add custom text to each coin.</p>
     
     <div class="container">
         <div>
@@ -133,12 +186,28 @@
         <div class="controls">
             <div id="status" class="status-box">
                 <h3 style="margin: 0 0 10px 0;">16 Coins</h3>
-                <p style="margin: 0;">Drag coins to arrange them</p>
+                <p style="margin: 0;">Click a coin to edit its text</p>
+                <p id="selectedCoinInfo" style="margin: 5px 0 0 0; font-size: 13px; color: #666;"></p>
             </div>
             
             <div class="slider-group">
                 <label for="coinRadius">Coin Radius: <span id="coinRadiusValue">25</span></label>
                 <input type="range" id="coinRadius" min="10" max="50" value="25" step="1">
+            </div>
+            
+            <div class="text-controls">
+                <h4 style="margin: 0 0 10px 0;">Coin Text Editor</h4>
+                <div class="text-input-group">
+                    <input type="text" id="coinTextInput" placeholder="Enter text for selected coin" maxlength="20">
+                    <button class="btn-primary" onclick="updateCoinText()">Update Text</button>
+                </div>
+                <p style="margin: 5px 0 10px 0; font-size: 12px; color: #666;">
+                    Click a coin on canvas or in list below to edit its text
+                </p>
+                
+                <div class="coin-text-list" id="coinTextList">
+                    <!-- Coin list will be populated here -->
+                </div>
             </div>
             
             <div class="button-group">
@@ -153,8 +222,9 @@
                 <h4 style="margin: 10px 0 5px 0;">How to Use:</h4>
                 <ul style="margin: 5px 0; padding-left: 20px;">
                     <li>Drag coins with your mouse</li>
+                    <li>Click a coin to select it for text editing</li>
+                    <li>Enter text in the input field and click "Update Text"</li>
                     <li>All coins are displayed in gold color</li>
-                    <li>Numbers 1-16 are shown in the center of each coin</li>
                     <li>Adjust coin size with the slider</li>
                     <li>Save and load your arrangements</li>
                 </ul>
@@ -173,10 +243,11 @@
         let coinRadius = 25;
         const scale = 50;
         
-        // コイン（論理座標）
+        // コイン（論理座標とテキスト）
         let coins = [];
         let draggingCoin = null;
         let dragOffset = { x: 0, y: 0 };
+        let selectedCoin = null;
         
         // 保存データ
         let savedConfigs = {};
@@ -186,6 +257,7 @@
             initializeCoins();
             setupEventListeners();
             draw();
+            updateCoinList();
         }
         
         function initializeCoins() {
@@ -196,9 +268,12 @@
             
             for (let i = 0; i < 4; i++) {
                 for (let j = 0; j < 4; j++) {
+                    const index = i * 4 + j;
                     coins.push({
                         x: startX + j * spacing,
-                        y: startY + i * spacing
+                        y: startY + i * spacing,
+                        text: (index + 1).toString(), // デフォルトは番号
+                        fontSize: 14
                     });
                 }
             }
@@ -208,11 +283,26 @@
             canvas.addEventListener('mousedown', onMouseDown);
             canvas.addEventListener('mousemove', onMouseMove);
             canvas.addEventListener('mouseup', onMouseUp);
+            canvas.addEventListener('click', onCanvasClick);
             
             document.getElementById('coinRadius').addEventListener('input', (e) => {
                 coinRadius = parseInt(e.target.value);
                 document.getElementById('coinRadiusValue').textContent = coinRadius;
+                // フォントサイズをコインのサイズに合わせて調整
+                updateFontSizes();
                 draw();
+            });
+            
+            document.getElementById('coinTextInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    updateCoinText();
+                }
+            });
+        }
+        
+        function updateFontSizes() {
+            coins.forEach(coin => {
+                coin.fontSize = Math.max(12, coinRadius * 0.45);
             });
         }
         
@@ -250,6 +340,14 @@
             coins.forEach((coin, index) => {
                 const pos = logicalToCanvas(coin.x, coin.y);
                 
+                // 選択されたコインのハイライト
+                if (index === selectedCoin) {
+                    ctx.fillStyle = 'rgba(33, 150, 243, 0.2)';
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y, coinRadius + 5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
                 // コイン本体（ゴールド色）
                 ctx.fillStyle = '#FFD700';
                 ctx.beginPath();
@@ -261,14 +359,73 @@
                 ctx.lineWidth = 2;
                 ctx.stroke();
                 
-                // 中心の番号（1-16）
+                // 中心のテキスト
                 ctx.fillStyle = 'black';
-                const fontSize = Math.max(14, coinRadius * 0.5);
-                ctx.font = `bold ${fontSize}px Arial`;
+                ctx.font = `bold ${coin.fontSize}px Arial`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText((index + 1).toString(), pos.x, pos.y);
+                
+                // テキストを描画（改行処理）
+                const text = coin.text || (index + 1).toString();
+                const lines = text.split('\n');
+                const lineHeight = coin.fontSize * 1.2;
+                const startY = pos.y - (lines.length - 1) * lineHeight / 2;
+                
+                lines.forEach((line, i) => {
+                    ctx.fillText(line, pos.x, startY + i * lineHeight);
+                });
+                
+                // 左上に小さな番号を表示（識別用）
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                ctx.font = '10px Arial';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'top';
+                ctx.fillText(`#${index + 1}`, pos.x - coinRadius + 5, pos.y - coinRadius + 5);
             });
+        }
+        
+        function onCanvasClick(e) {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            let clickedCoin = null;
+            
+            coins.forEach((coin, index) => {
+                const pos = logicalToCanvas(coin.x, coin.y);
+                const dist = Math.sqrt((mouseX - pos.x) ** 2 + (mouseY - pos.y) ** 2);
+                
+                if (dist < coinRadius) {
+                    clickedCoin = index;
+                }
+            });
+            
+            if (clickedCoin !== null) {
+                selectCoin(clickedCoin);
+            }
+        }
+        
+        function selectCoin(index) {
+            selectedCoin = index;
+            const coin = coins[index];
+            document.getElementById('coinTextInput').value = coin.text || '';
+            document.getElementById('coinTextInput').focus();
+            
+            updateSelectedCoinInfo();
+            updateCoinList();
+            draw();
+        }
+        
+        function updateSelectedCoinInfo() {
+            const infoElement = document.getElementById('selectedCoinInfo');
+            if (selectedCoin !== null) {
+                const coin = coins[selectedCoin];
+                infoElement.textContent = `Selected: Coin #${selectedCoin + 1} at (${coin.x.toFixed(2)}, ${coin.y.toFixed(2)})`;
+                infoElement.style.color = '#2196f3';
+            } else {
+                infoElement.textContent = 'No coin selected';
+                infoElement.style.color = '#666';
+            }
         }
         
         function onMouseDown(e) {
@@ -296,6 +453,11 @@
                     x: mouseX - coinPos.x,
                     y: mouseY - coinPos.y
                 };
+                
+                // ドラッグ開始時に選択
+                if (selectedCoin !== selectedIndex) {
+                    selectCoin(selectedIndex);
+                }
             }
         }
         
@@ -324,10 +486,78 @@
             draw();
         }
         
+        function updateCoinText() {
+            if (selectedCoin === null) {
+                alert('Please select a coin first by clicking on it');
+                return;
+            }
+            
+            const textInput = document.getElementById('coinTextInput');
+            const newText = textInput.value.trim();
+            
+            if (newText) {
+                coins[selectedCoin].text = newText;
+                draw();
+                updateCoinList();
+                log(`✓ Text updated for coin #${selectedCoin + 1}: "${newText}"`);
+            } else {
+                // テキストが空の場合は番号に戻す
+                coins[selectedCoin].text = (selectedCoin + 1).toString();
+                textInput.value = coins[selectedCoin].text;
+                draw();
+                updateCoinList();
+                log(`✓ Text reset to default for coin #${selectedCoin + 1}`);
+            }
+        }
+        
+        function updateCoinList() {
+            const listElement = document.getElementById('coinTextList');
+            listElement.innerHTML = '';
+            
+            coins.forEach((coin, index) => {
+                const item = document.createElement('div');
+                item.className = `coin-text-item ${index === selectedCoin ? 'selected' : ''}`;
+                item.onclick = () => selectCoin(index);
+                
+                item.innerHTML = `
+                    <div style="display: flex; align-items: center; width: 100%;">
+                        <span class="coin-number">#${index + 1}</span>
+                        <span class="coin-text">${coin.text || (index + 1).toString()}</span>
+                    </div>
+                    <div class="text-buttons">
+                        <button class="text-btn edit" onclick="event.stopPropagation(); editCoinText(${index})">Edit</button>
+                        <button class="text-btn" onclick="event.stopPropagation(); clearCoinText(${index})">Clear</button>
+                    </div>
+                `;
+                
+                listElement.appendChild(item);
+            });
+        }
+        
+        function editCoinText(index) {
+            selectCoin(index);
+            document.getElementById('coinTextInput').focus();
+        }
+        
+        function clearCoinText(index) {
+            coins[index].text = (index + 1).toString();
+            if (selectedCoin === index) {
+                document.getElementById('coinTextInput').value = coins[index].text;
+            }
+            draw();
+            updateCoinList();
+            log(`✓ Text cleared for coin #${index + 1}`);
+        }
+        
         function resetPositions() {
             initializeCoins();
+            selectedCoin = null;
+            document.getElementById('coinTextInput').value = '';
+            updateSelectedCoinInfo();
+            updateFontSizes();
             draw();
-            log('✓ Positions reset to initial grid');
+            updateCoinList();
+            log('✓ Positions and text reset to initial state');
         }
         
         function saveConfig() {
@@ -336,7 +566,12 @@
             
             const config = {
                 coinRadius: coinRadius,
-                coins: coins.map(c => ({ x: c.x, y: c.y }))
+                coins: coins.map(c => ({ 
+                    x: c.x, 
+                    y: c.y,
+                    text: c.text,
+                    fontSize: c.fontSize
+                }))
             };
             
             savedConfigs[name] = config;
@@ -355,20 +590,32 @@
             
             const config = savedConfigs[name];
             coinRadius = config.coinRadius;
-            coins = config.coins.map(c => ({ x: c.x, y: c.y }));
+            coins = config.coins.map(c => ({ 
+                x: c.x, 
+                y: c.y,
+                text: c.text || (c.index + 1).toString(),
+                fontSize: c.fontSize || Math.max(12, coinRadius * 0.45)
+            }));
             
             document.getElementById('coinRadius').value = coinRadius;
             document.getElementById('coinRadiusValue').textContent = coinRadius;
             
+            selectedCoin = null;
+            document.getElementById('coinTextInput').value = '';
+            updateSelectedCoinInfo();
+            updateCoinList();
             draw();
             log(`✓ Configuration '${name}' loaded`);
         }
         
         function randomize() {
-            coins.forEach(coin => {
+            coins.forEach((coin, index) => {
                 coin.x = Math.random() * 6 - 3;
                 coin.y = Math.random() * 6 - 3;
             });
+            selectedCoin = null;
+            document.getElementById('coinTextInput').value = '';
+            updateSelectedCoinInfo();
             draw();
             log('✓ Coins randomized');
         }
@@ -376,7 +623,13 @@
         function exportConfig() {
             const config = {
                 coinRadius: coinRadius,
-                coins: coins.map(c => ({ x: c.x, y: c.y }))
+                coins: coins.map((c, index) => ({ 
+                    index: index + 1,
+                    x: c.x, 
+                    y: c.y,
+                    text: c.text || (index + 1).toString(),
+                    fontSize: c.fontSize
+                }))
             };
             
             const json = JSON.stringify(config, null, 2);
@@ -400,6 +653,7 @@
         
         // 初期化
         init();
+        updateFontSizes();
     </script>
 </body>
 </html>
