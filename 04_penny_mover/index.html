@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 600px 1fr;
+            gap: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        canvas {
+            border: 2px solid #333;
+            border-radius: 5px;
+            cursor: move;
+            background: #fafafa;
+        }
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .status-box {
+            padding: 15px;
+            background: #e8f5e9;
+            border-radius: 5px;
+            border-left: 4px solid #4caf50;
+        }
+        .slider-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .slider-group label {
+            font-weight: bold;
+            color: #555;
+        }
+        .slider-group input {
+            width: 100%;
+        }
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 14px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: #2196f3;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #1976d2;
+        }
+        .btn-success {
+            background: #4caf50;
+            color: white;
+        }
+        .btn-success:hover {
+            background: #388e3c;
+        }
+        .btn-warning {
+            background: #ff9800;
+            color: white;
+        }
+        .btn-warning:hover {
+            background: #f57c00;
+        }
+        .btn-info {
+            background: #00bcd4;
+            color: white;
+        }
+        .btn-info:hover {
+            background: #0097a7;
+        }
+        .info-text {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.6;
+        }
+        .legend {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .legend-dot {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            border: 2px solid #333;
+        }
+        .value-display {
+            font-size: 13px;
+            color: #666;
+            margin-top: 2px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🪙 Coin Arrangement Tool</h1>
+    <p style="text-align: center; color: #666;">Drag 16 coins freely. Numbers are displayed in the center of each coin.</p>
+    
+    <div class="container">
+        <div>
+            <canvas id="canvas" width="600" height="600"></canvas>
+        </div>
+        
+        <div class="controls">
+            <div id="status" class="status-box">
+                <h3 style="margin: 0 0 10px 0;">16 Coins</h3>
+                <p style="margin: 0;">Drag coins to arrange them</p>
+            </div>
+            
+            <div class="slider-group">
+                <label for="coinRadius">Coin Radius: <span id="coinRadiusValue">25</span></label>
+                <input type="range" id="coinRadius" min="10" max="50" value="25" step="1">
+            </div>
+            
+            <div class="button-group">
+                <button class="btn-warning" onclick="resetPositions()">Reset Positions</button>
+                <button class="btn-info" onclick="saveConfig()">Save Config</button>
+                <button class="btn-info" onclick="loadConfig()">Load Config</button>
+                <button class="btn-primary" onclick="randomize()">Randomize</button>
+                <button class="btn-primary" onclick="exportConfig()">Export JSON</button>
+            </div>
+            
+            <div class="info-text">
+                <h4 style="margin: 10px 0 5px 0;">How to Use:</h4>
+                <ul style="margin: 5px 0; padding-left: 20px;">
+                    <li>Drag coins with your mouse</li>
+                    <li>All coins are displayed in gold color</li>
+                    <li>Numbers 1-16 are shown in the center of each coin</li>
+                    <li>Adjust coin size with the slider</li>
+                    <li>Save and load your arrangements</li>
+                </ul>
+            </div>
+            
+            <div id="output" style="font-family: monospace; font-size: 12px; background: #f0f0f0; padding: 10px; border-radius: 5px; max-height: 200px; overflow-y: auto;"></div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // 設定
+        const center = { x: 300, y: 300 };
+        let coinRadius = 25;
+        const scale = 50;
+        
+        // コイン（論理座標）
+        let coins = [];
+        let draggingCoin = null;
+        let dragOffset = { x: 0, y: 0 };
+        
+        // 保存データ
+        let savedConfigs = {};
+        
+        // 初期化
+        function init() {
+            initializeCoins();
+            setupEventListeners();
+            draw();
+        }
+        
+        function initializeCoins() {
+            coins = [];
+            const spacing = 0.8;
+            const startX = 0.5;
+            const startY = 0.5;
+            
+            for (let i = 0; i < 4; i++) {
+                for (let j = 0; j < 4; j++) {
+                    coins.push({
+                        x: startX + j * spacing,
+                        y: startY + i * spacing
+                    });
+                }
+            }
+        }
+        
+        function setupEventListeners() {
+            canvas.addEventListener('mousedown', onMouseDown);
+            canvas.addEventListener('mousemove', onMouseMove);
+            canvas.addEventListener('mouseup', onMouseUp);
+            
+            document.getElementById('coinRadius').addEventListener('input', (e) => {
+                coinRadius = parseInt(e.target.value);
+                document.getElementById('coinRadiusValue').textContent = coinRadius;
+                draw();
+            });
+        }
+        
+        function logicalToCanvas(x, y) {
+            return {
+                x: center.x + x * scale,
+                y: center.y - y * scale
+            };
+        }
+        
+        function canvasToLogical(canvasX, canvasY) {
+            return {
+                x: (canvasX - center.x) / scale,
+                y: (center.y - canvasY) / scale
+            };
+        }
+        
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 背景
+            ctx.fillStyle = '#fafafa';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 原点の目印
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+            ctx.beginPath();
+            ctx.arc(center.x, center.y, 5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            drawCoins();
+        }
+        
+        function drawCoins() {
+            coins.forEach((coin, index) => {
+                const pos = logicalToCanvas(coin.x, coin.y);
+                
+                // コイン本体（ゴールド色）
+                ctx.fillStyle = '#FFD700';
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, coinRadius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // コインの縁
+                ctx.strokeStyle = '#B8860B';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // 中心の番号（1-16）
+                ctx.fillStyle = 'black';
+                const fontSize = Math.max(14, coinRadius * 0.5);
+                ctx.font = `bold ${fontSize}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText((index + 1).toString(), pos.x, pos.y);
+            });
+        }
+        
+        function onMouseDown(e) {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            let minDist = Infinity;
+            let selectedIndex = null;
+            
+            coins.forEach((coin, index) => {
+                const pos = logicalToCanvas(coin.x, coin.y);
+                const dist = Math.sqrt((mouseX - pos.x) ** 2 + (mouseY - pos.y) ** 2);
+                
+                if (dist < coinRadius && dist < minDist) {
+                    minDist = dist;
+                    selectedIndex = index;
+                }
+            });
+            
+            if (selectedIndex !== null) {
+                draggingCoin = selectedIndex;
+                const coinPos = logicalToCanvas(coins[selectedIndex].x, coins[selectedIndex].y);
+                dragOffset = {
+                    x: mouseX - coinPos.x,
+                    y: mouseY - coinPos.y
+                };
+            }
+        }
+        
+        function onMouseMove(e) {
+            if (draggingCoin === null) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            const newCanvasPos = {
+                x: mouseX - dragOffset.x,
+                y: mouseY - dragOffset.y
+            };
+            
+            const newLogicalPos = canvasToLogical(newCanvasPos.x, newCanvasPos.y);
+            
+            coins[draggingCoin].x = newLogicalPos.x;
+            coins[draggingCoin].y = newLogicalPos.y;
+            
+            draw();
+        }
+        
+        function onMouseUp(e) {
+            draggingCoin = null;
+            draw();
+        }
+        
+        function resetPositions() {
+            initializeCoins();
+            draw();
+            log('✓ Positions reset to initial grid');
+        }
+        
+        function saveConfig() {
+            const name = prompt('Enter configuration name:', 'config_' + Date.now());
+            if (!name) return;
+            
+            const config = {
+                coinRadius: coinRadius,
+                coins: coins.map(c => ({ x: c.x, y: c.y }))
+            };
+            
+            savedConfigs[name] = config;
+            log(`✓ Configuration saved as '${name}'`);
+        }
+        
+        function loadConfig() {
+            const names = Object.keys(savedConfigs);
+            if (names.length === 0) {
+                log('✗ No saved configurations');
+                return;
+            }
+            
+            const name = prompt('Available configs:\n' + names.join('\n') + '\n\nEnter name to load:');
+            if (!name || !savedConfigs[name]) return;
+            
+            const config = savedConfigs[name];
+            coinRadius = config.coinRadius;
+            coins = config.coins.map(c => ({ x: c.x, y: c.y }));
+            
+            document.getElementById('coinRadius').value = coinRadius;
+            document.getElementById('coinRadiusValue').textContent = coinRadius;
+            
+            draw();
+            log(`✓ Configuration '${name}' loaded`);
+        }
+        
+        function randomize() {
+            coins.forEach(coin => {
+                coin.x = Math.random() * 6 - 3;
+                coin.y = Math.random() * 6 - 3;
+            });
+            draw();
+            log('✓ Coins randomized');
+        }
+        
+        function exportConfig() {
+            const config = {
+                coinRadius: coinRadius,
+                coins: coins.map(c => ({ x: c.x, y: c.y }))
+            };
+            
+            const json = JSON.stringify(config, null, 2);
+            log('Configuration JSON:\n' + json);
+            
+            // コピー用
+            const textarea = document.createElement('textarea');
+            textarea.value = json;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            
+            log('✓ JSON copied to clipboard!');
+        }
+        
+        function log(message) {
+            const output = document.getElementById('output');
+            output.textContent = message + '\n\n' + output.textContent;
+        }
+        
+        // 初期化
+        init();
+    </script>
+</body>
+</html>
