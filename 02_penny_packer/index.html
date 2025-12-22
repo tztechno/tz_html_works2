@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 600px 1fr;
+            gap: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        canvas {
+            border: 2px solid #333;
+            border-radius: 5px;
+            cursor: crosshair;
+            background: #fafafa;
+        }
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .status-box {
+            padding: 15px;
+            background: #e8f5e9;
+            border-radius: 5px;
+            border-left: 4px solid #4caf50;
+        }
+        .status-box.incomplete {
+            background: #fff3e0;
+            border-left-color: #ff9800;
+        }
+        .slider-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .slider-group label {
+            font-weight: bold;
+            color: #555;
+        }
+        .slider-group input {
+            width: 100%;
+        }
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 14px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: #2196f3;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #1976d2;
+        }
+        .btn-success {
+            background: #4caf50;
+            color: white;
+        }
+        .btn-success:hover {
+            background: #388e3c;
+        }
+        .btn-warning {
+            background: #ff9800;
+            color: white;
+        }
+        .btn-warning:hover {
+            background: #f57c00;
+        }
+        .btn-info {
+            background: #00bcd4;
+            color: white;
+        }
+        .btn-info:hover {
+            background: #0097a7;
+        }
+        .info-text {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.6;
+        }
+        .legend {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .legend-dot {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            border: 2px solid #333;
+        }
+        .value-display {
+            font-size: 13px;
+            color: #666;
+            margin-top: 2px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🪙 Penny Packer 16 - Interactive Puzzle</h1>
+    <p style="text-align: center; color: #666;">Drag 16 coins into the quarter circle. No overlaps allowed!</p>
+    
+    <div class="container">
+        <div>
+            <canvas id="canvas" width="600" height="600"></canvas>
+        </div>
+        
+        <div class="controls">
+            <div id="status" class="status-box incomplete">
+                <h3 style="margin: 0 0 10px 0;">Status: <span id="validCount">0</span>/16 Valid</h3>
+                <p style="margin: 0;">Need <span id="needCount">16</span> more valid coins</p>
+            </div>
+            
+            <div class="slider-group">
+                <label for="coinRadius">Coin Radius: <span id="coinRadiusValue">25</span></label>
+                <input type="range" id="coinRadius" min="10" max="50" value="25" step="1">
+            </div>
+            
+            <div class="slider-group">
+                <label for="sectorRadius">Sector Radius: <span id="sectorRadiusValue">200</span></label>
+                <input type="range" id="sectorRadius" min="100" max="400" value="200" step="1">
+            </div>
+            
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #32CD32;"></div>
+                    <span>Valid</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #FFA500;"></div>
+                    <span>Overlap</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #FF6B6B;"></div>
+                    <span>Outside</span>
+                </div>
+            </div>
+            
+            <div class="button-group">
+                <button class="btn-warning" onclick="resetPositions()">Reset Positions</button>
+                <button class="btn-success" onclick="checkSolution()">Check Solution</button>
+                <button class="btn-info" onclick="saveConfig()">Save Config</button>
+                <button class="btn-info" onclick="loadConfig()">Load Config</button>
+                <button class="btn-primary" onclick="randomize()">Randomize</button>
+                <button class="btn-primary" onclick="exportConfig()">Export JSON</button>
+            </div>
+            
+            <div class="info-text">
+                <h4 style="margin: 10px 0 5px 0;">How to Play:</h4>
+                <ul style="margin: 5px 0; padding-left: 20px;">
+                    <li>Drag coins with your mouse</li>
+                    <li>Fit all 16 coins in the quarter circle</li>
+                    <li>Green = Valid placement</li>
+                    <li>Orange = Overlapping with another coin</li>
+                    <li>Red = Outside the sector</li>
+                    <li>Adjust radii with sliders</li>
+                </ul>
+            </div>
+            
+            <div id="output" style="font-family: monospace; font-size: 12px; background: #f0f0f0; padding: 10px; border-radius: 5px; max-height: 200px; overflow-y: auto;"></div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // 設定
+        const sectorCenter = { x: 100, y: 500 };
+        let sectorRadius = 200;
+        let coinRadius = 25;
+        const scale = 50;
+        
+        // コイン（論理座標）
+        let coins = [];
+        let draggingCoin = null;
+        let dragOffset = { x: 0, y: 0 };
+        
+        // 保存データ
+        let savedConfigs = {};
+        
+        // 初期化
+        function init() {
+            initializeCoins();
+            setupEventListeners();
+            draw();
+        }
+        
+        function initializeCoins() {
+            coins = [];
+            const spacing = 0.8;
+            const startX = 0.5;
+            const startY = 0.5;
+            
+            for (let i = 0; i < 4; i++) {
+                for (let j = 0; j < 4; j++) {
+                    coins.push({
+                        x: startX + j * spacing,
+                        y: startY + i * spacing
+                    });
+                }
+            }
+        }
+        
+        function setupEventListeners() {
+            canvas.addEventListener('mousedown', onMouseDown);
+            canvas.addEventListener('mousemove', onMouseMove);
+            canvas.addEventListener('mouseup', onMouseUp);
+            
+            document.getElementById('coinRadius').addEventListener('input', (e) => {
+                coinRadius = parseInt(e.target.value);
+                document.getElementById('coinRadiusValue').textContent = coinRadius;
+                draw();
+            });
+            
+            document.getElementById('sectorRadius').addEventListener('input', (e) => {
+                sectorRadius = parseInt(e.target.value);
+                document.getElementById('sectorRadiusValue').textContent = sectorRadius;
+                draw();
+            });
+        }
+        
+        function logicalToCanvas(x, y) {
+            return {
+                x: sectorCenter.x + x * scale,
+                y: sectorCenter.y - y * scale
+            };
+        }
+        
+        function canvasToLogical(canvasX, canvasY) {
+            return {
+                x: (canvasX - sectorCenter.x) / scale,
+                y: (sectorCenter.y - canvasY) / scale
+            };
+        }
+        
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 背景
+            ctx.fillStyle = '#fafafa';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            drawSector();
+            drawCoins();
+            updateStatus();
+        }
+        
+        function drawSector() {
+            const cx = sectorCenter.x;
+            const cy = sectorCenter.y;
+            const r = sectorRadius;
+            
+            // 塗りつぶし
+            ctx.fillStyle = 'rgba(173, 216, 230, 0.3)';
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.lineTo(cx + r, cy);
+            ctx.arc(cx, cy, r, 0, -Math.PI / 2, true);
+            ctx.closePath();
+            ctx.fill();
+            
+            // 輪郭
+            ctx.strokeStyle = 'blue';
+            ctx.lineWidth = 2;
+            
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.lineTo(cx + r, cy);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.lineTo(cx, cy - r);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, 0, -Math.PI / 2, true);
+            ctx.stroke();
+            
+            // グリッド
+            ctx.strokeStyle = 'rgba(200, 200, 200, 0.5)';
+            ctx.lineWidth = 0.5;
+            for (let i = 0; i <= 6; i++) {
+                const offset = i * 50;
+                ctx.beginPath();
+                ctx.moveTo(cx, cy - offset);
+                ctx.lineTo(cx + r, cy - offset);
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.moveTo(cx + offset, cy);
+                ctx.lineTo(cx + offset, cy - r);
+                ctx.stroke();
+            }
+            
+            // 原点
+            ctx.fillStyle = 'red';
+            ctx.beginPath();
+            ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        function drawCoins() {
+            coins.forEach((coin, index) => {
+                const pos = logicalToCanvas(coin.x, coin.y);
+                const inside = isInsideSector(coin.x, coin.y);
+                const overlap = checkOverlap(index);
+                
+                let color;
+                if (inside && !overlap) {
+                    color = '#32CD32';
+                } else if (inside) {
+                    color = '#FFA500';
+                } else {
+                    color = '#FF6B6B';
+                }
+                
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, coinRadius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.strokeStyle = '#B8860B';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                ctx.fillStyle = 'black';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(index + 1, pos.x, pos.y);
+            });
+        }
+        
+        function isInsideSector(x, y) {
+            const coinR = coinRadius / scale;
+            const sectorR = sectorRadius / scale;
+            
+            const maxDistance = Math.sqrt(x * x + y * y) + coinR;
+            
+            if (maxDistance > sectorR) return false;
+            if (x - coinR < 0 || y - coinR < 0) return false;
+            
+            return true;
+        }
+        
+        function checkOverlap(coinIndex) {
+            const coin1 = coins[coinIndex];
+            const coinR = coinRadius / scale;
+            
+            for (let i = 0; i < coins.length; i++) {
+                if (i === coinIndex) continue;
+                
+                const coin2 = coins[i];
+                const dx = coin1.x - coin2.x;
+                const dy = coin1.y - coin2.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < 2 * coinR - 0.001) return true;
+            }
+            
+            return false;
+        }
+        
+        function evaluateLayout() {
+            let validCount = 0;
+            
+            coins.forEach((coin, index) => {
+                const inside = isInsideSector(coin.x, coin.y);
+                const overlap = checkOverlap(index);
+                
+                if (inside && !overlap) validCount++;
+            });
+            
+            return validCount;
+        }
+        
+        function updateStatus() {
+            const validCount = evaluateLayout();
+            const needCount = 16 - validCount;
+            
+            document.getElementById('validCount').textContent = validCount;
+            document.getElementById('needCount').textContent = needCount;
+            
+            const statusBox = document.getElementById('status');
+            if (validCount >= 16) {
+                statusBox.className = 'status-box';
+                statusBox.innerHTML = '<h3 style="margin: 0 0 10px 0;">✓ SOLUTION FOUND!</h3><p style="margin: 0;">All 16 coins are valid!</p>';
+            } else {
+                statusBox.className = 'status-box incomplete';
+                statusBox.innerHTML = `<h3 style="margin: 0 0 10px 0;">Status: ${validCount}/16 Valid</h3><p style="margin: 0;">Need ${needCount} more valid coins</p>`;
+            }
+        }
+        
+        function onMouseDown(e) {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            let minDist = Infinity;
+            let selectedIndex = null;
+            
+            coins.forEach((coin, index) => {
+                const pos = logicalToCanvas(coin.x, coin.y);
+                const dist = Math.sqrt((mouseX - pos.x) ** 2 + (mouseY - pos.y) ** 2);
+                
+                if (dist < coinRadius && dist < minDist) {
+                    minDist = dist;
+                    selectedIndex = index;
+                }
+            });
+            
+            if (selectedIndex !== null) {
+                draggingCoin = selectedIndex;
+                const coinPos = logicalToCanvas(coins[selectedIndex].x, coins[selectedIndex].y);
+                dragOffset = {
+                    x: mouseX - coinPos.x,
+                    y: mouseY - coinPos.y
+                };
+            }
+        }
+        
+        function onMouseMove(e) {
+            if (draggingCoin === null) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            const newCanvasPos = {
+                x: mouseX - dragOffset.x,
+                y: mouseY - dragOffset.y
+            };
+            
+            const newLogicalPos = canvasToLogical(newCanvasPos.x, newCanvasPos.y);
+            
+            coins[draggingCoin].x = newLogicalPos.x;
+            coins[draggingCoin].y = newLogicalPos.y;
+            
+            draw();
+        }
+        
+        function onMouseUp(e) {
+            draggingCoin = null;
+            draw();
+        }
+        
+        function resetPositions() {
+            initializeCoins();
+            draw();
+            log('✓ Positions reset to initial grid');
+        }
+        
+        function checkSolution() {
+            const validCount = evaluateLayout();
+            
+            let output = '═══════════════════════════\n';
+            output += 'SOLUTION CHECK\n';
+            output += '═══════════════════════════\n';
+            output += `Valid coins: ${validCount}/16\n`;
+            output += `Coin radius: ${coinRadius}\n`;
+            output += `Sector radius: ${sectorRadius}\n`;
+            output += '═══════════════════════════\n';
+            
+            if (validCount >= 16) {
+                output += '✓ VALID SOLUTION FOUND!\n';
+            } else {
+                output += `✗ Need ${16 - validCount} more valid coins\n`;
+            }
+            
+            log(output);
+        }
+        
+        function saveConfig() {
+            const name = prompt('Enter configuration name:', 'config_' + Date.now());
+            if (!name) return;
+            
+            const config = {
+                coinRadius: coinRadius,
+                sectorRadius: sectorRadius,
+                coins: coins.map(c => ({ x: c.x, y: c.y })),
+                validCount: evaluateLayout()
+            };
+            
+            savedConfigs[name] = config;
+            log(`✓ Configuration saved as '${name}' (${config.validCount}/16 valid)`);
+        }
+        
+        function loadConfig() {
+            const names = Object.keys(savedConfigs);
+            if (names.length === 0) {
+                log('✗ No saved configurations');
+                return;
+            }
+            
+            const name = prompt('Available configs:\n' + names.join('\n') + '\n\nEnter name to load:');
+            if (!name || !savedConfigs[name]) return;
+            
+            const config = savedConfigs[name];
+            coinRadius = config.coinRadius;
+            sectorRadius = config.sectorRadius;
+            coins = config.coins.map(c => ({ x: c.x, y: c.y }));
+            
+            document.getElementById('coinRadius').value = coinRadius;
+            document.getElementById('sectorRadius').value = sectorRadius;
+            document.getElementById('coinRadiusValue').textContent = coinRadius;
+            document.getElementById('sectorRadiusValue').textContent = sectorRadius;
+            
+            draw();
+            log(`✓ Configuration '${name}' loaded (${config.validCount}/16 valid)`);
+        }
+        
+        function randomize() {
+            coins.forEach(coin => {
+                coin.x = Math.random() * 3.5 + 0.3;
+                coin.y = Math.random() * 3.5 + 0.3;
+            });
+            draw();
+            log('✓ Coins randomized');
+        }
+        
+        function exportConfig() {
+            const config = {
+                coinRadius: coinRadius,
+                sectorRadius: sectorRadius,
+                coins: coins.map(c => ({ x: c.x, y: c.y })),
+                validCount: evaluateLayout()
+            };
+            
+            const json = JSON.stringify(config, null, 2);
+            log('Configuration JSON:\n' + json);
+            
+            // コピー用
+            const textarea = document.createElement('textarea');
+            textarea.value = json;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            
+            log('✓ JSON copied to clipboard!');
+        }
+        
+        function log(message) {
+            const output = document.getElementById('output');
+            output.textContent = message + '\n\n' + output.textContent;
+        }
+        
+        // 初期化
+        init();
+    </script>
+</body>
+</html>
