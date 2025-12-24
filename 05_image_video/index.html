@@ -9,60 +9,74 @@
       padding: 50px;
       font-family: sans-serif;
     }
-    .block {
+    .media-container {
+      position: relative;
+      width: 100%;
       margin-bottom: 600px;
     }
-    video {
+    .media-container img,
+    .media-container video {
       width: 100%;
       display: block;
+    }
+    .media-container video {
+      position: absolute;
+      top: 0;
+      left: 0;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .media-container.video-active img {
+      opacity: 0;
+    }
+    .media-container.video-active video {
+      opacity: 1;
     }
   </style>
 </head>
 <body>
-
-  <!-- 表：画像 -->
-  <div class="block">
-    <img src="main.jpg" width="100%">
+  <div class="media-container">
+    <img src="main.jpg" alt="Thumbnail">
+    <video
+      poster="main.jpg"
+      muted
+      autoplay
+      playsinline
+      loop
+      preload="metadata"
+      data-src="https://huggingface.co/datasets/stpete2/npy/resolve/main/main.mp4">
+    </video>
   </div>
-
-  <!-- 裏：動画 -->
-  <video
-    poster="main.jpg"
-    muted
-    autoplay
-    playsinline
-    loop
-    preload="metadata"
-    data-src="https://huggingface.co/datasets/stpete2/npy/resolve/main/main.mp4">
-  </video>
 
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      const videos = document.querySelectorAll('video[data-src]');
-
+      const containers = document.querySelectorAll('.media-container');
+      
       const observer = new IntersectionObserver(entries => {
         entries.forEach(entry => {
-          const video = entry.target;
-
+          const container = entry.target;
+          const video = container.querySelector('video[data-src]');
+          
           if (entry.isIntersecting) {
+            // 動画をロード
             if (!video.querySelector('source')) {
               const source = document.createElement('source');
               source.src = video.dataset.src;
               source.type = 'video/mp4';
-
               video.appendChild(source);
-              video.load();   // ← 重要：source を認識させる
+              video.load();
             }
+            // 動画を表示して再生
+            container.classList.add('video-active');
             video.play();
           } else {
             video.pause();
           }
         });
-      }, { threshold: 0.5 });
-
-      videos.forEach(v => observer.observe(v));
+      }, { threshold: 0.3 });
+      
+      containers.forEach(c => observer.observe(c));
     });
   </script>
-
 </body>
 </html>
