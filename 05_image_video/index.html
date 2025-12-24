@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Image → Video Lazy Play</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 50px;
+      font-family: sans-serif;
+    }
+    .block {
+      margin-bottom: 600px; /* スクロール確認用 */
+    }
+    video {
+      width: 100%;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 表：画像 -->
+  <div class="block">
+    <img src="thumb.png" width="100%">
+  </div>
+
+  <!-- 裏：動画（最初は読み込まれない） -->
+  <video
+    poster="thumb.png"
+    data-src="movie.mp4"
+    autoplay
+    muted
+    playsinline
+    loop>
+  </video>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const videos = document.querySelectorAll('video[data-src]');
+
+      const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          const video = entry.target;
+
+          if (entry.isIntersecting) {
+            if (video.dataset.src) {
+              video.src = video.dataset.src;   // 裏の mp4 をセット
+              video.removeAttribute('data-src');
+            }
+            video.play();
+          } else {
+            video.pause();
+          }
+        });
+      }, {
+        threshold: 0.5
+      });
+
+      videos.forEach(video => observer.observe(video));
+    });
+  </script>
+
+</body>
+</html>
