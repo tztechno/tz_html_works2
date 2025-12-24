@@ -10,7 +10,7 @@
       font-family: sans-serif;
     }
     .block {
-      margin-bottom: 600px; /* スクロール確認用 */
+      margin-bottom: 600px;
     }
     video {
       width: 100%;
@@ -25,14 +25,15 @@
     <img src="main.jpg" width="100%">
   </div>
 
-  <!-- 裏：動画（最初は読み込まれない） -->
+  <!-- 裏：動画 -->
   <video
     poster="main.jpg"
-    data-src="https://huggingface.co/datasets/stpete2/npy/resolve/main/main.mp4"
-    autoplay
     muted
+    autoplay
     playsinline
-    loop>
+    loop
+    preload="metadata"
+    data-src="https://huggingface.co/datasets/stpete2/npy/resolve/main/main.mp4">
   </video>
 
   <script>
@@ -44,20 +45,22 @@
           const video = entry.target;
 
           if (entry.isIntersecting) {
-            if (video.dataset.src) {
-              video.src = video.dataset.src;   // 裏の mp4 をセット
-              video.removeAttribute('data-src');
+            if (!video.querySelector('source')) {
+              const source = document.createElement('source');
+              source.src = video.dataset.src;
+              source.type = 'video/mp4';
+
+              video.appendChild(source);
+              video.load();   // ← 重要：source を認識させる
             }
             video.play();
           } else {
             video.pause();
           }
         });
-      }, {
-        threshold: 0.5
-      });
+      }, { threshold: 0.5 });
 
-      videos.forEach(video => observer.observe(video));
+      videos.forEach(v => observer.observe(v));
     });
   </script>
 
