@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Three.js PLY Viewer with Coordinate Analysis</title>
+    <style>
+        body { 
+            margin: 0; 
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        canvas { 
+            display: block; 
+        }
+        #ui-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            color: white;
+            z-index: 100;
+            max-width: 350px;
+            backdrop-filter: blur(5px);
+        }
+        #file-input {
+            margin: 10px 0;
+            padding: 8px;
+            background: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 95%;
+        }
+        #url-input {
+            width: calc(100% - 16px);
+            padding: 8px;
+            border-radius: 4px;
+            border: none;
+            margin-bottom: 5px;
+        }
+        #info {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #aaa;
+            line-height: 1.4;
+        }
+        .button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px 2px;
+        }
+        .button:hover {
+            background: #45a049;
+        }
+        .button-reset {
+            background: #2196F3;
+        }
+        .button-reset:hover {
+            background: #0b7dda;
+        }
+        .button-url {
+            background: #FF9800;
+            width: calc(100% - 4px);
+        }
+        .button-url:hover {
+            background: #F57C00;
+        }
+        .coordinate-display {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+        .axis-label {
+            display: inline-block;
+            width: 20px;
+            color: #aaa;
+        }
+        .axis-value {
+            color: #4CAF50;
+        }
+        .warning {
+            color: #ff9800;
+            font-weight: bold;
+        }
+        h4 {
+            margin: 15px 0 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding-bottom: 5px;
+        }
+        .slider-container {
+            margin: 10px 0;
+        }
+        .slider {
+            width: 100%;
+            margin: 5px 0;
+        }
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #ccc;
+            margin-top: 3px;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .loading-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="loading-content">
+            <div style="font-size: 20px; margin-bottom: 10px;">読み込み中...</div>
+            <div id="loading-progress">0%</div>
+        </div>
+    </div>
+
+    <div id="ui-container">
+        <h3 style="margin-top: 0;">PLY Viewer</h3>
+        <input type="file" id="file-input" accept=".ply" />
+        
+        <div style="margin: 10px 0;">
+            <input type="text" id="url-input" placeholder="URLを入力 (例: ?url=https://...)">
+            <button id="load-url" class="button button-url">URLから読み込み</button>
+        </div>
+        
+        <div style="margin: 10px 0;">
+            <button id="reset-view" class="button button-reset">ビューリセット</button>
+            <button id="toggle-grid" class="button">グリッド表示</button>
+            <button id="toggle-axes" class="button">軸表示</button>
+        </div>
+        
+        <h4>点のサイズ</h4>
+        <div class="slider-container">
+            <input type="range" id="point-size" class="slider" min="1" max="200" value="50">
+            <div class="slider-label">
+                <span>小</span>
+                <span id="point-size-value">0.100</span>
+                <span>大</span>
+            </div>
+        </div>
+        
+        <h4>表示する点の割合</h4>
+        <div class="slider-container">
+            <input type="range" id="point-ratio" class="slider" min="1" max="100" value="100">
+            <div class="slider-label">
+                <span>1%</span>
+                <span id="point-ratio-value">100%</span>
+                <span>100%</span>
+            </div>
+            <div style="font-size: 11px; color: #ccc; margin-top: 5px;">
+                表示中: <span id="displayed-points">-</span> / <span id="total-points">-</span> 点
+            </div>
+        </div>
+        
+        <h4>座標情報</h4>
+        <div id="coordinate-info">
+            <div class="coordinate-display">
+                <div><span class="axis-label">X:</span> <span id="origin-x" class="axis-value">-</span></div>
+                <div><span class="axis-label">Y:</span> <span id="origin-y" class="axis-value">-</span></div>
+                <div><span class="axis-label">Z:</span> <span id="origin-z" class="axis-value">-</span></div>
+            </div>
+            <div style="font-size: 11px; margin-top: 5px; color: #ccc;">
+                世界座標系原点のカメラ座標系での位置
+            </div>
+        </div>
+        
+        <h4>点群情報</h4>
+        <div id="info">
+            PLYファイルを選択してください
+        </div>
+    </div>
+
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/examples/jsm/loaders/PLYLoader.js": "https://unpkg.com/three@0.160.0/examples/jsm/loaders/PLYLoader.js",
+        "three/examples/jsm/controls/OrbitControls.js": "https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js"
+      }
+    }
+    </script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { PLYLoader } from 'three/examples/jsm/loaders/PLYLoader.js';
+        import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+
+        let scene, camera, renderer, controls;
+        let currentPointCloud = null;
+        let currentMaterial = null;
+        let originalGeometry = null;
+        let gridHelper, axesHelper;
+        let worldOriginMarker = null;
+
+        function init() {
+            // シーン
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a1a);
+
+            // カメラ
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 10000);
+            camera.position.set(5, 5, 10);
+            camera.lookAt(0, 0, 0);
+
+            // レンダラー
+            renderer = new THREE.WebGLRenderer({ 
+                antialias: true,
+                alpha: true
+            });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = false;
+            document.body.appendChild(renderer.domElement);
+
+            // コントロール
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+
+            // グリッドヘルパー
+            gridHelper = new THREE.GridHelper(100, 50, 0x444444, 0x222222);
+            gridHelper.visible = true;
+            scene.add(gridHelper);
+
+            // 軸ヘルパー
+            axesHelper = new THREE.AxesHelper(5);
+            axesHelper.visible = true;
+            scene.add(axesHelper);
+
+            // ライト
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 20, 15);
+            scene.add(directionalLight);
+
+            // イベントリスナー
+            document.getElementById('file-input').addEventListener('change', handleFileSelect);
+            document.getElementById('load-url').addEventListener('click', handleURLLoad);
+            document.getElementById('url-input').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    handleURLLoad();
+                }
+            });
+            document.getElementById('reset-view').addEventListener('click', resetView);
+            document.getElementById('toggle-grid').addEventListener('click', toggleGrid);
+            document.getElementById('toggle-axes').addEventListener('click', toggleAxes);
+            
+            // 点サイズスライダー
+            const pointSizeSlider = document.getElementById('point-size');
+            const pointSizeValue = document.getElementById('point-size-value');
+            pointSizeSlider.addEventListener('input', function() {
+                const size = this.value / 500;
+                pointSizeValue.textContent = size.toFixed(3);
+                if (currentMaterial) {
+                    currentMaterial.size = size;
+                    currentMaterial.needsUpdate = true;
+                }
+            });
+            
+            // 点の割合スライダー
+            const pointRatioSlider = document.getElementById('point-ratio');
+            const pointRatioValue = document.getElementById('point-ratio-value');
+            pointRatioSlider.addEventListener('input', function() {
+                const ratio = parseInt(this.value);
+                pointRatioValue.textContent = ratio + '%';
+                if (originalGeometry) {
+                    updatePointCloudSampling(ratio / 100);
+                }
+            });
+
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function showLoading(show = true, progress = 0) {
+            const overlay = document.getElementById('loading-overlay');
+            const progressEl = document.getElementById('loading-progress');
+            overlay.style.display = show ? 'flex' : 'none';
+            if (show) {
+                progressEl.textContent = progress + '%';
+            }
+        }
+
+        function handleURLLoad() {
+            const url = document.getElementById('url-input').value.trim();
+            if (!url) {
+                alert('URLを入力してください');
+                return;
+            }
+            loadPLYFromURL(url);
+        }
+
+        function loadPLYFromURL(url) {
+            showLoading(true, 0);
+            document.getElementById('info').textContent = 'URLから読み込み中...';
+
+            const loader = new PLYLoader();
+            
+            loader.load(
+                url,
+                function(geometry) {
+                    showLoading(false);
+                    processGeometry(geometry, url.split('/').pop() || 'URL読み込み');
+                },
+                function(xhr) {
+                    if (xhr.lengthComputable) {
+                        const percentComplete = Math.round((xhr.loaded / xhr.total) * 100);
+                        showLoading(true, percentComplete);
+                    }
+                },
+                function(error) {
+                    showLoading(false);
+                    console.error('URL読み込みエラー:', error);
+                    document.getElementById('info').innerHTML = 
+                        '<span class="warning">エラー: URLからの読み込みに失敗しました</span><br>' + 
+                        'CORSエラーの可能性があります';
+                }
+            );
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function updatePointCloudSampling(ratio) {
+            if (!originalGeometry || !currentPointCloud) return;
+            
+            const totalPoints = originalGeometry.attributes.position.count;
+            const sampledPoints = Math.max(1, Math.floor(totalPoints * ratio));
+            
+            const indices = [];
+            const step = totalPoints / sampledPoints;
+            
+            for (let i = 0; i < sampledPoints; i++) {
+                indices.push(Math.floor(i * step + Math.random() * step));
+            }
+            
+            const newGeometry = new THREE.BufferGeometry();
+            
+            const positions = originalGeometry.attributes.position.array;
+            const newPositions = new Float32Array(sampledPoints * 3);
+            for (let i = 0; i < sampledPoints; i++) {
+                const idx = indices[i];
+                newPositions[i * 3] = positions[idx * 3];
+                newPositions[i * 3 + 1] = positions[idx * 3 + 1];
+                newPositions[i * 3 + 2] = positions[idx * 3 + 2];
+            }
+            newGeometry.setAttribute('position', new THREE.BufferAttribute(newPositions, 3));
+            
+            if (originalGeometry.attributes.color) {
+                const colors = originalGeometry.attributes.color.array;
+                const newColors = new Float32Array(sampledPoints * 3);
+                for (let i = 0; i < sampledPoints; i++) {
+                    const idx = indices[i];
+                    newColors[i * 3] = colors[idx * 3];
+                    newColors[i * 3 + 1] = colors[idx * 3 + 1];
+                    newColors[i * 3 + 2] = colors[idx * 3 + 2];
+                }
+                newGeometry.setAttribute('color', new THREE.BufferAttribute(newColors, 3));
+            }
+            
+            if (originalGeometry.attributes.normal) {
+                const normals = originalGeometry.attributes.normal.array;
+                const newNormals = new Float32Array(sampledPoints * 3);
+                for (let i = 0; i < sampledPoints; i++) {
+                    const idx = indices[i];
+                    newNormals[i * 3] = normals[idx * 3];
+                    newNormals[i * 3 + 1] = normals[idx * 3 + 1];
+                    newNormals[i * 3 + 2] = normals[idx * 3 + 2];
+                }
+                newGeometry.setAttribute('normal', new THREE.BufferAttribute(newNormals, 3));
+            }
+            
+            currentPointCloud.geometry.dispose();
+            currentPointCloud.geometry = newGeometry;
+            
+            document.getElementById('displayed-points').textContent = sampledPoints.toLocaleString();
+        }
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (!file.name.toLowerCase().endsWith('.ply')) {
+                document.getElementById('info').innerHTML = '<span class="warning">エラー: PLYファイルを選択してください</span>';
+                return;
+            }
+
+            document.getElementById('info').textContent = '読み込み中...';
+
+            if (currentPointCloud) {
+                scene.remove(currentPointCloud);
+                currentPointCloud = null;
+                currentMaterial = null;
+            }
+            
+            if (originalGeometry) {
+                originalGeometry.dispose();
+                originalGeometry = null;
+            }
+            
+            if (worldOriginMarker) {
+                scene.remove(worldOriginMarker);
+                worldOriginMarker = null;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const loader = new PLYLoader();
+                try {
+                    const geometry = loader.parse(e.target.result);
+                    processGeometry(geometry, file.name);
+                } catch (error) {
+                    console.error('PLY読み込みエラー:', error);
+                    document.getElementById('info').innerHTML = 
+                        '<span class="warning">エラー: PLYファイルの読み込みに失敗しました</span><br>' + error.message;
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function processGeometry(geometry, filename) {
+            originalGeometry = geometry.clone();
+            
+            let hasColors = geometry.attributes.color !== undefined;
+            
+            const pointSizeSlider = document.getElementById('point-size');
+            const currentSize = pointSizeSlider.value / 500;
+            
+            const material = new THREE.PointsMaterial({
+                size: currentSize,
+                vertexColors: hasColors,
+                sizeAttenuation: true
+            });
+            
+            if (!hasColors) {
+                material.color = new THREE.Color(0x00aaff);
+            }
+            
+            currentMaterial = material;
+            
+            const pointCloud = new THREE.Points(geometry, material);
+            
+            scene.add(pointCloud);
+            currentPointCloud = pointCloud;
+            
+            geometry.computeBoundingBox();
+            const bbox = geometry.boundingBox;
+            const center = new THREE.Vector3();
+            bbox.getCenter(center);
+            const size = bbox.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z);
+            
+            const scaleFactor = 1.0;
+            pointCloud.scale.setScalar(scaleFactor);
+            
+            const fov = camera.fov * (Math.PI / 180);
+            let cameraDistance = Math.abs(maxDim / Math.tan(fov / 2));
+            cameraDistance *= 1.5;
+            
+            camera.position.set(cameraDistance, cameraDistance * 0.7, cameraDistance);
+            controls.target.copy(center);
+            controls.update();
+            
+            updateWorldOriginPosition();
+            createWorldOriginMarker();
+            
+            const pointCount = geometry.attributes.position.count;
+            document.getElementById('info').innerHTML = 
+                `<strong>${filename}</strong><br>
+                 点の数: ${pointCount.toLocaleString()}<br>
+                 バウンディングボックス:<br>
+                 Min: (${bbox.min.x.toFixed(2)}, ${bbox.min.y.toFixed(2)}, ${bbox.min.z.toFixed(2)})<br>
+                 Max: (${bbox.max.x.toFixed(2)}, ${bbox.max.y.toFixed(2)}, ${bbox.max.z.toFixed(2)})<br>
+                 中心: (${center.x.toFixed(2)}, ${center.y.toFixed(2)}, ${center.z.toFixed(2)})<br>
+                 サイズ: (${size.x.toFixed(2)}, ${size.y.toFixed(2)}, ${size.z.toFixed(2)})`;
+            
+            document.getElementById('total-points').textContent = pointCount.toLocaleString();
+            document.getElementById('displayed-points').textContent = pointCount.toLocaleString();
+        }
+
+        function updateWorldOriginPosition() {
+            camera.updateMatrixWorld();
+            const cameraMatrix = camera.matrixWorld;
+            
+            const cameraInverseMatrix = new THREE.Matrix4();
+            cameraInverseMatrix.copy(cameraMatrix).invert();
+            
+            const worldOrigin = new THREE.Vector3(0, 0, 0);
+            const worldOriginInCamera = worldOrigin.clone();
+            worldOriginInCamera.applyMatrix4(cameraInverseMatrix);
+            
+            document.getElementById('origin-x').textContent = worldOriginInCamera.x.toFixed(3);
+            document.getElementById('origin-y').textContent = worldOriginInCamera.y.toFixed(3);
+            document.getElementById('origin-z').textContent = worldOriginInCamera.z.toFixed(3);
+            
+            return worldOriginInCamera;
+        }
+
+        function createWorldOriginMarker() {
+            if (worldOriginMarker) {
+                scene.remove(worldOriginMarker);
+            }
+            
+            const sphereGeometry = new THREE.SphereGeometry(0.1, 16, 16);
+            const sphereMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xff0000,
+                transparent: true,
+                opacity: 0.8
+            });
+            const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+            
+            const axesLength = 2.0;
+            const axesMaterial = new THREE.LineBasicMaterial({ 
+                vertexColors: true,
+                linewidth: 2
+            });
+            
+            const axesVertices = [
+                0, 0, 0, axesLength, 0, 0,
+                0, 0, 0, 0, axesLength, 0,
+                0, 0, 0, 0, 0, axesLength
+            ];
+            
+            const axesColors = [
+                1, 0, 0, 1, 0, 0,
+                0, 1, 0, 0, 1, 0,
+                0, 0, 1, 0, 0, 1
+            ];
+            
+            const axesGeometry = new THREE.BufferGeometry();
+            axesGeometry.setAttribute('position', new THREE.Float32BufferAttribute(axesVertices, 3));
+            axesGeometry.setAttribute('color', new THREE.Float32BufferAttribute(axesColors, 3));
+            
+            const axes = new THREE.LineSegments(axesGeometry, axesMaterial);
+            
+            worldOriginMarker = new THREE.Group();
+            worldOriginMarker.add(sphere);
+            worldOriginMarker.add(axes);
+            
+            worldOriginMarker.position.set(0, 0, 0);
+            scene.add(worldOriginMarker);
+        }
+
+        function resetView() {
+            if (currentPointCloud) {
+                currentPointCloud.geometry.computeBoundingBox();
+                const bbox = currentPointCloud.geometry.boundingBox;
+                const center = new THREE.Vector3();
+                bbox.getCenter(center);
+                const size = bbox.getSize(new THREE.Vector3());
+                const maxDim = Math.max(size.x, size.y, size.z);
+                
+                const fov = camera.fov * (Math.PI / 180);
+                let cameraDistance = Math.abs(maxDim / Math.tan(fov / 2));
+                cameraDistance *= 1.5;
+                
+                camera.position.set(cameraDistance, cameraDistance * 0.7, cameraDistance);
+                controls.target.copy(center);
+                controls.update();
+            } else {
+                camera.position.set(5, 5, 10);
+                controls.target.set(0, 0, 0);
+                controls.update();
+            }
+        }
+
+        function toggleGrid() {
+            gridHelper.visible = !gridHelper.visible;
+        }
+
+        function toggleAxes() {
+            axesHelper.visible = !axesHelper.visible;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            controls.update();
+            
+            if (currentPointCloud) {
+                updateWorldOriginPosition();
+            }
+            
+            renderer.render(scene, camera);
+        }
+
+        // 初期化
+        init();
+        animate();
+
+        // URLパラメータから自動読み込み
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlFromParam = urlParams.get('url');
+        if (urlFromParam) {
+            console.log('URLパラメータから読み込み:', urlFromParam);
+            document.getElementById('url-input').value = urlFromParam;
+            loadPLYFromURL(urlFromParam);
+        }
+    </script>
+</body>
+</html>
