@@ -21,3 +21,6 @@ https://tztechno.github.io/tz_html_works2/03_penny_packer/index.html
 https://tztechno.github.io/tz_html_works2/04_coin_editor/index.html
 
 https://tztechno.github.io/tz_html_works2/05_image_video/index.html
+
+https://tztechno.github.io/tz_html_works2/06_metronome/index.html
+
