@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>インターバルメトロノーム</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0f1218;
+      --surface: #181c26;
+      --border: #2a3040;
+      --text: #e8eaef;
+      --muted: #8b93a7;
+      --accent: #5b8cff;
+      --accent-dim: #3d5fa8;
+      --pulse: #7cffb2;
+      --danger: #ff6b6b;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      font-family: "DM Sans", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      padding: 1.5rem;
+    }
+
+    .card {
+      width: min(100%, 380px);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 2rem;
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.35);
+    }
+
+    h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin: 0 0 0.35rem;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      font-size: 0.875rem;
+      color: var(--muted);
+      margin: 0 0 1.75rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .interval-row {
+      display: flex;
+      gap: 0.75rem;
+      align-items: stretch;
+      margin-bottom: 1.5rem;
+    }
+
+    input[type="number"] {
+      flex: 1;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 1.25rem;
+      padding: 0.75rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--bg);
+      color: var(--text);
+      min-width: 0;
+    }
+
+    input[type="number"]:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(91, 140, 255, 0.25);
+    }
+
+    .unit {
+      display: flex;
+      align-items: center;
+      padding: 0 1rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-size: 0.875rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .btn {
+      width: 100%;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 600;
+      padding: 1rem 1.25rem;
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: transform 0.12s ease, background 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn-start {
+      background: linear-gradient(145deg, var(--accent), var(--accent-dim));
+      color: #fff;
+      box-shadow: 0 8px 24px rgba(91, 140, 255, 0.35);
+    }
+
+    .btn-start:hover {
+      box-shadow: 0 10px 28px rgba(91, 140, 255, 0.45);
+    }
+
+    .btn-stop {
+      background: var(--border);
+      color: var(--text);
+    }
+
+    .btn-stop:hover {
+      background: #353b4d;
+    }
+
+    .visual {
+      margin-top: 1.75rem;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--bg);
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .visual-bar {
+      height: 100%;
+      width: 0%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--accent), var(--pulse));
+      transition: width 0.05s linear;
+    }
+
+    .visual-bar.flash {
+      animation: flash 0.12s ease-out;
+    }
+
+    @keyframes flash {
+      from {
+        opacity: 1;
+        filter: brightness(1.4);
+      }
+      to {
+        opacity: 1;
+        filter: brightness(1);
+      }
+    }
+
+    .hint {
+      margin-top: 1.25rem;
+      font-size: 0.8125rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .beat-count {
+      margin-top: 1rem;
+      text-align: center;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 2rem;
+      font-weight: 500;
+      color: var(--muted);
+      min-height: 2.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .beat-count.active {
+      color: var(--pulse);
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>インターバルメトロノーム</h1>
+    <p class="subtitle">指定した秒数ごとにクリック音を鳴らします</p>
+
+    <label for="interval">間隔</label>
+    <div class="interval-row">
+      <input
+        id="interval"
+        type="number"
+        min="0.05"
+        max="3600"
+        step="0.01"
+        value="1"
+        inputmode="decimal"
+      />
+      <span class="unit">秒</span>
+    </div>
+
+    <button type="button" class="btn btn-start" id="toggle">開始</button>
+
+    <div class="beat-count" id="beatCount" aria-live="polite"></div>
+
+    <div class="visual" aria-hidden="true">
+      <div class="visual-bar" id="visualBar"></div>
+    </div>
+
+    <p class="hint">
+      ブラウザの仕様上、最初の「開始」クリックで音声が有効になります。小数（例: 0.5 秒）も指定できます。
+    </p>
+  </main>
+
+  <script>
+    (function () {
+      const intervalInput = document.getElementById("interval");
+      const toggleBtn = document.getElementById("toggle");
+      const visualBar = document.getElementById("visualBar");
+      const beatCountEl = document.getElementById("beatCount");
+
+      const LOOKAHEAD_SEC = 0.12;
+
+      let audioCtx = null;
+      let running = false;
+      let rafId = null;
+      let periodSec = 1;
+      let anchorTime = 0;
+      let nextBeatTime = 0;
+      let prevBeatIndex = -1;
+
+      function getIntervalSec() {
+        const v = parseFloat(String(intervalInput.value).replace(",", "."));
+        if (!Number.isFinite(v) || v < 0.05) return 0.05;
+        if (v > 3600) return 3600;
+        return v;
+      }
+
+      function ensureContext() {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === "suspended") {
+          return audioCtx.resume();
+        }
+        return Promise.resolve();
+      }
+
+      function playClick(when) {
+        if (!audioCtx) return;
+        const t0 = when;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(1000, t0);
+        osc.frequency.exponentialRampToValueAtTime(400, t0 + 0.02);
+        gain.gain.setValueAtTime(0.0001, t0);
+        gain.gain.exponentialRampToValueAtTime(0.35, t0 + 0.002);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.06);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(t0);
+        osc.stop(t0 + 0.07);
+      }
+
+      function scheduleBeats(now) {
+        const lateSlack = 0.02;
+        while (nextBeatTime < now - lateSlack) {
+          nextBeatTime += periodSec;
+        }
+        while (nextBeatTime < now + LOOKAHEAD_SEC) {
+          playClick(nextBeatTime);
+          nextBeatTime += periodSec;
+        }
+      }
+
+      function tick() {
+        if (!running || !audioCtx) return;
+        const now = audioCtx.currentTime;
+        scheduleBeats(now);
+
+        let phase = (now - anchorTime) % periodSec;
+        if (phase < 0) phase += periodSec;
+        visualBar.style.width = (phase / periodSec) * 100 + "%";
+
+        if (now >= anchorTime) {
+          const idx = Math.floor((now - anchorTime) / periodSec);
+          if (idx !== prevBeatIndex) {
+            prevBeatIndex = idx;
+            beatCountEl.textContent = String(idx + 1);
+            visualBar.classList.remove("flash");
+            void visualBar.offsetWidth;
+            visualBar.classList.add("flash");
+          }
+        }
+
+        rafId = requestAnimationFrame(tick);
+      }
+
+      function start() {
+        periodSec = getIntervalSec();
+        running = true;
+        toggleBtn.textContent = "停止";
+        toggleBtn.classList.remove("btn-start");
+        toggleBtn.classList.add("btn-stop");
+        intervalInput.disabled = true;
+        prevBeatIndex = -1;
+        beatCountEl.textContent = "";
+        beatCountEl.classList.add("active");
+
+        ensureContext().then(() => {
+          if (!audioCtx || !running) return;
+          const now = audioCtx.currentTime;
+          anchorTime = now + 0.05;
+          nextBeatTime = anchorTime;
+          rafId = requestAnimationFrame(tick);
+        });
+      }
+
+      function stop() {
+        running = false;
+        if (rafId != null) {
+          cancelAnimationFrame(rafId);
+          rafId = null;
+        }
+        toggleBtn.textContent = "開始";
+        toggleBtn.classList.remove("btn-stop");
+        toggleBtn.classList.add("btn-start");
+        intervalInput.disabled = false;
+        visualBar.style.width = "0%";
+        beatCountEl.textContent = "";
+        beatCountEl.classList.remove("active");
+        visualBar.classList.remove("flash");
+      }
+
+      toggleBtn.addEventListener("click", () => {
+        if (running) stop();
+        else start();
+      });
+
+      intervalInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !intervalInput.disabled) {
+          toggleBtn.click();
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
