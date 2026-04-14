@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Web Clock</title>
+    <style>
+      :root {
+        --bg: #f3f6ff;
+        --card: rgba(255, 255, 255, 0.72);
+        --text: #101533;
+        --muted: #5f6480;
+        --accent: #5b7cfa;
+        --accent-2: #8e58ff;
+        --ring: rgba(91, 124, 250, 0.22);
+        --shadow: 0 16px 40px rgba(53, 73, 140, 0.16);
+      }
+
+      [data-theme="dark"] {
+        --bg: #0e1120;
+        --card: rgba(24, 30, 56, 0.72);
+        --text: #f2f5ff;
+        --muted: #adb5d6;
+        --accent: #87a1ff;
+        --accent-2: #b58cff;
+        --ring: rgba(135, 161, 255, 0.2);
+        --shadow: 0 18px 46px rgba(0, 0, 0, 0.4);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100svh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        font-family: "Inter", "Noto Sans JP", system-ui, -apple-system, sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at 20% 20%, rgba(120, 100, 255, 0.2), transparent 40%),
+          radial-gradient(circle at 80% 30%, rgba(96, 170, 255, 0.2), transparent 38%),
+          radial-gradient(circle at 50% 95%, rgba(170, 114, 255, 0.2), transparent 30%),
+          var(--bg);
+      }
+
+      .clock {
+        width: min(540px, 100%);
+        padding: 28px;
+        border-radius: 28px;
+        background: var(--card);
+        backdrop-filter: blur(20px);
+        box-shadow: var(--shadow);
+      }
+
+      .top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 24px;
+      }
+
+      .title {
+        margin: 0;
+        font-size: 18px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .theme-btn {
+        border: 0;
+        color: var(--text);
+        background: var(--ring);
+        border-radius: 999px;
+        padding: 8px 12px;
+        cursor: pointer;
+        font-weight: 600;
+      }
+
+      .time-wrap {
+        position: relative;
+        border-radius: 20px;
+        padding: 20px;
+        background: linear-gradient(135deg, var(--ring), transparent 60%);
+      }
+
+      .time {
+        margin: 0;
+        font-size: clamp(48px, 11vw, 84px);
+        line-height: 1;
+        letter-spacing: 0.02em;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .meta {
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: clamp(14px, 2.6vw, 18px);
+      }
+
+      .progress {
+        width: 100%;
+        height: 8px;
+        margin-top: 16px;
+        border-radius: 999px;
+        background: rgba(127, 127, 160, 0.2);
+        overflow: hidden;
+      }
+
+      .bar {
+        height: 100%;
+        width: 0%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--accent), var(--accent-2));
+        transition: width 200ms linear;
+      }
+
+      .controls {
+        margin-top: 22px;
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      }
+
+      label {
+        font-size: 13px;
+        color: var(--muted);
+        display: block;
+        margin-bottom: 6px;
+      }
+
+      select,
+      button.toggle {
+        width: 100%;
+        border: 1px solid transparent;
+        border-radius: 12px;
+        padding: 10px 12px;
+        background: rgba(127, 140, 190, 0.16);
+        color: var(--text);
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      select:focus-visible,
+      button:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="clock">
+      <div class="top">
+        <h1 class="title">Smart Clock</h1>
+        <button id="themeToggle" class="theme-btn" type="button" aria-label="テーマ切替">🌙</button>
+      </div>
+
+      <section class="time-wrap">
+        <p class="time" id="timeText">--:--:--</p>
+        <p class="meta" id="metaText">読み込み中...</p>
+        <div class="progress" aria-label="秒の進捗">
+          <div class="bar" id="secondBar"></div>
+        </div>
+      </section>
+
+      <section class="controls">
+        <div>
+          <label for="timezone">タイムゾーン</label>
+          <select id="timezone"></select>
+        </div>
+        <div>
+          <label for="formatToggle">時刻フォーマット</label>
+          <button id="formatToggle" class="toggle" type="button">24時間表示</button>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const timezoneSelect = document.getElementById("timezone");
+      const timeText = document.getElementById("timeText");
+      const metaText = document.getElementById("metaText");
+      const secondBar = document.getElementById("secondBar");
+      const formatToggle = document.getElementById("formatToggle");
+      const themeToggle = document.getElementById("themeToggle");
+      const root = document.documentElement;
+
+      const timezoneList = [
+        "Asia/Tokyo",
+        "UTC",
+        "America/New_York",
+        "Europe/London",
+        "Europe/Paris",
+        "Asia/Seoul",
+        "Australia/Sydney"
+      ];
+
+      const storedTimezone = localStorage.getItem("clock.timezone");
+      const storedUse24h = localStorage.getItem("clock.use24h");
+      const storedTheme = localStorage.getItem("clock.theme");
+
+      let timezone = storedTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+      let use24h = storedUse24h === null ? true : storedUse24h === "true";
+
+      function applyTheme(theme) {
+        root.setAttribute("data-theme", theme);
+        themeToggle.textContent = theme === "dark" ? "☀️" : "🌙";
+      }
+
+      function setupTheme() {
+        const autoTheme =
+          window.matchMedia &&
+          window.matchMedia("(prefers-color-scheme: dark)").matches
+            ? "dark"
+            : "light";
+        applyTheme(storedTheme || autoTheme);
+      }
+
+      function setupTimezoneOptions() {
+        const merged = Array.from(new Set([timezone, ...timezoneList])).sort();
+        timezoneSelect.innerHTML = merged
+          .map((item) => `<option value="${item}">${item}</option>`)
+          .join("");
+        timezoneSelect.value = timezone;
+      }
+
+      function render() {
+        const now = new Date();
+        const timeFormatter = new Intl.DateTimeFormat("ja-JP", {
+          timeZone: timezone,
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: !use24h
+        });
+        const dateFormatter = new Intl.DateTimeFormat("ja-JP", {
+          timeZone: timezone,
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+          weekday: "long"
+        });
+
+        timeText.textContent = timeFormatter.format(now);
+        metaText.textContent = `${dateFormatter.format(now)} / ${timezone}`;
+
+        const second = Number(
+          new Intl.DateTimeFormat("en-US", {
+            timeZone: timezone,
+            second: "2-digit"
+          }).format(now)
+        );
+        secondBar.style.width = `${(second / 60) * 100}%`;
+      }
+
+      timezoneSelect.addEventListener("change", (event) => {
+        timezone = event.target.value;
+        localStorage.setItem("clock.timezone", timezone);
+        render();
+      });
+
+      formatToggle.addEventListener("click", () => {
+        use24h = !use24h;
+        localStorage.setItem("clock.use24h", String(use24h));
+        formatToggle.textContent = use24h ? "24時間表示" : "12時間表示";
+        render();
+      });
+
+      themeToggle.addEventListener("click", () => {
+        const nextTheme = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+        localStorage.setItem("clock.theme", nextTheme);
+        applyTheme(nextTheme);
+      });
+
+      formatToggle.textContent = use24h ? "24時間表示" : "12時間表示";
+      setupTheme();
+      setupTimezoneOptions();
+      render();
+      setInterval(render, 1000);
+    </script>
+  </body>
+</html>
