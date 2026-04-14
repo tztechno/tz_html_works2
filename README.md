@@ -24,3 +24,6 @@ https://tztechno.github.io/tz_html_works2/05_image_video/index.html
 
 https://tztechno.github.io/tz_html_works2/06_metronome/index.html
 
+https://tztechno.github.io/tz_html_works2/07_clock/index.html
+
+
