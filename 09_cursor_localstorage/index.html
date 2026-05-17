@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Local Storage Inspector</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="header">
+    <div class="brand">
+      <span class="brand-icon" aria-hidden="true">◫</span>
+      <div>
+        <h1>Local Storage Inspector</h1>
+        <p class="origin" id="origin"></p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button type="button" class="btn btn-ghost" id="btn-refresh" title="再読み込み">↻ 更新</button>
+      <button type="button" class="btn btn-ghost" id="btn-export" title="JSONでエクスポート">↓ エクスポート</button>
+      <label class="btn btn-ghost import-label">
+        ↑ インポート
+        <input type="file" id="import-file" accept=".json,application/json" hidden />
+      </label>
+      <button type="button" class="btn btn-danger" id="btn-clear-all">すべて削除</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <section class="stats" id="stats" aria-live="polite"></section>
+
+    <section class="toolbar">
+      <div class="search-wrap">
+        <span class="search-icon" aria-hidden="true">⌕</span>
+        <input
+          type="search"
+          id="search"
+          class="search-input"
+          placeholder="キーまたは値で検索…"
+          autocomplete="off"
+        />
+      </div>
+      <select id="sort" class="select" aria-label="並び替え">
+        <option value="key-asc">キー (A→Z)</option>
+        <option value="key-desc">キー (Z→A)</option>
+        <option value="size-desc">サイズ (大→小)</option>
+        <option value="size-asc">サイズ (小→大)</option>
+      </select>
+    </section>
+
+    <div class="layout">
+      <section class="panel list-panel">
+        <h2 class="panel-title">エントリ <span id="entry-count" class="badge">0</span></h2>
+        <ul id="entry-list" class="entry-list" role="listbox" aria-label="localStorage エントリ一覧"></ul>
+        <p id="empty-state" class="empty-state hidden">localStorage にデータがありません</p>
+        <p id="no-results" class="empty-state hidden">一致するエントリがありません</p>
+      </section>
+
+      <section class="panel detail-panel">
+        <h2 class="panel-title">詳細</h2>
+        <div id="detail-placeholder" class="detail-placeholder">
+          左の一覧からエントリを選択してください
+        </div>
+        <article id="detail" class="detail hidden">
+          <div class="detail-header">
+            <code class="detail-key" id="detail-key"></code>
+            <div class="detail-actions">
+              <button type="button" class="btn btn-sm" id="btn-copy-key">キーをコピー</button>
+              <button type="button" class="btn btn-sm" id="btn-copy-value">値をコピー</button>
+              <button type="button" class="btn btn-sm btn-danger" id="btn-delete">削除</button>
+            </div>
+          </div>
+          <dl class="meta">
+            <div><dt>サイズ</dt><dd id="detail-size"></dd></div>
+            <div><dt>型</dt><dd id="detail-type"></dd></div>
+          </dl>
+          <div class="value-wrap">
+            <pre id="detail-value" class="value-display"></pre>
+          </div>
+          <details class="raw-details">
+            <summary>生の文字列</summary>
+            <pre id="detail-raw" class="raw-display"></pre>
+          </details>
+        </article>
+      </section>
+    </div>
+  </main>
+
+  <dialog id="confirm-dialog" class="dialog">
+    <form method="dialog" class="dialog-form">
+      <p id="confirm-message"></p>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" value="cancel">キャンセル</button>
+        <button type="submit" class="btn btn-danger" value="confirm">削除する</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
