@@ -24,7 +24,7 @@ https://tztechno.github.io/tz_html_works2/05_image_video/index.html
 
 https://tztechno.github.io/tz_html_works2/06_metronome/index.html
 
-https://tztechno.github.io/tz_html_works2/10_airport_clock/0705_airports_dashbord_canva.html
+https://tztechno.github.io/tz_html_works2/10_airport_clock/0705_airports_dashboard_canva.html
 
 
 
