@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>World Airports Current Time (Dynamic Dark Mode)</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            transition: background-color 0.3s;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            transition: background-color 0.5s, color 0.5s;
+        }
+        th {
+            background-color: #2c3e50;
+            color: #ffffff;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        /* Style for Daytime rows */
+        .daytime {
+            background-color: #ffffff !important;
+            color: #333333 !important;
+        }
+        .daytime .time-display {
+            color: #e74c3c;
+        }
+        .daytime .coordinates {
+            color: #7f8c8d;
+        }
+        /* Style for Nighttime rows (Dark Mode) */
+        .nighttime {
+            background-color: #2c3e50 !important;
+            color: #ecf0f1 !important;
+        }
+        .nighttime .time-display {
+            color: #f1c40f; /* Vivid yellow for night visibility */
+        }
+        .nighttime .coordinates {
+            color: #bdc3c7;
+        }
+        .time-display {
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        .coordinates {
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>✈️ World Airports Dashboard (Day/Night Theme)</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Area</th>
+                <th>Airport (IATA)</th>
+                <th>City / Country</th>
+                <th>Coordinates</th>
+                <th>Current Local Time</th>
+            </tr>
+        </thead>
+        <tbody id="airport-table-body">
+            </tbody>
+    </table>
+</div>
+
+<script>
+    // List of 20 major airports with their respective IANA time zones
+    const airports = [
+        { area: 'Japan', name: 'Haneda Airport (HND)', city: 'Tokyo / Japan', coords: '35.5494° N / 139.7798° E', tz: 'Asia/Tokyo' },
+        { area: 'Japan', name: 'Narita International Airport (NRT)', city: 'Chiba / Japan', coords: '35.7720° N / 140.3929° E', tz: 'Asia/Tokyo' },
+        { area: 'Japan', name: 'Kansai International Airport (KIX)', city: 'Osaka / Japan', coords: '34.4320° N / 135.2304° E', tz: 'Asia/Tokyo' },
+        { area: 'Asia', name: 'Incheon International Airport (ICN)', city: 'Seoul / South Korea', coords: '37.4602° N / 126.4407° E', tz: 'Asia/Seoul' },
+        { area: 'Asia', name: 'Taiwan Taoyuan International Airport (TPE)', city: 'Taipei / Taiwan', coords: '25.0797° N / 121.2342° E', tz: 'Asia/Taipei' },
+        { area: 'Asia', name: 'Hong Kong International Airport (HKG)', city: 'Hong Kong / China', coords: '22.3080° N / 113.9185° E', tz: 'Asia/Hong_Kong' },
+        { area: 'Asia', name: 'Singapore Changi Airport (SIN)', city: 'Singapore', coords: '1.3644° N / 103.9915° E', tz: 'Asia/Singapore' },
+        { area: 'Asia', name: 'Suvarnabhumi Airport (BKK)', city: 'Bangkok / Thailand', coords: '13.6926° N / 100.7501° E', tz: 'Asia/Bangkok' },
+        { area: 'Oceania', name: 'Sydney Airport (SYD)', city: 'Sydney / Australia', coords: '33.9461° S / 151.1772° E', tz: 'Australia/Sydney' },
+        { area: 'Middle East', name: 'Dubai International Airport (DXB)', city: 'Dubai / UAE', coords: '25.2532° N / 55.3657° E', tz: 'Asia/Dubai' },
+        { area: 'Middle East', name: 'Hamad International Airport (DOH)', city: 'Doha / Qatar', coords: '25.2611° N / 51.5651° E', tz: 'Asia/Qatar' },
+        { area: 'Europe', name: 'London Heathrow Airport (LHR)', city: 'London / UK', coords: '51.4700° N / 0.4543° W', tz: 'Europe/London' },
+        { area: 'Europe', name: 'Paris Charles de Gaulle Airport (CDG)', city: 'Paris / France', coords: '49.0097° N / 2.5479° E', tz: 'Europe/Paris' },
+        { area: 'Europe', name: 'Frankfurt Airport (FRA)', city: 'Frankfurt / Germany', coords: '50.0379° N / 8.5622° E', tz: 'Europe/Berlin' },
+        { area: 'North America', name: 'John F. Kennedy International Airport (JFK)', city: 'New York / USA', coords: '40.6398° N / 73.7781° W', tz: 'America/New_York' },
+        { area: 'North America', name: 'Los Angeles International Airport (LAX)', city: 'Los Angeles / USA', coords: '33.9416° N / 118.4085° W', tz: 'America/Los_Angeles' },
+        { area: 'North America', name: 'Hartsfield-Jackson Atlanta International Airport (ATL)', city: 'Atlanta / USA', coords: '33.6407° N / 84.4277° W', tz: 'America/New_York' },
+        { area: 'North America', name: 'O\'Hare International Airport (ORD)', city: 'Chicago / USA', coords: '41.9742° N / 87.9073° W', tz: 'America/Chicago' },
+        { area: 'Latin America', name: 'Mexico City International Airport (MEX)', city: 'Mexico City / Mexico', coords: '19.4362° N / 99.0721° W', tz: 'America/Mexico_City' },
+        { area: 'Latin America', name: 'Guanabara/Guarulhos International Airport (GRU)', city: 'São Paulo / Brazil', coords: '23.4356° S / 46.4731° W', tz: 'America/Sao_Paulo' }
+    ];
+
+    // Render the initial table structure
+    const tableBody = document.getElementById('airport-table-body');
+    airports.forEach((airport, index) => {
+        const row = document.createElement('tr');
+        row.id = `row-${index}`;
+        row.innerHTML = `
+            <td>${airport.area}</td>
+            <td><strong>${airport.name}</strong></td>
+            <td>${airport.city}</td>
+            <td class="coordinates">${airport.coords}</td>
+            <td class="time-display" id="time-${index}">Loading...</td>
+        `;
+        tableBody.appendChild(row);
+    });
+
+    // Update times and themes dynamically based on local airport time
+    function updateClock() {
+        const now = new Date();
+        airports.forEach((airport, index) => {
+            const timeCell = document.getElementById(`time-${index}`);
+            const rowElement = document.getElementById(`row-${index}`);
+            try {
+                // Get the formatted time string for the specific timezone
+                const formatter = new Intl.DateTimeFormat('ja-JP', {
+                    timeZone: airport.tz,
+                    year: 'numeric', month: '2-digit', day: '2-digit',
+                    hour: '2-digit', minute: '2-digit', second: '2-digit',
+                    hour12: false
+                });
+                timeCell.textContent = formatter.format(now);
+
+                // Extract the current hour at the airport to determine day/night status
+                const hourFormatter = new Intl.DateTimeFormat('ja-JP', {
+                    timeZone: airport.tz,
+                    hour: 'numeric',
+                    hour12: false
+                });
+                const currentHour = parseInt(hourFormatter.format(now), 10);
+
+                // Nighttime is defined from 18:00 (6 PM) to 05:59 (5 AM)
+                if (currentHour >= 18 || currentHour < 6) {
+                    rowElement.className = 'nighttime';
+                } else {
+                    rowElement.className = 'daytime';
+                }
+
+            } catch (e) {
+                // Fallback text on conversion error
+                timeCell.textContent = 'Error';
+            }
+        });
+    }
+
+    // Initialize clock and trigger refresh every second
+    updateClock();
+    setInterval(updateClock, 1000);
+</script>
+
+<!-- Code injected by live-server -->
+<script>
+	// <![CDATA[  <-- For SVG support
+	if ('WebSocket' in window) {
+		(function () {
+			function refreshCSS() {
+				var sheets = [].slice.call(document.getElementsByTagName("link"));
+				var head = document.getElementsByTagName("head")[0];
+				for (var i = 0; i < sheets.length; ++i) {
+					var elem = sheets[i];
+					var parent = elem.parentElement || head;
+					parent.removeChild(elem);
+					var rel = elem.rel;
+					if (elem.href && typeof rel != "string" || rel.length == 0 || rel.toLowerCase() == "stylesheet") {
+						var url = elem.href.replace(/(&|\?)_cacheOverride=\d+/, '');
+						elem.href = url + (url.indexOf('?') >= 0 ? '&' : '?') + '_cacheOverride=' + (new Date().valueOf());
+					}
+					parent.appendChild(elem);
+				}
+			}
+			var protocol = window.location.protocol === 'http:' ? 'ws://' : 'wss://';
+			var address = protocol + window.location.host + window.location.pathname + '/ws';
+			var socket = new WebSocket(address);
+			socket.onmessage = function (msg) {
+				if (msg.data == 'reload') window.location.reload();
+				else if (msg.data == 'refreshcss') refreshCSS();
+			};
+			if (sessionStorage && !sessionStorage.getItem('IsThisFirstTime_Log_From_LiveServer')) {
+				console.log('Live reload enabled.');
+				sessionStorage.setItem('IsThisFirstTime_Log_From_LiveServer', true);
+			}
+		})();
+	}
+	else {
+		console.error('Upgrade your browser. This Browser is NOT supported WebSocket for Live-Reloading.');
+	}
+	// ]]>
+</script>
+</body>
+</html>
