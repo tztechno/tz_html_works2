@@ -26,5 +26,5 @@ https://tztechno.github.io/tz_html_works2/06_metronome/index.html
 
 https://tztechno.github.io/tz_html_works2/10_airport_clock/0705_airports_dashboard_canva.html
 
-
+https://tztechno.github.io/tz_html_works2/11_cyber_othello/othello_ai_game_intro.html
 
