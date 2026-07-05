@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CYBER OTHELLO - Tactical AI Hologram</title>
+    <!-- Importing futuristic Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* CSS variables for consistent cyberpunk styling */
+        :root {
+            --bg-color: #080b11;
+            --panel-bg: rgba(17, 22, 37, 0.85);
+            --border-color: rgba(6, 182, 212, 0.2);
+            --neon-cyan: #00f0ff;
+            --neon-pink: #ff007f;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+        }
+
+        @page {
+            size: A4;
+            margin: 10mm;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 50% 10%, rgba(6, 182, 212, 0.15) 0%, transparent 60%),
+                linear-gradient(rgba(18, 24, 38, 0.5) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(18, 24, 38, 0.5) 1px, transparent 1px);
+            background-size: 100% 100%, 32px 32px, 32px 32px;
+            color: var(--text-primary);
+            line-height: 1.5;
+            margin: 0;
+            padding: 0;
+            font-size: 11pt;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        /* Header design matching "CYBER OTHELLO" branding */
+        .header-banner {
+            text-align: center;
+            margin-bottom: 40px;
+            position: relative;
+            padding: 40px 20px;
+            background: rgba(10, 15, 30, 0.8);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.05);
+            overflow: hidden;
+        }
+
+        .header-banner::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, var(--neon-cyan), var(--neon-pink));
+        }
+
+        .header-banner h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 32pt;
+            font-weight: 900;
+            margin: 0 0 10px 0;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            background: linear-gradient(90deg, var(--neon-cyan), #ffffff, var(--neon-pink));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 10px rgba(0, 240, 255, 0.3));
+        }
+
+        .header-banner p {
+            font-size: 14pt;
+            margin: 0;
+            color: var(--text-secondary);
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        /* Central introduction card */
+        .main-intro {
+            text-align: center;
+            margin-bottom: 35px;
+            padding: 30px;
+            background-color: var(--panel-bg);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 0, 127, 0.2);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 0 25px rgba(255, 0, 127, 0.05);
+        }
+
+        .main-intro h2 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 16pt;
+            color: var(--neon-cyan);
+            margin-top: 0;
+            margin-bottom: 15px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .main-intro p {
+            color: var(--text-secondary);
+            font-size: 12pt;
+            max-width: 700px;
+            margin: 0 auto 20px auto;
+        }
+
+        /* Futuristic holographic preview container */
+        .game-preview-monitor {
+            position: relative;
+            max-width: 500px;
+            margin: 25px auto 30px auto;
+            border: 1px solid var(--neon-cyan);
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.15);
+            overflow: hidden;
+            background: #000;
+            aspect-ratio: 16 / 10;
+        }
+
+        /* Hologram scanline effect overlay */
+        .game-preview-monitor::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            background-size: 100% 4px, 6px 100%;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        /* Aesthetic HUD corner brackets */
+        .hud-corner {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border-color: var(--neon-pink);
+            border-style: solid;
+            z-index: 3;
+            pointer-events: none;
+        }
+        .corner-tl { top: 8px; left: 8px; border-width: 2px 0 0 2px; }
+        .corner-tr { top: 8px; right: 8px; border-width: 2px 2px 0 0; }
+        .corner-bl { bottom: 8px; left: 8px; border-width: 0 0 2px 2px; }
+        .corner-br { bottom: 8px; right: 8px; border-width: 0 2px 2px 0; }
+
+        /* Scanning laser line animation */
+        .scanner-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+            box-shadow: 0 0 8px var(--neon-cyan);
+            opacity: 0.5;
+            z-index: 3;
+            animation: scan 4s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { top: 0%; }
+            50% { top: 100%; }
+            100% { top: 0%; }
+        }
+
+        /* Display the GIF inside the monitor */
+        .preview-media {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            opacity: 0.85;
+            transition: opacity 0.3s ease, transform 0.5s ease;
+        }
+
+        .game-preview-monitor:hover .preview-media {
+            opacity: 1;
+            transform: scale(1.02);
+        }
+
+        /* Futuristic glowing call-to-action button */
+        .url-box {
+            display: inline-block;
+            padding: 14px 30px;
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.2) 0%, rgba(236, 72, 153, 0.2) 100%);
+            border: 1px solid var(--neon-cyan);
+            border-radius: 8px;
+            color: #ffffff;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            font-size: 11pt;
+            text-decoration: none;
+            letter-spacing: 2px;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+            position: relative;
+        }
+
+        .url-box:hover {
+            border-color: var(--neon-pink);
+            box-shadow: 0 0 25px rgba(255, 0, 127, 0.4);
+            transform: translateY(-2px);
+        }
+
+        /* Feature section header style */
+        .section-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 14pt;
+            color: var(--neon-cyan);
+            border-left: 4px solid var(--neon-cyan);
+            padding-left: 15px;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            text-shadow: 0 0 8px rgba(0, 240, 255, 0.4);
+        }
+
+        /* Features grid */
+        .grid-table {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .grid-row {
+            display: flex;
+            gap: 15px;
+            width: 100%;
+        }
+
+        .grid-cell {
+            flex: 1;
+            background-color: var(--panel-bg);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .grid-cell::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 8px;
+            height: 8px;
+            border-top: 2px solid var(--neon-cyan);
+            border-right: 2px solid var(--neon-cyan);
+            opacity: 0.6;
+        }
+
+        .grid-cell:hover {
+            border-color: rgba(0, 240, 255, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .feature-icon {
+            font-size: 20pt;
+            margin-bottom: 10px;
+            display: inline-block;
+            filter: drop-shadow(0 0 8px rgba(0, 240, 255, 0.5));
+        }
+
+        .feature-title {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            font-size: 12pt;
+            margin-bottom: 8px;
+            color: var(--neon-pink);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .grid-cell p {
+            margin: 0;
+            color: var(--text-secondary);
+            font-size: 10.5pt;
+        }
+
+        /* System info list container */
+        .tech-stack {
+            background-color: var(--panel-bg);
+            padding: 25px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            position: relative;
+        }
+
+        .tech-stack::before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 8px;
+            height: 8px;
+            border-bottom: 2px solid var(--neon-pink);
+            border-left: 2px solid var(--neon-pink);
+            opacity: 0.6;
+        }
+
+        .tech-stack p {
+            margin-top: 0;
+            color: var(--text-secondary);
+            font-size: 11pt;
+        }
+
+        ul {
+            margin: 0;
+            padding-left: 20px;
+            list-style: none;
+        }
+
+        li {
+            margin-bottom: 12px;
+            position: relative;
+            color: var(--text-secondary);
+        }
+
+        li::before {
+            content: '▲';
+            position: absolute;
+            left: -20px;
+            top: 2px;
+            font-size: 8pt;
+            color: var(--neon-cyan);
+            text-shadow: 0 0 5px var(--neon-cyan);
+        }
+
+        li strong {
+            font-family: 'Orbitron', sans-serif;
+            color: #ffffff;
+            font-size: 10.5pt;
+            letter-spacing: 0.5px;
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        /* Futuristic footer */
+        .footer {
+            margin-top: 50px;
+            text-align: center;
+            font-size: 9pt;
+            color: #475569;
+            border-top: 1px solid var(--border-color);
+            padding-top: 20px;
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 1px;
+        }
+
+        /* Responsive styling for smaller screens */
+        @media (max-width: 600px) {
+            .grid-row {
+                flex-direction: column;
+            }
+            .header-banner h1 {
+                font-size: 22pt;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        
+        <!-- Header Section imitating the Tactical AI Hologram theme -->
+        <div class="header-banner">
+            <h1>Cyber Othello</h1>
+            <p>Tactical AI Hologram Simulation</p>
+        </div>
+
+        <!-- Terminal-like Game Invitation & Holographic Preview -->
+        <div class="main-intro">
+            <h2>Challenge the Synthetic Minds</h2>
+            <p>A zero-installation, browser-based tactical simulation. Enter a fully reactive battleground optimized for modern intelligence. Access the neural network and dominate the grid anytime, anywhere.</p>
+            
+            <!-- Holographic Interactive Monitor for GIF -->
+            <div class="game-preview-monitor">
+                <div class="hud-corner corner-tl"></div>
+                <div class="hud-corner corner-tr"></div>
+                <div class="hud-corner corner-bl"></div>
+                <div class="hud-corner corner-br"></div>
+                <div class="scanner-bar"></div>
+                <!-- Automatically fallbacks to othello.jpg if GIF is absent -->
+                <img src="othello.gif" alt="Cyber Othello Gameplay Preview" class="preview-media" onerror="this.src='othello.jpg';">
+            </div>
+
+            <a href="https://othello-ai-game.netlify.app/" class="url-box" target="_blank">
+                &gt; INITIALIZE SIMULATION
+            </a>
+        </div>
+
+        <!-- Core Operations Matrix -->
+        <div class="section-title">Tactical Capabilities</div>
+        
+        <div class="grid-table">
+            <div class="grid-row">
+                <div class="grid-cell">
+                    <div class="feature-icon">🤖</div>
+                    <div class="feature-title">Neural Logic Heuristics</div>
+                    <p>Engage with advanced synthetic engines trained in minimax heuristics. Perfect for novices mapping out options or veterans testing deep-state branching.</p>
+                </div>
+                <div class="grid-cell">
+                    <div class="feature-icon">⚡</div>
+                    <div class="feature-title">Quantum Edge Deployment</div>
+                    <p>Engineered with lightweight script modules, served instantly via Netlify's high-speed global delivery nodes for zero-delay operations.</p>
+                </div>
+            </div>
+            <div class="grid-row">
+                <div class="grid-cell">
+                    <div class="feature-icon">📱</div>
+                    <div class="feature-title">Holographic Grid Scaling</div>
+                    <p>Adaptive responsive viewport formatting ensuring tactical layout parity across mobile terminals, tablets, and wide-screen desktop monitors.</p>
+                </div>
+                <div class="grid-cell">
+                    <div class="feature-icon">🎨</div>
+                    <div class="feature-title">Cybernetic Visuals</div>
+                    <p>A stunning high-contrast dark aesthetic that allows players to easily track legal target coordinates and focus on the spatial battlefield.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tactical Directives -->
+        <div class="section-title">Operation Protocol</div>
+        <div class="tech-stack">
+            <ul>
+                <li><strong>Grid Booting:</strong> Upon connecting to the interface, the host automatically initiates the matrix with standard core alignments.</li>
+                <li><strong>Matrix Interception:</strong> Target glowing destination nodes where placement results in capturing and flipping opposition nodes.</li>
+                <li><strong>State Automation:</strong> The core computing loop handles pass protocols automatically when legal moves are completely restricted.</li>
+                <li><strong>Node Saturation:</strong> Victory/Defeat metrics are outputted once the board becomes saturated or both parties are completely locked.</li>
+            </ul>
+        </div>
+
+        <!-- Tech Architecture Details -->
+        <div class="section-title">System Architecture</div>
+        <div class="tech-stack">
+            <p>Built with robust modern modules ensuring seamless client-side computation.</p>
+            <ul>
+                <li><strong>Frontend Stack:</strong> Clean HTML5 / CSS3 Layouts, highly performant grid render logic.</li>
+                <li><strong>AI Subroutines:</strong> Custom weighted evaluation matrix & state-search algorithms.</li>
+                <li><strong>Hosting Grid:</strong> Integrated deployment via Netlify automated distribution networks.</li>
+            </ul>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            &copy; 2026 CYBER OTHELLO PROJECT. ALL SYSTEMS OPERATIONAL.
+        </div>
+
+    </div>
+
+</body>
+</html>
