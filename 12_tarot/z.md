@@ -56,6 +56,6 @@ python3 -m http.server 8000
 
 http://localhost:8000/tarot-oracle.html
 
-https://tztechno.github.io/tz_html_works2/11_tarot/tarot-oracle.html
+https://tztechno.github.io/tz_html_works2/11_tarot/tarot-oracle.html　xxx
 
 
