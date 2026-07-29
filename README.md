@@ -29,3 +29,7 @@ https://tztechno.github.io/tz_html_works2/10_airport_clock/0705_airports_dashboa
 https://tztechno.github.io/tz_html_works2/11_cyber_othello/othello_ai_game_intro.html
 
 https://tztechno.github.io/tz_html_works2/12_tarot/tarot-oracle.html
+
+https://tztechno.github.io/tz_html_works2/12_tarot/tarot-oracle-light.html
+
+
