@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>星読みの間 — タロット相談</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Shippori+Mincho:wght@400;600&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1428;
+    --ink-deep: #120d1e;
+    --plum: #2f2140;
+    --lavender: #e9e2f7;
+    --lavender-dim: #b8adcf;
+    --gold: #c9a24b;
+    --gold-bright: #e8c874;
+    --rose: #a85c6b;
+    --line: rgba(201, 162, 75, 0.25);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background:
+      radial-gradient(ellipse at 20% -10%, rgba(168, 92, 107, 0.18), transparent 55%),
+      radial-gradient(ellipse at 85% 110%, rgba(201, 162, 75, 0.12), transparent 50%),
+      var(--ink-deep);
+    color: var(--lavender);
+    font-family: 'Jost', sans-serif;
+    font-weight: 300;
+    padding: 48px 20px 80px;
+  }
+
+  /* Faint constellation backdrop, drawn once, purely decorative */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.5;
+    background-image:
+      radial-gradient(1px 1px at 10% 20%, var(--lavender-dim), transparent),
+      radial-gradient(1px 1px at 80% 15%, var(--lavender-dim), transparent),
+      radial-gradient(1.5px 1.5px at 60% 70%, var(--gold), transparent),
+      radial-gradient(1px 1px at 30% 85%, var(--lavender-dim), transparent),
+      radial-gradient(1px 1px at 92% 60%, var(--lavender-dim), transparent),
+      radial-gradient(1.5px 1.5px at 45% 40%, var(--gold), transparent);
+    background-size: 100% 100%;
+  }
+
+  .stage {
+    max-width: 620px;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+
+  .eyebrow {
+    font-family: 'Jost', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 10px;
+  }
+
+  h1 {
+    font-family: 'Shippori Mincho', serif;
+    font-weight: 600;
+    font-size: 34px;
+    margin: 0;
+    letter-spacing: 0.06em;
+    color: var(--lavender);
+  }
+
+  h1 em {
+    font-style: normal;
+    color: var(--gold-bright);
+  }
+
+  .sub {
+    margin-top: 10px;
+    font-size: 14px;
+    color: var(--lavender-dim);
+    line-height: 1.8;
+  }
+
+  /* Model load status */
+  .status-bar {
+    border: 1px solid var(--line);
+    background: rgba(47, 33, 64, 0.4);
+    border-radius: 4px;
+    padding: 14px 18px;
+    margin-bottom: 28px;
+    font-size: 13px;
+    color: var(--lavender-dim);
+  }
+
+  .status-bar .status-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .status-bar .status-title span:first-child {
+    color: var(--gold-bright);
+    letter-spacing: 0.05em;
+  }
+
+  .bar-track {
+    height: 3px;
+    background: rgba(233, 226, 247, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--rose), var(--gold-bright));
+    transition: width 0.3s ease;
+  }
+
+  /* Worry input */
+  .card-panel {
+    border: 1px solid var(--line);
+    background: linear-gradient(180deg, rgba(47, 33, 64, 0.55), rgba(26, 20, 40, 0.55));
+    border-radius: 6px;
+    padding: 26px;
+    margin-bottom: 28px;
+  }
+
+  label.field-label {
+    display: block;
+    font-family: 'Shippori Mincho', serif;
+    font-size: 15px;
+    color: var(--gold-bright);
+    margin-bottom: 12px;
+    letter-spacing: 0.04em;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 90px;
+    resize: vertical;
+    background: rgba(18, 13, 30, 0.6);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    color: var(--lavender);
+    font-family: 'Jost', sans-serif;
+    font-size: 14px;
+    padding: 14px;
+    line-height: 1.7;
+  }
+
+  textarea:focus {
+    outline: none;
+    border-color: var(--gold);
+  }
+
+  textarea::placeholder { color: rgba(184, 173, 207, 0.5); }
+
+  .draw-btn {
+    margin-top: 18px;
+    width: 100%;
+    padding: 14px;
+    background: transparent;
+    border: 1px solid var(--gold);
+    color: var(--gold-bright);
+    font-family: 'Jost', sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background 0.25s ease, color 0.25s ease;
+  }
+
+  .draw-btn:hover:not(:disabled) {
+    background: var(--gold);
+    color: var(--ink-deep);
+  }
+
+  .draw-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* Card reveal, the signature element */
+  .reveal-area {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 28px;
+  }
+
+  .reveal-area.active { display: flex; }
+
+  .card-scene {
+    width: 168px;
+    height: 268px;
+    perspective: 1200px;
+    margin-bottom: 18px;
+  }
+
+  .card-flip {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 1.1s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+
+  .card-flip.flipped { transform: rotateY(180deg); }
+  .card-flip.reversed.flipped { transform: rotateY(180deg) rotate(180deg); }
+
+  .card-face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    border-radius: 8px;
+    border: 1px solid var(--gold);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+  }
+
+  .card-back {
+    background:
+      repeating-linear-gradient(45deg, rgba(201,162,75,0.12) 0 2px, transparent 2px 14px),
+      linear-gradient(160deg, var(--plum), var(--ink));
+  }
+
+  .card-back::after {
+    content: '✦';
+    color: var(--gold);
+    font-size: 28px;
+  }
+
+  .card-front {
+    transform: rotateY(180deg);
+    background: linear-gradient(170deg, #241a34, #150f22);
+    flex-direction: column;
+    padding: 18px;
+    text-align: center;
+  }
+
+  .card-glyph {
+    font-size: 40px;
+    color: var(--gold-bright);
+    margin-bottom: 12px;
+  }
+
+  .card-name {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 16px;
+    color: var(--lavender);
+    letter-spacing: 0.03em;
+  }
+
+  .card-orientation {
+    margin-top: 8px;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--rose);
+    text-transform: uppercase;
+  }
+
+  .card-orientation.upright { color: var(--gold-bright); }
+
+  /* Interpretation output */
+  .interpretation {
+    display: none;
+    border: 1px solid var(--line);
+    background: rgba(18, 13, 30, 0.5);
+    border-radius: 6px;
+    padding: 24px 26px;
+  }
+
+  .interpretation.active { display: block; }
+
+  .interpretation .label {
+    font-family: 'Shippori Mincho', serif;
+    color: var(--gold-bright);
+    font-size: 14px;
+    margin-bottom: 14px;
+    letter-spacing: 0.05em;
+  }
+
+  .interpretation .body-text {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 19px;
+    line-height: 1.9;
+    color: var(--lavender);
+    white-space: pre-wrap;
+  }
+
+  .cursor-blink::after {
+    content: '▍';
+    animation: blink 1s step-start infinite;
+    color: var(--gold);
+  }
+
+  @keyframes blink { 50% { opacity: 0; } }
+
+  footer {
+    text-align: center;
+    margin-top: 40px;
+    font-size: 11px;
+    color: rgba(184, 173, 207, 0.4);
+    letter-spacing: 0.08em;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card-flip { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <header>
+    <div class="eyebrow">Whisper · Draw · Reveal</div>
+    <h1>星読みの<em>間</em></h1>
+    <p class="sub">悩みごとを言葉にして、静かにカードを一枚引いてください。<br>すべての読み込みと解釈は、あなたのブラウザの中だけで完結します。</p>
+  </header>
+
+  <div class="status-bar" id="statusBar">
+    <div class="status-title">
+      <span id="statusLabel">モデルを準備中…</span>
+      <span id="statusPercent">0%</span>
+    </div>
+    <div class="bar-track"><div class="bar-fill" id="barFill"></div></div>
+  </div>
+
+  <div class="card-panel">
+    <label class="field-label" for="worryInput">今、心にあること</label>
+    <textarea id="worryInput" placeholder="例：転職すべきか迷っています。今の環境に不満はないけれど、新しい挑戦への憧れも捨てきれません。"></textarea>
+    <button class="draw-btn" id="drawBtn" disabled>カードを引く</button>
+  </div>
+
+  <div class="reveal-area" id="revealArea">
+    <div class="card-scene">
+      <div class="card-flip" id="cardFlip">
+        <div class="card-face card-back"></div>
+        <div class="card-face card-front">
+          <div class="card-glyph" id="cardGlyph">✦</div>
+          <div class="card-name" id="cardName"></div>
+          <div class="card-orientation" id="cardOrientation"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="interpretation" id="interpretation">
+    <div class="label">解釈</div>
+    <div class="body-text" id="interpretationText"></div>
+  </div>
+
+  <footer>すべてローカル推論 · wllama + Qwen2.5-0.5B-Instruct-GGUF (light)</footer>
+</div>
+
+<script type="module">
+import { Wllama } from 'https://cdn.jsdelivr.net/npm/@wllama/wllama@2/esm/index.js';
+
+// Paths to wllama's WASM runtime, loaded from CDN so this stays a single HTML file.
+// Reverted from v3: the v3 CDN build (index.js + wasm) showed a version-skew bug
+// where completion requests failed with "key 'prompt' not found" on the worker side.
+// v2 is CPU/WASM only (no WebGPU offload) but is proven stable here.
+const CONFIG_PATHS = {
+  'single-thread/wllama.wasm': 'https://cdn.jsdelivr.net/npm/@wllama/wllama@2/esm/single-thread/wllama.wasm',
+  'multi-thread/wllama.wasm': 'https://cdn.jsdelivr.net/npm/@wllama/wllama@2/esm/multi-thread/wllama.wasm',
+};
+
+// GGUF model hosted on Hugging Face Hub. Reverted from Gemma4 E2B (~3GB): large Xet-backed
+// files have been unreliable to fetch directly in-browser (truncated/corrupted downloads).
+// bartowski's Qwen2.5-1.5B-Instruct (~1GB) is a quality step up from the original 0.5B
+// model while staying in a size range that downloads reliably.
+// Light version for mobile: ~400MB, much less likely to hit iOS Safari's WASM memory
+// ceiling or trigger OPFS AccessHandle failures from a long background download.
+const MODEL_URL = 'https://huggingface.co/bartowski/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/Qwen2.5-0.5B-Instruct-Q4_K_M.gguf';
+
+// 22 Major Arcana cards with a symbolic glyph and short upright/reversed keyword sets in Japanese
+const MAJOR_ARCANA = [
+  { name: '愚者', glyph: '☉', upright: '自由な一歩、無邪気な始まり', reversed: '無謀さ、準備不足への警告' },
+  { name: '魔術師', glyph: '☿', upright: '意志の実現、行動力', reversed: '空回り、力の誤用' },
+  { name: '女教皇', glyph: '☾', upright: '直感、静かな知恵', reversed: '閉ざされた心、独りよがりの判断' },
+  { name: '女帝', glyph: '♀', upright: '豊かさ、創造と受容', reversed: '過保護、停滞した豊かさ' },
+  { name: '皇帝', glyph: '♂', upright: '秩序、確立された地位', reversed: '頑固さ、支配欲' },
+  { name: '教皇', glyph: '✝', upright: '伝統、導きへの信頼', reversed: '形式主義、教えへの反発' },
+  { name: '恋人', glyph: '♊', upright: '選択、心の一致', reversed: '迷い、価値観のずれ' },
+  { name: '戦車', glyph: '✦', upright: '前進する力、勝利への意志', reversed: '制御不能、方向性の喪失' },
+  { name: '力', glyph: '∞', upright: '内なる強さ、忍耐', reversed: '自信喪失、力の乱用' },
+  { name: '隠者', glyph: '☆', upright: '内省、静かな探求', reversed: '孤立、頑なな沈黙' },
+  { name: '運命の輪', glyph: '☯', upright: '転機、巡り合わせ', reversed: '流れへの抵抗、悪循環' },
+  { name: '正義', glyph: '⚖', upright: '公平、筋の通った判断', reversed: '偏り、不誠実な決着' },
+  { name: '吊るされた男', glyph: '✛', upright: '視点の転換、手放す勇気', reversed: '無駄な我慢、停滞' },
+  { name: '死神', glyph: '☠', upright: '終わりと再生、転換点', reversed: '変化への抵抗、未練' },
+  { name: '節制', glyph: '⚗', upright: '調和、バランスの回復', reversed: '不均衡、過不足' },
+  { name: '悪魔', glyph: '△', upright: '執着、抗えない誘惑', reversed: '束縛からの解放の兆し' },
+  { name: '塔', glyph: '⚡', upright: '急激な崩壊、目覚め', reversed: '避けてきた変化の先延ばし' },
+  { name: '星', glyph: '✧', upright: '希望、静かな回復', reversed: '自信の揺らぎ、理想と現実の差' },
+  { name: '月', glyph: '☽', upright: '不安、見えない真実', reversed: '誤解の解消、霧が晴れる兆し' },
+  { name: '太陽', glyph: '☀', upright: '成功、明るい活力', reversed: '一時的な曇り、控えめな喜び' },
+  { name: '審判', glyph: '♃', upright: '再評価、呼び覚まされる目的', reversed: '自己批判、決断の先延ばし' },
+  { name: '世界', glyph: '⊕', upright: '完成、一つの物語の到達', reversed: '未完了、次の段階への足踏み' },
+];
+
+const wllama = new Wllama(CONFIG_PATHS);
+
+const statusLabel = document.getElementById('statusLabel');
+const statusPercent = document.getElementById('statusPercent');
+const barFill = document.getElementById('barFill');
+const drawBtn = document.getElementById('drawBtn');
+const worryInput = document.getElementById('worryInput');
+const revealArea = document.getElementById('revealArea');
+const cardFlip = document.getElementById('cardFlip');
+const cardGlyph = document.getElementById('cardGlyph');
+const cardName = document.getElementById('cardName');
+const cardOrientation = document.getElementById('cardOrientation');
+const interpretation = document.getElementById('interpretation');
+const interpretationText = document.getElementById('interpretationText');
+
+// Load the model on page open and report progress in the status bar
+async function initModel() {
+  try {
+    await wllama.loadModelFromUrl(MODEL_URL, {
+      useCache: false, // avoid reusing a possibly-corrupted cache from earlier failed load attempts
+      progressCallback: ({ loaded, total }) => {
+        const pct = total ? Math.round((loaded / total) * 100) : 0;
+        statusPercent.textContent = pct + '%';
+        barFill.style.width = pct + '%';
+      },
+    });
+    statusLabel.textContent = 'モデルの準備が整いました';
+    statusPercent.textContent = '';
+    barFill.style.width = '100%';
+    drawBtn.disabled = false;
+  } catch (err) {
+    // Show the raw error message inline so the failure reason is visible without opening DevTools
+    statusLabel.textContent = '読み込み失敗: ' + (err && err.message ? err.message : String(err));
+    console.error(err);
+  }
+}
+
+function drawCard() {
+  const idx = Math.floor(Math.random() * MAJOR_ARCANA.length);
+  const reversed = Math.random() < 0.5;
+  return { card: MAJOR_ARCANA[idx], reversed };
+}
+
+async function interpret(worry, drawn) {
+  const orientationLabel = drawn.reversed ? '逆位置' : '正位置';
+  const meaning = drawn.reversed ? drawn.card.reversed : drawn.card.upright;
+
+  const systemPrompt =
+    'あなたは静かで思慮深いタロット占い師です。相談者の悩みに寄り添いながら、引かれたカードの意味を踏まえて日本語で解釈を伝えます。断定的すぎず、押し付けがましくない語り口で、3〜5文程度にまとめてください。';
+
+  const userPrompt =
+    '悩み：' + worry + '\n' +
+    '引いたカード：' + drawn.card.name + '（' + orientationLabel + '）\n' +
+    'このカードのキーワード：' + meaning + '\n' +
+    'この悩みに寄り添った解釈をお願いします。';
+
+  // Qwen uses the ChatML format. Building this by hand (instead of createChatCompletion)
+  // matches the combination already confirmed working with wllama v2 in this app.
+  const prompt =
+    '<|im_start|>system\n' + systemPrompt + '\n<|im_end|>\n' +
+    '<|im_start|>user\n' + userPrompt + '\n<|im_end|>\n' +
+    '<|im_start|>assistant\n';
+
+  interpretationText.textContent = '';
+  interpretationText.classList.add('cursor-blink');
+
+  await wllama.createCompletion(prompt, {
+    nPredict: 300,
+    sampling: { temp: 0.7, top_k: 40, top_p: 0.9 },
+    onNewToken: (token, piece, currentText) => {
+      interpretationText.textContent = currentText;
+    },
+  });
+
+  interpretationText.classList.remove('cursor-blink');
+}
+
+drawBtn.addEventListener('click', async () => {
+  const worry = worryInput.value.trim();
+  if (!worry) {
+    worryInput.focus();
+    return;
+  }
+
+  drawBtn.disabled = true;
+  drawBtn.textContent = '読み解いています…';
+  revealArea.classList.add('active');
+  interpretation.classList.remove('active');
+  cardFlip.classList.remove('flipped', 'reversed');
+
+  const drawn = drawCard();
+
+  // Small delay so the flip animation is visible before the card face is populated
+  cardName.textContent = drawn.card.name;
+  cardGlyph.textContent = drawn.card.glyph;
+  cardOrientation.textContent = drawn.reversed ? '逆位置' : '正位置';
+  cardOrientation.classList.toggle('upright', !drawn.reversed);
+
+  requestAnimationFrame(() => {
+    if (drawn.reversed) cardFlip.classList.add('reversed');
+    cardFlip.classList.add('flipped');
+  });
+
+  await new Promise((resolve) => setTimeout(resolve, 900));
+
+  interpretation.classList.add('active');
+  try {
+    await interpret(worry, drawn);
+  } catch (err) {
+    interpretationText.classList.remove('cursor-blink');
+    interpretationText.textContent = '解釈の生成に失敗しました: ' + (err && err.message ? err.message : String(err));
+    console.error(err);
+  }
+
+  drawBtn.disabled = false;
+  drawBtn.textContent = 'もう一度引く';
+});
+
+initModel();
+</script>
+
+</body>
+</html>
