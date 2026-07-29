@@ -58,4 +58,9 @@ http://localhost:8000/tarot-oracle.html
 
 https://tztechno.github.io/tz_html_works2/12_tarot/tarot-oracle.html
 
+https://tztechno.github.io/tz_html_works2/12_tarot/tarot-oracle-light.html
+
+light版は応答のレベルが低くて使えない
+いずれもスマホでの利用は不可能
+
 
