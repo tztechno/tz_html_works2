@@ -476,6 +476,449 @@
     });
   }
 
+  /* ================= Bollinger Bands ================= */
+  function buildBollinger(){
+    var svg = document.getElementById('bb-svg');
+    var VBW=1000, VBH=260;
+    var m = {top:14, right:16, bottom:28, left:64};
+    var plotW=VBW-m.left-m.right, plotH=VBH-m.top-m.bottom;
+    var period = Math.min(20, Math.max(2, Math.floor(N/2)));
+    var closes = ROWS.map(function(r){ return r.c; });
+    var mid=[], upper=[], lower=[];
+    for(var i=0;i<N;i++){
+      if(i+1<period){ mid.push(null); upper.push(null); lower.push(null); continue; }
+      var win = closes.slice(i+1-period, i+1);
+      var m0 = win.reduce(function(a,b){ return a+b; },0)/period;
+      var sd = Math.sqrt(win.reduce(function(a,b){ return a+(b-m0)*(b-m0); },0)/Math.max(1,period-1));
+      mid.push(m0); upper.push(m0+2*sd); lower.push(m0-2*sd);
+    }
+    var validIdx = []; for(var i=0;i<N;i++){ if(mid[i]!==null) validIdx.push(i); }
+    var allVals = closes.slice();
+    validIdx.forEach(function(i){ allVals.push(upper[i], lower[i]); });
+    var yMin = Math.min.apply(null, allVals), yMax = Math.max.apply(null, allVals);
+    var pad = (yMax-yMin)*0.06 || 1;
+    yMin -= pad; yMax += pad;
+    function xAt(i){ return m.left + (N===1?0:(i/(N-1))*plotW); }
+    function y(v){ return m.top + (1-(v-yMin)/(yMax-yMin))*plotH; }
+
+    var ty = niceTicks(yMin,yMax,5);
+    ty.ticks.forEach(function(t){
+      el('line',{x1:m.left,x2:VBW-m.right,y1:y(t),y2:y(t),class:'grid-line'},svg);
+      el('text',{x:m.left-8,y:y(t)+3.5,class:'axis-label num','text-anchor':'end'},svg).textContent = nf(t,0);
+    });
+    var stepX = Math.max(1, Math.round(N/8));
+    for(var i=0;i<N;i+=stepX){ el('text',{x:xAt(i),y:VBH-8,class:'axis-label','text-anchor':'middle'},svg).textContent = fmtDate(ROWS[i].date); }
+    el('text',{x:xAt(N-1),y:VBH-8,class:'axis-label','text-anchor':'middle'},svg).textContent = fmtDate(ROWS[N-1].date);
+
+    if(validIdx.length){
+      var bandD = "M"+xAt(validIdx[0]).toFixed(2)+","+y(upper[validIdx[0]]).toFixed(2)+" ";
+      validIdx.forEach(function(i){ bandD += "L"+xAt(i).toFixed(2)+","+y(upper[i]).toFixed(2)+" "; });
+      for(var k2=validIdx.length-1;k2>=0;k2--){ var i2=validIdx[k2]; bandD += "L"+xAt(i2).toFixed(2)+","+y(lower[i2]).toFixed(2)+" "; }
+      bandD += "Z";
+      el('path',{d:bandD, fill:'var(--series-2)', opacity:0.16}, svg);
+      var midD = ""; var started=false;
+      validIdx.forEach(function(i){ midD += (started?"L":"M")+xAt(i).toFixed(2)+","+y(mid[i]).toFixed(2)+" "; started=true; });
+      el('path',{d:midD, fill:'none', stroke:'var(--series-2)', 'stroke-width':1.6, 'stroke-linejoin':'round'}, svg);
+    }
+    var closeD = "";
+    for(var i=0;i<N;i++){ closeD += (i===0?"M":"L")+xAt(i).toFixed(2)+","+y(closes[i]).toFixed(2)+" "; }
+    el('path',{d:closeD, fill:'none', stroke:'var(--accent)', 'stroke-width':2, 'stroke-linejoin':'round', 'stroke-linecap':'round'}, svg);
+
+    var ch = el('line',{x1:0,x2:0,y1:m.top,y2:VBH-m.bottom,class:'crosshair'},svg);
+    var hit = el('rect',{x:m.left,y:0,width:plotW,height:VBH,class:'hit-rect'},svg);
+    function nearestIndex(svgX){ var i=Math.round((svgX-m.left)/plotW*(N-1)); return Math.max(0,Math.min(N-1,i)); }
+    hit.addEventListener('pointermove', function(e){
+      var i = nearestIndex(svgPointX(svg, e.clientX, VBW));
+      var x = xAt(i);
+      ch.setAttribute('x1',x); ch.setAttribute('x2',x); ch.style.opacity=1;
+      var rows = [['終値', nf(closes[i],1)]];
+      if(mid[i]!==null){ rows.push(['MA'+period, nf(mid[i],1)]); rows.push(['+2σ', nf(upper[i],1)]); rows.push(['-2σ', nf(lower[i],1)]); }
+      showTip(e.clientX, e.clientY, fmtDateLong(ROWS[i].date), rows);
+    });
+    hit.addEventListener('pointerleave', function(){ ch.style.opacity=0; hideTip(); });
+  }
+
+  /* ================= Rolling volatility ================= */
+  function buildRollingVol(){
+    var svg = document.getElementById('rvol-svg');
+    var VBW=480, VBH=230;
+    var m = {top:14, right:14, bottom:26, left:52};
+    var plotW=VBW-m.left-m.right, plotH=VBH-m.top-m.bottom;
+    var period = Math.min(10, Math.max(2, Math.floor(N/3)));
+    var rets = ROWS.map(function(r){ return r.ret; });
+    var rvol = new Array(N).fill(null);
+    for(var i=0;i<N;i++){
+      if(i+1<period) continue;
+      var win = rets.slice(i-period+1, i+1);
+      if(win.some(function(v){ return v===null; })) continue;
+      var mean = win.reduce(function(a,b){ return a+b; },0)/period;
+      var sd = Math.sqrt(win.reduce(function(a,b){ return a+(b-mean)*(b-mean); },0)/Math.max(1,period-1));
+      rvol[i]=sd;
+    }
+    var validIdx=[]; for(var i=0;i<N;i++){ if(rvol[i]!==null) validIdx.push(i); }
+    var vals = validIdx.map(function(i){ return rvol[i]; });
+    var yMax = vals.length ? Math.max.apply(null, vals)*1.15 : 1;
+    function xAt(i){ return m.left+(N===1?0:(i/(N-1))*plotW); }
+    function y(v){ return m.top+(1-v/yMax)*plotH; }
+    var ty = niceTicks(0,yMax,4);
+    ty.ticks.forEach(function(t){
+      el('line',{x1:m.left,x2:VBW-m.right,y1:y(t),y2:y(t),class:'grid-line'},svg);
+      el('text',{x:m.left-8,y:y(t)+3.5,class:'axis-label num','text-anchor':'end'},svg).textContent = nf(t,1)+'%';
+    });
+    var stepX = Math.max(1, Math.round(N/6));
+    for(var i=0;i<N;i+=stepX){ el('text',{x:xAt(i),y:VBH-8,class:'axis-label','text-anchor':'middle'},svg).textContent = fmtDate(ROWS[i].date); }
+    el('text',{x:xAt(N-1),y:VBH-8,class:'axis-label','text-anchor':'middle'},svg).textContent = fmtDate(ROWS[N-1].date);
+
+    if(validIdx.length){
+      var areaD = "M"+xAt(validIdx[0]).toFixed(2)+","+y(0).toFixed(2)+" ";
+      validIdx.forEach(function(i){ areaD += "L"+xAt(i).toFixed(2)+","+y(rvol[i]).toFixed(2)+" "; });
+      areaD += "L"+xAt(validIdx[validIdx.length-1]).toFixed(2)+","+y(0).toFixed(2)+" Z";
+      el('path',{d:areaD, fill:'var(--accent)', opacity:0.10}, svg);
+      var lineD=""; var started=false;
+      validIdx.forEach(function(i){ lineD += (started?"L":"M")+xAt(i).toFixed(2)+","+y(rvol[i]).toFixed(2)+" "; started=true; });
+      el('path',{d:lineD, fill:'none', stroke:'var(--accent)', 'stroke-width':2, 'stroke-linejoin':'round', 'stroke-linecap':'round'}, svg);
+    }
+    var ch = el('line',{x1:0,x2:0,y1:m.top,y2:VBH-m.bottom,class:'crosshair'},svg);
+    var hit = el('rect',{x:m.left,y:0,width:plotW,height:VBH,class:'hit-rect'},svg);
+    function nearestIndex(svgX){ var i=Math.round((svgX-m.left)/plotW*(N-1)); return Math.max(0,Math.min(N-1,i)); }
+    hit.addEventListener('pointermove', function(e){
+      var i = nearestIndex(svgPointX(svg, e.clientX, VBW));
+      var x = xAt(i);
+      ch.setAttribute('x1',x); ch.setAttribute('x2',x); ch.style.opacity=1;
+      showTip(e.clientX, e.clientY, fmtDateLong(ROWS[i].date), [[period+'本ボラティリティ', rvol[i]!==null ? nf(rvol[i],2)+'%' : 'データ不足']]);
+    });
+    hit.addEventListener('pointerleave', function(){ ch.style.opacity=0; hideTip(); });
+  }
+
+  /* ================= Autocorrelation of returns ================= */
+  function buildACF(){
+    var svg = document.getElementById('acf-svg');
+    var VBW=480, VBH=230;
+    var m = {top:16, right:14, bottom:34, left:48};
+    var plotW=VBW-m.left-m.right, plotH=VBH-m.top-m.bottom;
+    var rets = ROWS.map(function(r){ return r.ret; }).filter(function(v){ return v!==null; });
+    var n = rets.length;
+    var mean = rets.reduce(function(a,b){ return a+b; },0)/n;
+    var denom = rets.reduce(function(a,b){ return a+(b-mean)*(b-mean); },0);
+    var maxLag = Math.max(1, Math.min(8, Math.floor(n/4)));
+    var acf = [];
+    for(var k=1;k<=maxLag;k++){
+      var num=0;
+      for(var t=k;t<n;t++){ num += (rets[t]-mean)*(rets[t-k]-mean); }
+      acf.push(denom>0 ? num/denom : 0);
+    }
+    var confInt = n>0 ? 1.96/Math.sqrt(n) : 0;
+    var yMax = Math.max(confInt*1.3, Math.max.apply(null, acf.map(Math.abs).concat([0.05]))*1.2);
+    var yMin = -yMax;
+    function x(idx){ return m.left + (idx+0.5)/maxLag*plotW; }
+    function y(v){ return m.top+(1-(v-yMin)/(yMax-yMin))*plotH; }
+    var ty = niceTicks(yMin,yMax,4);
+    ty.ticks.forEach(function(t){
+      el('line',{x1:m.left,x2:VBW-m.right,y1:y(t),y2:y(t),class:'grid-line'},svg);
+      el('text',{x:m.left-8,y:y(t)+3.5,class:'axis-label num','text-anchor':'end'},svg).textContent = nf(t,2);
+    });
+    var bandTop=y(confInt), bandBot=y(-confInt);
+    el('rect',{x:m.left,y:bandTop,width:plotW,height:Math.max(0,bandBot-bandTop),fill:'var(--muted)',opacity:0.14}, svg);
+    el('line',{x1:m.left,x2:VBW-m.right,y1:y(0),y2:y(0),class:'baseline'},svg);
+    var barW = Math.min(34, plotW/maxLag*0.5);
+    acf.forEach(function(v,idx){
+      var color = v>=0 ? 'var(--accent)' : 'var(--critical)';
+      var cx = x(idx);
+      var y0=y(0), y1=y(v);
+      var top=Math.min(y0,y1), h=Math.max(1,Math.abs(y0-y1));
+      el('rect',{x:cx-barW/2,y:top,width:barW,height:h,fill:color,opacity:0.85}, svg);
+      el('text',{x:cx,y:VBH-10,class:'axis-label num','text-anchor':'middle'},svg).textContent = 'k='+(idx+1);
+      var hit = el('rect',{x:cx-barW/2-4,y:m.top,width:barW+8,height:plotH,fill:'transparent',tabindex:0}, svg);
+      (function(lag,val){
+        function show(cx2,cy2){ showTip(cx2,cy2, 'ラグ '+lag, [['自己相関', nf(val,3)], ['±95%目安', '±'+nf(confInt,3)]]); }
+        hit.addEventListener('pointermove', function(e){ show(e.clientX,e.clientY); });
+        hit.addEventListener('pointerleave', hideTip);
+        hit.addEventListener('focus', function(){ var r2=hit.getBoundingClientRect(); show(r2.left+r2.width/2, r2.top); });
+        hit.addEventListener('blur', hideTip);
+      })(idx+1, v);
+    });
+  }
+
+  /* ================= Weekday seasonality ================= */
+  function buildWeekday(){
+    var svg = document.getElementById('weekday-svg');
+    var VBW=480, VBH=230;
+    var m = {top:26, right:14, bottom:34, left:48};
+    var plotW=VBW-m.left-m.right, plotH=VBH-m.top-m.bottom;
+    var names = ['日','月','火','水','木','金','土'];
+    var order = [1,2,3,4,5,6,0];
+    var sums = {}, counts = {};
+    order.forEach(function(d){ sums[d]=0; counts[d]=0; });
+    ROWS.forEach(function(r){
+      if(r.ret===null) return;
+      var d = new Date(r.date+'T00:00:00Z').getUTCDay();
+      if(!(d in sums)) return;
+      sums[d]+=r.ret; counts[d]++;
+    });
+    var cats = order.filter(function(d){ return counts[d]>0; });
+    var means = cats.map(function(d){ return sums[d]/counts[d]; });
+    var maxAbs = Math.max.apply(null, means.map(Math.abs).concat([0.01]));
+    var yMin=-maxAbs*1.25, yMax=maxAbs*1.25;
+    function x(idx){ return m.left + (idx+0.5)/cats.length*plotW; }
+    function y(v){ return m.top + (1-(v-yMin)/(yMax-yMin))*plotH; }
+    var ty = niceTicks(yMin,yMax,4);
+    ty.ticks.forEach(function(t){
+      el('line',{x1:m.left,x2:VBW-m.right,y1:y(t),y2:y(t),class:'grid-line'},svg);
+      el('text',{x:m.left-8,y:y(t)+3.5,class:'axis-label num','text-anchor':'end'},svg).textContent = nf(t,2)+'%';
+    });
+    el('line',{x1:m.left,x2:VBW-m.right,y1:y(0),y2:y(0),class:'baseline'},svg);
+    var barW = Math.min(40, plotW/cats.length*0.5);
+    cats.forEach(function(d,idx){
+      var v = means[idx];
+      var color = v>=0 ? 'var(--good)' : 'var(--critical)';
+      var cx = x(idx);
+      var y0=y(0), y1=y(v);
+      var top=Math.min(y0,y1), h=Math.max(1,Math.abs(y0-y1));
+      el('rect',{x:cx-barW/2,y:top,width:barW,height:h,fill:color,opacity:0.85}, svg);
+      var lab = el('text',{x:cx,y: v>=0 ? top-6 : top+h+14, class:'axis-label num','text-anchor':'middle'}, svg);
+      lab.textContent = 'n='+counts[d];
+      el('text',{x:cx,y:VBH-10,class:'axis-label','text-anchor':'middle'},svg).textContent = names[d];
+      var hit = el('rect',{x:cx-barW/2-4,y:m.top,width:barW+8,height:plotH,fill:'transparent',tabindex:0}, svg);
+      (function(dayName,val,cnt){
+        function show(cx2,cy2){ showTip(cx2,cy2, dayName+'曜日', [['平均リターン', sf(val,3)+'%'], ['本数', cnt+'本']]); }
+        hit.addEventListener('pointermove', function(e){ show(e.clientX,e.clientY); });
+        hit.addEventListener('pointerleave', hideTip);
+        hit.addEventListener('focus', function(){ var r2=hit.getBoundingClientRect(); show(r2.left+r2.width/2, r2.top); });
+        hit.addEventListener('blur', hideTip);
+      })(names[d], v, counts[d]);
+    });
+  }
+
+  /* ================= Monthly return ================= */
+  function buildMonthly(){
+    var svg = document.getElementById('monthly-svg');
+    var VBW=480, VBH=230;
+    var m = {top:16, right:14, bottom:34, left:56};
+    var plotW=VBW-m.left-m.right, plotH=VBH-m.top-m.bottom;
+    var groups = [];
+    var curKey=null, cur=null;
+    ROWS.forEach(function(r,i){
+      var key = r.date.slice(0,7);
+      if(key!==curKey){ if(cur) groups.push(cur); cur={key:key, start:i, end:i}; curKey=key; }
+      else cur.end=i;
+    });
+    if(cur) groups.push(cur);
+    var vals = groups.map(function(g){
+      var baseClose = g.start>0 ? ROWS[g.start-1].c : ROWS[g.start].o;
+      var endClose = ROWS[g.end].c;
+      return (endClose/baseClose-1)*100;
+    });
+    var labels = groups.map(function(g){ var p=g.key.split('-'); return p[0].slice(2)+'/'+p[1]; });
+    var maxAbs = Math.max.apply(null, vals.map(Math.abs).concat([0.01]));
+    var yMin=-maxAbs*1.15, yMax=maxAbs*1.15;
+    function x(idx){ return m.left+(idx+0.5)/groups.length*plotW; }
+    function y(v){ return m.top+(1-(v-yMin)/(yMax-yMin))*plotH; }
+    var ty=niceTicks(yMin,yMax,4);
+    ty.ticks.forEach(function(t){
+      el('line',{x1:m.left,x2:VBW-m.right,y1:y(t),y2:y(t),class:'grid-line'},svg);
+      el('text',{x:m.left-8,y:y(t)+3.5,class:'axis-label num','text-anchor':'end'},svg).textContent = nf(t,1)+'%';
+    });
+    el('line',{x1:m.left,x2:VBW-m.right,y1:y(0),y2:y(0),class:'baseline'},svg);
+    var barW = Math.min(48, plotW/groups.length*0.55);
+    groups.forEach(function(g,idx){
+      var v = vals[idx];
+      var color = v>=0 ? 'var(--good)' : 'var(--critical)';
+      var cx=x(idx); var y0=y(0), y1=y(v);
+      var top=Math.min(y0,y1), h=Math.max(1,Math.abs(y0-y1));
+      el('rect',{x:cx-barW/2,y:top,width:barW,height:h,fill:color,opacity:0.85}, svg);
+      el('text',{x:cx,y:VBH-10,class:'axis-label','text-anchor':'middle'},svg).textContent = labels[idx];
+      var hit = el('rect',{x:cx-barW/2-4,y:m.top,width:barW+8,height:plotH,fill:'transparent',tabindex:0}, svg);
+      (function(key,val,cnt){
+        function show(cx2,cy2){ showTip(cx2,cy2, key, [['月次リターン', sf(val,2)+'%'], ['本数', cnt+'本']]); }
+        hit.addEventListener('pointermove', function(e){ show(e.clientX,e.clientY); });
+        hit.addEventListener('pointerleave', hideTip);
+        hit.addEventListener('focus', function(){ var r2=hit.getBoundingClientRect(); show(r2.left+r2.width/2, r2.top); });
+        hit.addEventListener('blur', hideTip);
+      })(g.key, v, g.end-g.start+1);
+    });
+  }
+
+  /* ================= Up/down streak distribution ================= */
+  function buildStreak(){
+    var svg = document.getElementById('streak-svg');
+    var VBW=480, VBH=230;
+    var m = {top:20, right:14, bottom:34, left:40};
+    var plotW=VBW-m.left-m.right, plotH=VBH-m.top-m.bottom;
+    var streaks = [];
+    var curDir=null, curLen=0;
+    ROWS.forEach(function(r){
+      if(r.ret===null || r.ret===0){ if(curDir){ streaks.push({dir:curDir,len:curLen}); curDir=null; curLen=0; } return; }
+      var dir = r.ret>0 ? 'up' : 'down';
+      if(dir===curDir){ curLen++; } else { if(curDir) streaks.push({dir:curDir,len:curLen}); curDir=dir; curLen=1; }
+    });
+    if(curDir) streaks.push({dir:curDir,len:curLen});
+    var maxLen = Math.max.apply(null, streaks.map(function(s){ return s.len; }).concat([1]));
+    var capLen = Math.max(1, Math.min(maxLen, 6));
+    var buckets = [];
+    for(var l=1;l<capLen;l++) buckets.push({label:String(l), up:0, down:0});
+    buckets.push({label:capLen+'+', up:0, down:0});
+    streaks.forEach(function(s){
+      var idx = Math.min(s.len, capLen) - 1;
+      buckets[idx][s.dir]++;
+    });
+    var maxCount = Math.max.apply(null, buckets.map(function(b){ return Math.max(b.up,b.down); }).concat([1]));
+    function xg(idx){ return m.left + (idx+0.5)/buckets.length*plotW; }
+    function y(v){ return m.top + (1-v/maxCount)*plotH; }
+    var ty = niceTicks(0,maxCount,4);
+    ty.ticks.forEach(function(t){
+      el('line',{x1:m.left,x2:VBW-m.right,y1:y(t),y2:y(t),class:'grid-line'},svg);
+      el('text',{x:m.left-8,y:y(t)+3.5,class:'axis-label num','text-anchor':'end'},svg).textContent = nf(t,0);
+    });
+    var slot = plotW/buckets.length;
+    var pairW = Math.min(46, slot*0.6);
+    var barW = (pairW-2)/2;
+    buckets.forEach(function(b,idx){
+      var cx = xg(idx);
+      var xUp = cx-pairW/2, xDown = cx+2;
+      var hUp = plotH-(y(b.up)-m.top), hDown = plotH-(y(b.down)-m.top);
+      el('rect',{x:xUp,y:y(b.up),width:barW,height:Math.max(0,hUp),fill:'var(--good)',opacity:0.85}, svg);
+      el('rect',{x:xDown,y:y(b.down),width:barW,height:Math.max(0,hDown),fill:'var(--critical)',opacity:0.85}, svg);
+      el('text',{x:cx,y:VBH-10,class:'axis-label','text-anchor':'middle'},svg).textContent = b.label+'本';
+      var hit = el('rect',{x:cx-pairW/2-2,y:m.top,width:pairW+4,height:plotH,fill:'transparent',tabindex:0}, svg);
+      (function(label,up,down){
+        function show(cx2,cy2){ showTip(cx2,cy2, label+'本連続', [['上昇継続', up+'回'], ['下落継続', down+'回']]); }
+        hit.addEventListener('pointermove', function(e){ show(e.clientX,e.clientY); });
+        hit.addEventListener('pointerleave', hideTip);
+        hit.addEventListener('focus', function(){ var r2=hit.getBoundingClientRect(); show(r2.left+r2.width/2, r2.top); });
+        hit.addEventListener('blur', hideTip);
+      })(b.label, b.up, b.down);
+    });
+  }
+
+  /* ================= Correlation heatmap ================= */
+  function buildCorrHeatmap(){
+    var svg = document.getElementById('corr-svg');
+    var VBW=480, VBH=350;
+    var labels = ['始値','高値','安値','終値','出来高','騰落率'];
+    var keys = ['o','h','l','c','v','ret'];
+    var rows = ROWS.slice(1);
+    var series = keys.map(function(k){ return rows.map(function(r){ return r[k]; }); });
+    function corr(a,b){
+      var n=a.length;
+      if(n===0) return 0;
+      var ma=a.reduce(function(x,y){ return x+y; },0)/n;
+      var mb=b.reduce(function(x,y){ return x+y; },0)/n;
+      var num=0, da=0, db=0;
+      for(var i=0;i<n;i++){ num+=(a[i]-ma)*(b[i]-mb); da+=(a[i]-ma)*(a[i]-ma); db+=(b[i]-mb)*(b[i]-mb); }
+      return (da>0&&db>0) ? num/Math.sqrt(da*db) : 0;
+    }
+    var k = keys.length;
+    var matrix = [];
+    for(var i=0;i<k;i++){ matrix.push([]); for(var j=0;j<k;j++){ matrix[i].push(i===j?1:corr(series[i],series[j])); } }
+
+    var m = {top:14, left:66, right:10, bottom:10};
+    var avail = Math.min(VBW-m.left-m.right, VBH-m.top-m.bottom-26);
+    var cell = avail/k;
+    var gridLeft = m.left, gridTop = m.top;
+
+    labels.forEach(function(lab,i){
+      el('text',{x:gridLeft-8, y:gridTop+i*cell+cell/2+4, class:'axis-label','text-anchor':'end'},svg).textContent = lab;
+    });
+    labels.forEach(function(lab,j){
+      el('text',{x:gridLeft+j*cell+cell/2, y:gridTop+k*cell+18, class:'axis-label','text-anchor':'middle'},svg).textContent = lab;
+    });
+
+    for(var i=0;i<k;i++){
+      for(var j=0;j<k;j++){
+        var v = matrix[i][j];
+        var color = v>=0 ? 'var(--accent)' : 'var(--critical)';
+        var op = 0.08 + 0.80*Math.abs(v);
+        var cx = gridLeft+j*cell, cy = gridTop+i*cell;
+        var gap=1.5;
+        el('rect',{x:cx+gap/2,y:cy+gap/2,width:cell-gap,height:cell-gap,fill:color,opacity:op,rx:3}, svg);
+        var txt = el('text',{x:cx+cell/2,y:cy+cell/2+4,'text-anchor':'middle','font-size':11}, svg);
+        txt.setAttribute('font-family','ui-monospace, "SF Mono", Menlo, monospace');
+        txt.setAttribute('fill', Math.abs(v)>0.42 ? '#ffffff' : 'var(--ink)');
+        txt.textContent = (i===j ? '1.00' : (v>=0?'+':'')+v.toFixed(2));
+        var hit = el('rect',{x:cx,y:cy,width:cell,height:cell,fill:'transparent',tabindex:0}, svg);
+        (function(li,lj,vv){
+          function show(cx2,cy2){ showTip(cx2,cy2, labels[li]+' × '+labels[lj], [['相関係数', vv.toFixed(3)]]); }
+          hit.addEventListener('pointermove', function(e){ show(e.clientX,e.clientY); });
+          hit.addEventListener('pointerleave', hideTip);
+          hit.addEventListener('focus', function(){ var r2=hit.getBoundingClientRect(); show(r2.left+r2.width/2, r2.top); });
+          hit.addEventListener('blur', hideTip);
+        })(i,j,v);
+      }
+    }
+  }
+
+  /* ================= Volume profile (horizontal) ================= */
+  function buildVolProfile(){
+    var svg = document.getElementById('volprofile-svg');
+    var VBW=480, VBH=320;
+    var m = {top:14, right:14, bottom:10, left:74};
+    var plotW=VBW-m.left-m.right, plotH=VBH-m.top-m.bottom;
+    var lo = Math.min.apply(null, ROWS.map(function(r){ return r.l; }));
+    var hi = Math.max.apply(null, ROWS.map(function(r){ return r.h; }));
+    var buckets = 14;
+    var span = (hi-lo) || 1;
+    var binH = span/buckets;
+    var vols = new Array(buckets).fill(0);
+    ROWS.forEach(function(r){
+      var tp = (r.h+r.l+r.c)/3;
+      var idx = Math.min(buckets-1, Math.max(0, Math.floor((tp-lo)/binH)));
+      vols[idx]+=r.v;
+    });
+    var maxVol = Math.max.apply(null, vols.concat([1]));
+    var barH = plotH/buckets;
+    function yTop(i){ return m.top + (buckets-1-i)*barH; }
+    function xw(v){ return (v/maxVol)*plotW; }
+    el('text',{x:m.left-8, y:m.top+4, class:'axis-label num','text-anchor':'end'},svg).textContent = nf(hi,0);
+    vols.forEach(function(v,i){
+      var priceLo = lo+i*binH, priceHi = lo+(i+1)*binH;
+      var yy = yTop(i);
+      var w = Math.max(1, xw(v));
+      el('rect',{x:m.left, y:yy+1, width:w, height:Math.max(1,barH-2), fill:'var(--accent)', opacity:0.78}, svg);
+      el('text',{x:m.left-8, y:yy+barH/2+4, class:'axis-label num','text-anchor':'end'},svg).textContent = nf(priceLo,0);
+      var hit = el('rect',{x:m.left,y:yy,width:plotW,height:barH,fill:'transparent',tabindex:0}, svg);
+      (function(pl,ph,vv){
+        function show(cx2,cy2){ showTip(cx2,cy2, nf(pl,0)+' 　〜　 '+nf(ph,0), [['出来高合計', nf(vv,0)]]); }
+        hit.addEventListener('pointermove', function(e){ show(e.clientX,e.clientY); });
+        hit.addEventListener('pointerleave', hideTip);
+        hit.addEventListener('focus', function(){ var r2=hit.getBoundingClientRect(); show(r2.left+r2.width/2, r2.top); });
+        hit.addEventListener('blur', hideTip);
+      })(priceLo, priceHi, v);
+    });
+  }
+
+  /* ================= Return distribution stat table ================= */
+  function buildStatTable(){
+    var host = document.getElementById('stat-table');
+    var rets = ROWS.map(function(r){ return r.ret; }).filter(function(v){ return v!==null; });
+    var n = rets.length;
+    var mean = rets.reduce(function(a,b){ return a+b; },0)/n;
+    var variance = rets.reduce(function(a,b){ return a+(b-mean)*(b-mean); },0)/Math.max(1,n-1);
+    var sd = Math.sqrt(variance);
+    var skew = (n>=3 && sd>0) ? rets.reduce(function(a,b){ return a+Math.pow((b-mean)/sd,3); },0) * (n/((n-1)*(n-2))) : null;
+    var kurt = (n>=4 && sd>0) ? rets.reduce(function(a,b){ return a+Math.pow((b-mean)/sd,4); },0) * (n*(n+1))/((n-1)*(n-2)*(n-3)) - 3*(n-1)*(n-1)/((n-2)*(n-3)) : null;
+    var sorted = rets.slice().sort(function(a,b){ return a-b; });
+    function pct(p){ var idx=(sorted.length-1)*p; var lo=Math.floor(idx), hi=Math.ceil(idx); if(lo===hi) return sorted[lo]; return sorted[lo]+(sorted[hi]-sorted[lo])*(idx-lo); }
+    var rows = [
+      ['本数(n)', n+' 本'],
+      ['平均', sf(mean,3)+'%'],
+      ['標準偏差', nf(sd,3)+'%'],
+      ['歪度(Skewness)', skew===null?'–':(nf(skew,3) + (skew>0.2?' (右に裾長)':skew<-0.2?' (左に裾長)':' (ほぼ対称)'))],
+      ['尖度(超過, Kurtosis)', kurt===null?'–':(nf(kurt,3) + (kurt>0.5?' (裾が厚い)':kurt<-0.5?' (裾が薄い)':' (正規分布に近い)'))],
+      ['最小', sf(Math.min.apply(null,rets),3)+'%'],
+      ['25%点', sf(pct(0.25),3)+'%'],
+      ['中央値', sf(pct(0.5),3)+'%'],
+      ['75%点', sf(pct(0.75),3)+'%'],
+      ['最大', sf(Math.max.apply(null,rets),3)+'%']
+    ];
+    rows.forEach(function(pair){
+      var row = document.createElement('div'); row.className='srow';
+      var k = document.createElement('div'); k.className='sk'; k.textContent = pair[0];
+      var v = document.createElement('div'); v.className='sv'; v.textContent = pair[1];
+      row.appendChild(k); row.appendChild(v);
+      host.appendChild(row);
+    });
+  }
+
   /* ================= Data table ================= */
   function buildTable(){
     var body = document.getElementById('tbl-body');
@@ -512,9 +955,11 @@
   function renderAll(raw, meta){
     var d = computeDerived(raw);
     ROWS = d.rows; STATS = d.stats; N = ROWS.length;
-    ['price-svg','vol-svg','cumret-svg','dd-svg','hist-svg','scatter-svg'].forEach(clearNode);
+    ['price-svg','vol-svg','cumret-svg','dd-svg','hist-svg','scatter-svg',
+     'bb-svg','rvol-svg','acf-svg','weekday-svg','monthly-svg','streak-svg','corr-svg','volprofile-svg'].forEach(clearNode);
     clearNode('kpi-row');
     clearNode('tbl-body');
+    clearNode('stat-table');
     updateHeader(meta);
     buildKPI();
     buildPriceVolume();
@@ -522,6 +967,15 @@
     buildLineChart({id:'dd-svg', h:190, key:'dd', color:'var(--critical)', label:'ドローダウン', includeZero:true, top:0});
     buildHist();
     buildScatter();
+    buildBollinger();
+    buildRollingVol();
+    buildACF();
+    buildWeekday();
+    buildMonthly();
+    buildStreak();
+    buildCorrHeatmap();
+    buildVolProfile();
+    buildStatTable();
     buildTable();
   }
 

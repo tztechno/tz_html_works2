@@ -97,6 +97,114 @@
     </div>
   </section>
 
+  <section class="section-head">
+    <h2>詳細分析 — 複数の視点から見る</h2>
+    <p>同じOHLCVでも、切り口を変えると値動きの癖・分布の性質・出来高の構造が見えてきます。</p>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <div class="card-title">ボリンジャーバンド</div>
+        <div class="card-desc" id="bb-desc">終値と20期間移動平均 ±2σ のバンド。バンドの広がりはボラティリティの大きさを示します。</div>
+      </div>
+      <div class="legend">
+        <span class="item"><span class="lkey" style="background:var(--accent)"></span>終値</span>
+        <span class="item"><span class="lkey" style="background:var(--series-2)"></span>MA(中心線)</span>
+        <span class="item"><span class="swatch" style="background:var(--series-2); opacity:0.18"></span>±2σ バンド</span>
+      </div>
+    </div>
+    <svg id="bb-svg" viewBox="0 0 1000 260" preserveAspectRatio="none"></svg>
+  </section>
+
+  <section class="row2">
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">ローリング・ボラティリティ</div>
+          <div class="card-desc" id="rvol-desc">直近10本の騰落率の標準偏差(%)。値が大きいほど値動きが荒くなっていることを示します。</div>
+        </div>
+      </div>
+      <svg id="rvol-svg" viewBox="0 0 480 230" preserveAspectRatio="none"></svg>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">リターンの自己相関(ACF)</div>
+          <div class="card-desc">前のバーの騰落率と現在の騰落率の相関。0より上なら「勢いが続く」傾向、0より下なら「反転しやすい」傾向を示します。灰色の帯は統計的に無視できる範囲(±95%目安)。</div>
+        </div>
+      </div>
+      <svg id="acf-svg" viewBox="0 0 480 230" preserveAspectRatio="none"></svg>
+    </div>
+  </section>
+
+  <section class="row2">
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">曜日別 平均リターン</div>
+          <div class="card-desc">曜日ごとの平均騰落率(%)。バーの上の数字は該当曜日の本数です。</div>
+        </div>
+      </div>
+      <svg id="weekday-svg" viewBox="0 0 480 230" preserveAspectRatio="none"></svg>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">月次リターン</div>
+          <div class="card-desc">暦月ごとの騰落率(%)。月をまたぐ最初/最後の月は期間が短い場合があります。</div>
+        </div>
+      </div>
+      <svg id="monthly-svg" viewBox="0 0 480 230" preserveAspectRatio="none"></svg>
+    </div>
+  </section>
+
+  <section class="row2">
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">連続騰落ストリーク</div>
+          <div class="card-desc">何本連続で上昇・下落したかの分布。長いストリークが多いほどトレンドが持続しやすい相場と言えます。</div>
+        </div>
+        <div class="legend">
+          <span class="item"><span class="swatch" style="background:var(--good)"></span>上昇継続</span>
+          <span class="item"><span class="swatch" style="background:var(--critical)"></span>下落継続</span>
+        </div>
+      </div>
+      <svg id="streak-svg" viewBox="0 0 480 230" preserveAspectRatio="none"></svg>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">相関ヒートマップ</div>
+          <div class="card-desc">始値・高値・安値・終値・出来高・騰落率どうしの相関係数(−1〜+1)。</div>
+        </div>
+      </div>
+      <svg id="corr-svg" viewBox="0 0 480 350" preserveAspectRatio="none"></svg>
+    </div>
+  </section>
+
+  <section class="row2">
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">出来高プロファイル</div>
+          <div class="card-desc">価格帯ごとの累積出来高(横棒)。バーが長い価格帯ほど、その水準で多くの取引が行われたことを示します。</div>
+        </div>
+      </div>
+      <svg id="volprofile-svg" viewBox="0 0 480 320" preserveAspectRatio="none"></svg>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">リターン分布の統計サマリー</div>
+          <div class="card-desc">騰落率(%)の分布を表す統計量。歪度・尖度は正規分布から見た偏りの大きさです。</div>
+        </div>
+      </div>
+      <div class="stat-table" id="stat-table"></div>
+    </div>
+  </section>
+
   <details class="tbl" id="tbl-details">
     <summary><span class="car">▶</span> 生データテーブルを表示(全 <span class="num" id="tbl-count">–</span> 行)</summary>
     <div class="tbl-scroll">
