@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JPN225 Pulse</title>
+<link rel="stylesheet" href="jpn225-ohlcv-dashboard.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <span class="ticker" id="brand-ticker">JPN225</span>
+      <span class="sub" id="brand-sub">EDA ダッシュボード · OHLCV</span>
+    </div>
+    <div class="top-right">
+      <div class="meta">
+        <span class="chip">期間 <span class="num" id="m-range">–</span></span>
+        <span class="chip">本数 <span class="num" id="m-n">–</span> 本</span>
+        <span class="chip" id="m-source-chip">ソース <span id="m-source">–</span></span>
+      </div>
+      <div class="file-controls">
+        <label class="btn-file" for="csv-input" tabindex="0">同じ形式のCSVを選択</label>
+        <input type="file" id="csv-input" accept=".csv,text/csv" hidden />
+        <button type="button" id="reset-btn" class="btn-ghost" hidden>既定データに戻す</button>
+      </div>
+    </div>
+  </header>
+
+  <div id="error-banner" class="error-banner" role="alert" hidden></div>
+
+  <section class="kpi-row" id="kpi-row"></section>
+
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <div class="card-title">価格推移(ローソク足)と出来高</div>
+        <div class="card-desc">各バーの始値・高値・安値・終値、移動平均線(MA5/MA10)、出来高。パネル上でカーソルを動かすと詳細を表示します。</div>
+      </div>
+      <div class="legend">
+        <span class="item"><span class="swatch" style="background:var(--good)"></span>陽線(上昇)</span>
+        <span class="item"><span class="swatch" style="background:var(--critical)"></span>陰線(下落)</span>
+        <span class="item"><span class="lkey" style="background:var(--series-2)"></span>MA5</span>
+        <span class="item"><span class="lkey" style="background:var(--series-3)"></span>MA10</span>
+      </div>
+    </div>
+    <div class="linked-group" id="price-group">
+      <div class="price-svg-wrap"><svg id="price-svg" viewBox="0 0 1000 380" preserveAspectRatio="none"></svg></div>
+      <div class="vol-svg-wrap"><svg id="vol-svg" viewBox="0 0 1000 150" preserveAspectRatio="none"></svg></div>
+    </div>
+  </section>
+
+  <section class="row2">
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">累積リターン</div>
+          <div class="card-desc" id="cumret-desc">起点終値を0%とした累積騰落率の推移。</div>
+        </div>
+      </div>
+      <svg id="cumret-svg" viewBox="0 0 480 230" preserveAspectRatio="none"></svg>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">ドローダウン</div>
+          <div class="card-desc">直近高値からの下落率(%)。値が小さいほど下落が深いことを示します。</div>
+        </div>
+      </div>
+      <svg id="dd-svg" viewBox="0 0 480 190" preserveAspectRatio="none"></svg>
+    </div>
+  </section>
+
+  <section class="row2">
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">リターン分布</div>
+          <div class="card-desc">各バーの騰落率(%)のヒストグラム。</div>
+        </div>
+        <div class="legend">
+          <span class="item"><span class="swatch" style="background:var(--good)"></span>プラス</span>
+          <span class="item"><span class="swatch" style="background:var(--critical)"></span>マイナス</span>
+        </div>
+      </div>
+      <svg id="hist-svg" viewBox="0 0 480 250" preserveAspectRatio="none"></svg>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">出来高 × 値動きの大きさ</div>
+          <div class="card-desc">出来高(横軸)とリターン絶対値(縦軸)の関係。右上に集まるほど「出来高が多い日ほど値動きも大きい」傾向を示します。</div>
+        </div>
+      </div>
+      <svg id="scatter-svg" viewBox="0 0 480 250" preserveAspectRatio="none"></svg>
+    </div>
+  </section>
+
+  <details class="tbl" id="tbl-details">
+    <summary><span class="car">▶</span> 生データテーブルを表示(全 <span class="num" id="tbl-count">–</span> 行)</summary>
+    <div class="tbl-scroll">
+      <table id="data-table">
+        <thead>
+          <tr>
+            <th>日付</th><th>始値</th><th>高値</th><th>安値</th><th>終値</th><th>出来高</th>
+            <th>騰落率%</th><th>MA5</th><th>MA10</th><th>DD%</th>
+          </tr>
+        </thead>
+        <tbody id="tbl-body"></tbody>
+      </table>
+    </div>
+  </details>
+
+  <footer class="note" id="foot-note">読み込み中…</footer>
+</div>
+
+<div id="tooltip" role="status" aria-live="polite"></div>
+
+<script src="jpn225-ohlcv-dashboard.js" defer></script>
+</body>
+</html>
