@@ -32,4 +32,8 @@ https://tztechno.github.io/tz_html_works2/12_tarot/tarot-oracle.html
 
 https://tztechno.github.io/tz_html_works2/12_tarot/tarot-oracle-light.html
 
+https://tztechno.github.io/tz_html_works2/13_stock_dashboard/index.html
+
+https://tztechno.github.io/tz_html_works2/14_cresating_game/index.html
+
 
