@@ -36,5 +36,5 @@ https://tztechno.github.io/tz_html_works2/13_stock_dashboard/jpn225-ohlcv-dashbo
 
 https://tztechno.github.io/tz_html_works2/14_youtube_dashboard/youtube_dashboard.html
 
-
+https://tztechno.github.io/tz_html_works2/15_earthquake_dashboard/indonesia_earthquake_dashboard.html
 
