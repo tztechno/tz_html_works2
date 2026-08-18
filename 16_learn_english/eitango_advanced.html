@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>上級英単語クイズ</title>
+<style>
+  :root{
+    --bg:#f7f7f5;
+    --panel:#ffffff;
+    --accent:#c96442;
+    --accent-dark:#a84f34;
+    --text:#2b2620;
+    --muted:#8a8378;
+    --border:#e4e0d8;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    background:var(--bg);
+    color:var(--text);
+  }
+  header{
+    padding:16px 20px;
+    background:var(--panel);
+    border-bottom:1px solid var(--border);
+  }
+  header h1{
+    font-size:18px;
+    margin:0;
+  }
+  .container{
+    max-width:720px;
+    margin:0 auto;
+    padding:16px;
+  }
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:18px;
+    margin-bottom:16px;
+  }
+  .panel h2{
+    font-size:15px;
+    margin:0 0 12px 0;
+    color:var(--accent-dark);
+  }
+  .checkbox-row{
+    display:flex;
+    gap:14px;
+    flex-wrap:wrap;
+    margin-bottom:12px;
+  }
+  .checkbox-row label{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:14px;
+  }
+  button{
+    cursor:pointer;
+    border:none;
+    border-radius:8px;
+    padding:9px 18px;
+    font-size:14px;
+    font-weight:600;
+  }
+  .btn-primary{background:var(--accent); color:#fff;}
+  .btn-primary:hover{background:var(--accent-dark);}
+  .btn-secondary{background:#efece5; color:var(--text);}
+  .btn-secondary:disabled{opacity:0.5; cursor:not-allowed;}
+  #quizPanel{display:none;}
+  #resultPanel{display:none;}
+  .progress{
+    font-size:13px;
+    color:var(--muted);
+    margin-bottom:6px;
+  }
+  .jp-word{
+    font-size:26px;
+    font-weight:700;
+    line-height:1.5;
+    margin-bottom:14px;
+  }
+  input[type="text"]{
+    width:100%;
+    padding:10px;
+    border:1px solid var(--border);
+    border-radius:8px;
+    font-size:16px;
+    font-family:inherit;
+  }
+  .action-row{
+    display:flex;
+    gap:10px;
+    margin-top:12px;
+    flex-wrap:wrap;
+  }
+  .answer-box{
+    margin-top:16px;
+    padding:14px;
+    background:#faf9f6;
+    border:1px solid var(--border);
+    border-radius:10px;
+    display:none;
+  }
+  .answer-box .label{
+    font-size:12px;
+    color:var(--muted);
+    margin-bottom:8px;
+  }
+  .answer-box ul{
+    margin:0;
+    padding-left:20px;
+  }
+  .answer-box li{
+    font-size:18px;
+    margin-bottom:6px;
+  }
+  .answer-note{
+    font-size:12px;
+    color:var(--muted);
+    margin-top:8px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>上級英単語クイズ</h1>
+</header>
+
+<div class="container">
+
+  <!-- Settings panel -->
+  <div class="panel" id="settingsPanel">
+    <h2>出題設定（すべて上級レベルの単語です）</h2>
+    <div class="checkbox-row" id="categoryChecks"></div>
+    <button class="btn-primary" id="startBtn">クイズを始める</button>
+  </div>
+
+  <!-- Quiz panel -->
+  <div class="panel" id="quizPanel">
+    <div class="progress" id="progressLine"></div>
+    <div class="jp-word" id="jpWord"></div>
+    <input type="text" id="answerInput" placeholder="この意味に合う英単語を書いてみてください（送信はされません）">
+    <div class="action-row">
+      <button class="btn-primary" id="showBtn">解答例を見る</button>
+      <button class="btn-secondary" id="nextBtn" disabled>次の問題へ</button>
+    </div>
+
+    <div class="answer-box" id="answerBox">
+      <div class="label">解答例(参考)</div>
+      <ul id="answerList"></ul>
+      <div class="answer-note">正解は一通りではありません。同じ意味を表す別の単語でも問題ありません。</div>
+    </div>
+  </div>
+
+  <!-- Result panel -->
+  <div class="panel" id="resultPanel">
+    <h2>お疲れさまでした</h2>
+    <div id="finalDetail" style="color:var(--muted); font-size:14px;"></div>
+    <button class="btn-primary" id="restartBtn" style="margin-top:14px;">もう一度挑戦する</button>
+  </div>
+
+</div>
+
+<script>
+// ------------------------------------------------------------------
+// Question bank: 300 advanced-level vocabulary items across 6 themed
+// categories (50 each). Each item has a Japanese meaning and 1-2
+// example English words/phrases. These are examples, not the single
+// "correct" answer - other synonyms can be equally valid.
+// ------------------------------------------------------------------
+const QUESTIONS = [
+
+  // --- Academic / abstract vocabulary (学術・抽象語彙) ---
+  { category: "学術・抽象語彙", jp: "曖昧な", answers: ["ambiguous"] },
+  { category: "学術・抽象語彙", jp: "顕著な", answers: ["conspicuous", "salient"] },
+  { category: "学術・抽象語彙", jp: "説得力のある", answers: ["persuasive", "compelling"] },
+  { category: "学術・抽象語彙", jp: "一貫した", answers: ["consistent", "coherent"] },
+  { category: "学術・抽象語彙", jp: "矛盾した", answers: ["contradictory"] },
+  { category: "学術・抽象語彙", jp: "包括的な", answers: ["comprehensive"] },
+  { category: "学術・抽象語彙", jp: "厳密な", answers: ["rigorous"] },
+  { category: "学術・抽象語彙", jp: "経験的な", answers: ["empirical"] },
+  { category: "学術・抽象語彙", jp: "主観的な", answers: ["subjective"] },
+  { category: "学術・抽象語彙", jp: "客観的な", answers: ["objective"] },
+  { category: "学術・抽象語彙", jp: "仮説", answers: ["hypothesis"] },
+  { category: "学術・抽象語彙", jp: "前提", answers: ["premise"] },
+  { category: "学術・抽象語彙", jp: "推論", answers: ["inference"] },
+  { category: "学術・抽象語彙", jp: "検証する", answers: ["verify", "validate"] },
+  { category: "学術・抽象語彙", jp: "反証する", answers: ["refute", "disprove"] },
+  { category: "学術・抽象語彙", jp: "固有の", answers: ["inherent", "intrinsic"] },
+  { category: "学術・抽象語彙", jp: "相互の", answers: ["mutual", "reciprocal"] },
+  { category: "学術・抽象語彙", jp: "従来の", answers: ["conventional"] },
+  { category: "学術・抽象語彙", jp: "画期的な", answers: ["groundbreaking", "innovative"] },
+  { category: "学術・抽象語彙", jp: "曖昧さ", answers: ["ambiguity"] },
+  { category: "学術・抽象語彙", jp: "妥当性", answers: ["validity"] },
+  { category: "学術・抽象語彙", jp: "信頼性", answers: ["reliability"] },
+  { category: "学術・抽象語彙", jp: "逸脱する", answers: ["deviate"] },
+  { category: "学術・抽象語彙", jp: "匹敵する", answers: ["be comparable to", "rival"] },
+  { category: "学術・抽象語彙", jp: "顕著に", answers: ["markedly", "notably"] },
+  { category: "学術・抽象語彙", jp: "本質的な", answers: ["fundamental", "essential"] },
+  { category: "学術・抽象語彙", jp: "複雑にする", answers: ["complicate"] },
+  { category: "学術・抽象語彙", jp: "単純化する", answers: ["simplify"] },
+  { category: "学術・抽象語彙", jp: "統合する", answers: ["integrate"] },
+  { category: "学術・抽象語彙", jp: "区別する", answers: ["distinguish", "differentiate"] },
+  { category: "学術・抽象語彙", jp: "分類する", answers: ["classify", "categorize"] },
+  { category: "学術・抽象語彙", jp: "一般化する", answers: ["generalize"] },
+  { category: "学術・抽象語彙", jp: "具体化する", answers: ["embody", "concretize"] },
+  { category: "学術・抽象語彙", jp: "帰納的な", answers: ["inductive"] },
+  { category: "学術・抽象語彙", jp: "演繹的な", answers: ["deductive"] },
+  { category: "学術・抽象語彙", jp: "因果関係", answers: ["causality", "causal relationship"] },
+  { category: "学術・抽象語彙", jp: "相関関係", answers: ["correlation"] },
+  { category: "学術・抽象語彙", jp: "傾向", answers: ["tendency", "trend"] },
+  { category: "学術・抽象語彙", jp: "洞察", answers: ["insight"] },
+  { category: "学術・抽象語彙", jp: "概念", answers: ["concept", "notion"] },
+  { category: "学術・抽象語彙", jp: "枠組み", answers: ["framework"] },
+  { category: "学術・抽象語彙", jp: "手法", answers: ["methodology"] },
+  { category: "学術・抽象語彙", jp: "精査する", answers: ["scrutinize"] },
+  { category: "学術・抽象語彙", jp: "提唱する", answers: ["advocate", "propose"] },
+  { category: "学術・抽象語彙", jp: "論駁する", answers: ["refute"] },
+  { category: "学術・抽象語彙", jp: "立証する", answers: ["substantiate", "prove"] },
+  { category: "学術・抽象語彙", jp: "曖昧模糊とした", answers: ["vague", "obscure"] },
+  { category: "学術・抽象語彙", jp: "権威のある", answers: ["authoritative"] },
+  { category: "学術・抽象語彙", jp: "学際的な", answers: ["interdisciplinary"] },
+  { category: "学術・抽象語彙", jp: "普遍的な", answers: ["universal"] },
+
+  // --- Personality / character description (性格・人物描写) ---
+  { category: "性格・人物描写", jp: "頑固な", answers: ["stubborn", "obstinate"] },
+  { category: "性格・人物描写", jp: "寛大な", answers: ["generous", "magnanimous"] },
+  { category: "性格・人物描写", jp: "謙虚な", answers: ["humble", "modest"] },
+  { category: "性格・人物描写", jp: "傲慢な", answers: ["arrogant"] },
+  { category: "性格・人物描写", jp: "誠実な", answers: ["sincere", "honest"] },
+  { category: "性格・人物描写", jp: "冷静な", answers: ["calm", "composed"] },
+  { category: "性格・人物描写", jp: "大胆な", answers: ["bold", "audacious"] },
+  { category: "性格・人物描写", jp: "臆病な", answers: ["cowardly", "timid"] },
+  { category: "性格・人物描写", jp: "几帳面な", answers: ["meticulous"] },
+  { category: "性格・人物描写", jp: "無頓着な", answers: ["indifferent", "nonchalant"] },
+  { category: "性格・人物描写", jp: "内向的な", answers: ["introverted"] },
+  { category: "性格・人物描写", jp: "外向的な", answers: ["extroverted"] },
+  { category: "性格・人物描写", jp: "楽観的な", answers: ["optimistic"] },
+  { category: "性格・人物描写", jp: "悲観的な", answers: ["pessimistic"] },
+  { category: "性格・人物描写", jp: "忍耐強い", answers: ["patient"] },
+  { category: "性格・人物描写", jp: "せっかちな", answers: ["impatient"] },
+  { category: "性格・人物描写", jp: "気まぐれな", answers: ["capricious", "fickle"] },
+  { category: "性格・人物描写", jp: "頼りになる", answers: ["dependable", "reliable"] },
+  { category: "性格・人物描写", jp: "用心深い", answers: ["cautious", "wary"] },
+  { category: "性格・人物描写", jp: "大らかな", answers: ["easygoing", "broad-minded"] },
+  { category: "性格・人物描写", jp: "皮肉な", answers: ["sarcastic", "cynical"] },
+  { category: "性格・人物描写", jp: "感受性が強い", answers: ["sensitive"] },
+  { category: "性格・人物描写", jp: "鈍感な", answers: ["insensitive"] },
+  { category: "性格・人物描写", jp: "独創的な", answers: ["original", "inventive"] },
+  { category: "性格・人物描写", jp: "保守的な", answers: ["conservative"] },
+  { category: "性格・人物描写", jp: "進歩的な", answers: ["progressive"] },
+  { category: "性格・人物描写", jp: "頑固さ", answers: ["stubbornness"] },
+  { category: "性格・人物描写", jp: "気高い", answers: ["noble"] },
+  { category: "性格・人物描写", jp: "卑劣な", answers: ["despicable", "vile"] },
+  { category: "性格・人物描写", jp: "貪欲な", answers: ["greedy", "avaricious"] },
+  { category: "性格・人物描写", jp: "律儀な", answers: ["dutiful", "conscientious"] },
+  { category: "性格・人物描写", jp: "冷淡な", answers: ["cold", "callous"] },
+  { category: "性格・人物描写", jp: "情熱的な", answers: ["passionate"] },
+  { category: "性格・人物描写", jp: "無関心な", answers: ["apathetic"] },
+  { category: "性格・人物描写", jp: "神経質な", answers: ["nervous", "neurotic"] },
+  { category: "性格・人物描写", jp: "図々しい", answers: ["shameless", "brazen"] },
+  { category: "性格・人物描写", jp: "従順な", answers: ["obedient", "docile"] },
+  { category: "性格・人物描写", jp: "反抗的な", answers: ["rebellious"] },
+  { category: "性格・人物描写", jp: "気前が良い", answers: ["generous"] },
+  { category: "性格・人物描写", jp: "けちな", answers: ["stingy", "miserly"] },
+  { category: "性格・人物描写", jp: "優柔不断な", answers: ["indecisive"] },
+  { category: "性格・人物描写", jp: "決断力のある", answers: ["decisive"] },
+  { category: "性格・人物描写", jp: "社交的な", answers: ["sociable", "gregarious"] },
+  { category: "性格・人物描写", jp: "内気な", answers: ["shy", "bashful"] },
+  { category: "性格・人物描写", jp: "実直な", answers: ["honest", "upright"] },
+  { category: "性格・人物描写", jp: "狡猾な", answers: ["cunning", "sly"] },
+  { category: "性格・人物描写", jp: "勤勉な", answers: ["diligent", "industrious"] },
+  { category: "性格・人物描写", jp: "怠惰な", answers: ["lazy", "indolent"] },
+  { category: "性格・人物描写", jp: "几帳面さ", answers: ["meticulousness"] },
+  { category: "性格・人物描写", jp: "落ち着いた", answers: ["composed", "level-headed"] },
+
+  // --- Emotions / psychological states (感情・心理状態) ---
+  { category: "感情・心理状態", jp: "憂鬱な", answers: ["gloomy", "melancholic"] },
+  { category: "感情・心理状態", jp: "不安", answers: ["anxiety"] },
+  { category: "感情・心理状態", jp: "焦り", answers: ["impatience", "anxiousness"] },
+  { category: "感情・心理状態", jp: "安堵", answers: ["relief"] },
+  { category: "感情・心理状態", jp: "高揚感", answers: ["elation", "exhilaration"] },
+  { category: "感情・心理状態", jp: "絶望", answers: ["despair"] },
+  { category: "感情・心理状態", jp: "失望", answers: ["disappointment"] },
+  { category: "感情・心理状態", jp: "後悔", answers: ["regret"] },
+  { category: "感情・心理状態", jp: "羨望", answers: ["envy"] },
+  { category: "感情・心理状態", jp: "嫉妬", answers: ["jealousy"] },
+  { category: "感情・心理状態", jp: "罪悪感", answers: ["guilt"] },
+  { category: "感情・心理状態", jp: "恥", answers: ["shame"] },
+  { category: "感情・心理状態", jp: "誇り", answers: ["pride"] },
+  { category: "感情・心理状態", jp: "驚愕", answers: ["astonishment", "shock"] },
+  { category: "感情・心理状態", jp: "困惑", answers: ["confusion", "bewilderment"] },
+  { category: "感情・心理状態", jp: "苛立ち", answers: ["irritation", "frustration"] },
+  { category: "感情・心理状態", jp: "恐怖", answers: ["fear", "terror"] },
+  { category: "感情・心理状態", jp: "憤慨", answers: ["indignation"] },
+  { category: "感情・心理状態", jp: "満足感", answers: ["satisfaction", "fulfillment"] },
+  { category: "感情・心理状態", jp: "空虚感", answers: ["emptiness"] },
+  { category: "感情・心理状態", jp: "孤独感", answers: ["loneliness"] },
+  { category: "感情・心理状態", jp: "疎外感", answers: ["alienation"] },
+  { category: "感情・心理状態", jp: "圧倒される", answers: ["be overwhelmed"] },
+  { category: "感情・心理状態", jp: "動揺する", answers: ["be upset", "be shaken"] },
+  { category: "感情・心理状態", jp: "落胆する", answers: ["be discouraged", "be disheartened"] },
+  { category: "感情・心理状態", jp: "苦悩する", answers: ["agonize", "be distressed"] },
+  { category: "感情・心理状態", jp: "陶酔する", answers: ["be enraptured", "be intoxicated with joy"] },
+  { category: "感情・心理状態", jp: "感動する", answers: ["be moved", "be touched"] },
+  { category: "感情・心理状態", jp: "怯える", answers: ["be frightened", "be terrified"] },
+  { category: "感情・心理状態", jp: "悔しい", answers: ["frustrating", "regrettable"] },
+  { category: "感情・心理状態", jp: "切ない", answers: ["heartbreaking", "poignant"] },
+  { category: "感情・心理状態", jp: "うんざりする", answers: ["be fed up"] },
+  { category: "感情・心理状態", jp: "動揺", answers: ["agitation", "distress"] },
+  { category: "感情・心理状態", jp: "安心感", answers: ["sense of security"] },
+  { category: "感情・心理状態", jp: "緊張", answers: ["tension", "nervousness"] },
+  { category: "感情・心理状態", jp: "興奮", answers: ["excitement"] },
+  { category: "感情・心理状態", jp: "憂う", answers: ["worry about", "be concerned about"] },
+  { category: "感情・心理状態", jp: "気まずい", answers: ["awkward"] },
+  { category: "感情・心理状態", jp: "もどかしい", answers: ["frustrating"] },
+  { category: "感情・心理状態", jp: "未練", answers: ["lingering attachment", "reluctance to let go"] },
+  { category: "感情・心理状態", jp: "虚しい", answers: ["futile", "empty"] },
+  { category: "感情・心理状態", jp: "心を奪われる", answers: ["be captivated"] },
+  { category: "感情・心理状態", jp: "心を痛める", answers: ["be pained", "be distressed"] },
+  { category: "感情・心理状態", jp: "涙もろい", answers: ["tearful", "easily moved to tears"] },
+  { category: "感情・心理状態", jp: "心が折れる", answers: ["be heartbroken", "lose heart"] },
+  { category: "感情・心理状態", jp: "動じない", answers: ["unshaken", "unfazed"] },
+  { category: "感情・心理状態", jp: "気が滅入る", answers: ["feel depressed"] },
+  { category: "感情・心理状態", jp: "胸を打つ", answers: ["be touching", "be moving"] },
+  { category: "感情・心理状態", jp: "憐れみ", answers: ["pity", "compassion"] },
+  { category: "感情・心理状態", jp: "感謝の念", answers: ["gratitude"] },
+
+  // --- Business / formal expressions (ビジネス・フォーマル表現) ---
+  { category: "ビジネス・フォーマル表現", jp: "交渉する", answers: ["negotiate"] },
+  { category: "ビジネス・フォーマル表現", jp: "妥協する", answers: ["compromise"] },
+  { category: "ビジネス・フォーマル表現", jp: "提携する", answers: ["form a partnership", "collaborate"] },
+  { category: "ビジネス・フォーマル表現", jp: "合併する", answers: ["merge"] },
+  { category: "ビジネス・フォーマル表現", jp: "買収する", answers: ["acquire"] },
+  { category: "ビジネス・フォーマル表現", jp: "委託する", answers: ["entrust", "outsource"] },
+  { category: "ビジネス・フォーマル表現", jp: "履行する", answers: ["fulfill", "execute"] },
+  { category: "ビジネス・フォーマル表現", jp: "遵守する", answers: ["comply with", "adhere to"] },
+  { category: "ビジネス・フォーマル表現", jp: "是正する", answers: ["rectify", "correct"] },
+  { category: "ビジネス・フォーマル表現", jp: "承認する", answers: ["approve", "authorize"] },
+  { category: "ビジネス・フォーマル表現", jp: "却下する", answers: ["reject", "dismiss"] },
+  { category: "ビジネス・フォーマル表現", jp: "撤回する", answers: ["withdraw", "retract"] },
+  { category: "ビジネス・フォーマル表現", jp: "保留する", answers: ["hold in abeyance", "postpone"] },
+  { category: "ビジネス・フォーマル表現", jp: "猶予", answers: ["grace period", "extension"] },
+  { category: "ビジネス・フォーマル表現", jp: "精算する", answers: ["settle accounts", "reconcile"] },
+  { category: "ビジネス・フォーマル表現", jp: "見積もる", answers: ["estimate"] },
+  { category: "ビジネス・フォーマル表現", jp: "概算", answers: ["rough estimate"] },
+  { category: "ビジネス・フォーマル表現", jp: "予算を組む", answers: ["allocate a budget"] },
+  { category: "ビジネス・フォーマル表現", jp: "逼迫する", answers: ["be under strain", "be tight (financially)"] },
+  { category: "ビジネス・フォーマル表現", jp: "好転する", answers: ["turn around", "improve"] },
+  { category: "ビジネス・フォーマル表現", jp: "悪化する", answers: ["deteriorate", "worsen"] },
+  { category: "ビジネス・フォーマル表現", jp: "停滞する", answers: ["stagnate"] },
+  { category: "ビジネス・フォーマル表現", jp: "促進する", answers: ["promote", "facilitate"] },
+  { category: "ビジネス・フォーマル表現", jp: "阻害する", answers: ["hinder", "impede"] },
+  { category: "ビジネス・フォーマル表現", jp: "削減する", answers: ["cut", "reduce"] },
+  { category: "ビジネス・フォーマル表現", jp: "拡大する", answers: ["expand"] },
+  { category: "ビジネス・フォーマル表現", jp: "縮小する", answers: ["shrink", "downsize"] },
+  { category: "ビジネス・フォーマル表現", jp: "効率化する", answers: ["streamline"] },
+  { category: "ビジネス・フォーマル表現", jp: "円滑にする", answers: ["smooth", "facilitate"] },
+  { category: "ビジネス・フォーマル表現", jp: "義務付ける", answers: ["obligate", "mandate"] },
+  { category: "ビジネス・フォーマル表現", jp: "免除する", answers: ["exempt"] },
+  { category: "ビジネス・フォーマル表現", jp: "補償する", answers: ["compensate"] },
+  { category: "ビジネス・フォーマル表現", jp: "賠償する", answers: ["indemnify", "pay damages"] },
+  { category: "ビジネス・フォーマル表現", jp: "委任する", answers: ["delegate"] },
+  { category: "ビジネス・フォーマル表現", jp: "統括する", answers: ["oversee", "supervise"] },
+  { category: "ビジネス・フォーマル表現", jp: "監督する", answers: ["supervise", "oversee"] },
+  { category: "ビジネス・フォーマル表現", jp: "徹底する", answers: ["thoroughly enforce", "implement strictly"] },
+  { category: "ビジネス・フォーマル表現", jp: "網羅する", answers: ["cover comprehensively", "encompass"] },
+  { category: "ビジネス・フォーマル表現", jp: "精通している", answers: ["be well versed in", "be proficient in"] },
+  { category: "ビジネス・フォーマル表現", jp: "熟練した", answers: ["skilled", "proficient"] },
+  { category: "ビジネス・フォーマル表現", jp: "未熟な", answers: ["inexperienced", "immature"] },
+  { category: "ビジネス・フォーマル表現", jp: "慎重に検討する", answers: ["deliberate carefully", "consider carefully"] },
+  { category: "ビジネス・フォーマル表現", jp: "迅速に対応する", answers: ["respond promptly"] },
+  { category: "ビジネス・フォーマル表現", jp: "円満に解決する", answers: ["resolve amicably"] },
+  { category: "ビジネス・フォーマル表現", jp: "抜本的な", answers: ["drastic", "fundamental"] },
+  { category: "ビジネス・フォーマル表現", jp: "暫定的な", answers: ["provisional", "tentative"] },
+  { category: "ビジネス・フォーマル表現", jp: "打診する", answers: ["sound out", "make an informal inquiry"] },
+  { category: "ビジネス・フォーマル表現", jp: "明文化する", answers: ["codify", "put into writing"] },
+  { category: "ビジネス・フォーマル表現", jp: "職務経歴", answers: ["work history", "career history"] },
+  { category: "ビジネス・フォーマル表現", jp: "内定", answers: ["job offer"] },
+
+  // --- Society / politics / economy (社会・政治・経済) ---
+  { category: "社会・政治・経済", jp: "格差", answers: ["disparity", "gap"] },
+  { category: "社会・政治・経済", jp: "不平等", answers: ["inequality"] },
+  { category: "社会・政治・経済", jp: "貧困", answers: ["poverty"] },
+  { category: "社会・政治・経済", jp: "富裕層", answers: ["the wealthy", "the affluent"] },
+  { category: "社会・政治・経済", jp: "少子高齢化", answers: ["declining birthrate and aging population"] },
+  { category: "社会・政治・経済", jp: "過疎化", answers: ["depopulation"] },
+  { category: "社会・政治・経済", jp: "都市化", answers: ["urbanization"] },
+  { category: "社会・政治・経済", jp: "少数派", answers: ["minority"] },
+  { category: "社会・政治・経済", jp: "多数派", answers: ["majority"] },
+  { category: "社会・政治・経済", jp: "世論", answers: ["public opinion"] },
+  { category: "社会・政治・経済", jp: "選挙", answers: ["election"] },
+  { category: "社会・政治・経済", jp: "投票率", answers: ["voter turnout"] },
+  { category: "社会・政治・経済", jp: "政策", answers: ["policy"] },
+  { category: "社会・政治・経済", jp: "規制", answers: ["regulation"] },
+  { category: "社会・政治・経済", jp: "規制緩和", answers: ["deregulation"] },
+  { category: "社会・政治・経済", jp: "補助金", answers: ["subsidy"] },
+  { category: "社会・政治・経済", jp: "増税", answers: ["tax increase"] },
+  { category: "社会・政治・経済", jp: "減税", answers: ["tax cut"] },
+  { category: "社会・政治・経済", jp: "財政赤字", answers: ["fiscal deficit"] },
+  { category: "社会・政治・経済", jp: "経済成長", answers: ["economic growth"] },
+  { category: "社会・政治・経済", jp: "景気後退", answers: ["economic recession"] },
+  { category: "社会・政治・経済", jp: "インフレ", answers: ["inflation"] },
+  { category: "社会・政治・経済", jp: "デフレ", answers: ["deflation"] },
+  { category: "社会・政治・経済", jp: "失業率", answers: ["unemployment rate"] },
+  { category: "社会・政治・経済", jp: "労働力", answers: ["workforce", "labor force"] },
+  { category: "社会・政治・経済", jp: "移民", answers: ["immigration", "immigrant"] },
+  { category: "社会・政治・経済", jp: "難民", answers: ["refugee"] },
+  { category: "社会・政治・経済", jp: "環境破壊", answers: ["environmental destruction"] },
+  { category: "社会・政治・経済", jp: "持続可能性", answers: ["sustainability"] },
+  { category: "社会・政治・経済", jp: "温暖化", answers: ["global warming"] },
+  { category: "社会・政治・経済", jp: "汚染", answers: ["pollution"] },
+  { category: "社会・政治・経済", jp: "資源", answers: ["resources"] },
+  { category: "社会・政治・経済", jp: "再生可能な", answers: ["renewable"] },
+  { category: "社会・政治・経済", jp: "独占", answers: ["monopoly"] },
+  { category: "社会・政治・経済", jp: "競争", answers: ["competition"] },
+  { category: "社会・政治・経済", jp: "需要", answers: ["demand"] },
+  { category: "社会・政治・経済", jp: "供給", answers: ["supply"] },
+  { category: "社会・政治・経済", jp: "市場", answers: ["market"] },
+  { category: "社会・政治・経済", jp: "貿易摩擦", answers: ["trade friction"] },
+  { category: "社会・政治・経済", jp: "関税", answers: ["tariff"] },
+  { category: "社会・政治・経済", jp: "制裁", answers: ["sanctions"] },
+  { category: "社会・政治・経済", jp: "外交", answers: ["diplomacy"] },
+  { category: "社会・政治・経済", jp: "主権", answers: ["sovereignty"] },
+  { category: "社会・政治・経済", jp: "民主主義", answers: ["democracy"] },
+  { category: "社会・政治・経済", jp: "独裁", answers: ["dictatorship", "authoritarian rule"] },
+  { category: "社会・政治・経済", jp: "世論調査", answers: ["public opinion poll"] },
+  { category: "社会・政治・経済", jp: "社会保障", answers: ["social security"] },
+  { category: "社会・政治・経済", jp: "福祉", answers: ["welfare"] },
+  { category: "社会・政治・経済", jp: "差別", answers: ["discrimination"] },
+  { category: "社会・政治・経済", jp: "偏見", answers: ["prejudice", "bias"] },
+
+  // --- Degree / change / causality (程度・変化・因果関係を表す語) ---
+  { category: "程度・変化・因果関係", jp: "著しい", answers: ["remarkable", "significant"] },
+  { category: "程度・変化・因果関係", jp: "わずかな", answers: ["slight", "marginal"] },
+  { category: "程度・変化・因果関係", jp: "急激な", answers: ["drastic", "rapid"] },
+  { category: "程度・変化・因果関係", jp: "緩やかな", answers: ["gradual"] },
+  { category: "程度・変化・因果関係", jp: "徐々に", answers: ["gradually"] },
+  { category: "程度・変化・因果関係", jp: "急速に", answers: ["rapidly"] },
+  { category: "程度・変化・因果関係", jp: "著しく", answers: ["markedly", "significantly"] },
+  { category: "程度・変化・因果関係", jp: "大幅に", answers: ["substantially", "significantly"] },
+  { category: "程度・変化・因果関係", jp: "わずかに", answers: ["slightly"] },
+  { category: "程度・変化・因果関係", jp: "一時的な", answers: ["temporary"] },
+  { category: "程度・変化・因果関係", jp: "恒久的な", answers: ["permanent"] },
+  { category: "程度・変化・因果関係", jp: "不可逆的な", answers: ["irreversible"] },
+  { category: "程度・変化・因果関係", jp: "可逆的な", answers: ["reversible"] },
+  { category: "程度・変化・因果関係", jp: "必然的な", answers: ["inevitable"] },
+  { category: "程度・変化・因果関係", jp: "偶発的な", answers: ["accidental", "incidental"] },
+  { category: "程度・変化・因果関係", jp: "潜在的な", answers: ["potential", "latent"] },
+  { category: "程度・変化・因果関係", jp: "顕在化する", answers: ["become apparent", "manifest"] },
+  { category: "程度・変化・因果関係", jp: "結果として", answers: ["as a result", "consequently"] },
+  { category: "程度・変化・因果関係", jp: "起因する", answers: ["stem from", "originate from"] },
+  { category: "程度・変化・因果関係", jp: "誘発する", answers: ["trigger", "induce"] },
+  { category: "程度・変化・因果関係", jp: "助長する", answers: ["encourage", "aggravate"] },
+  { category: "程度・変化・因果関係", jp: "阻止する", answers: ["prevent", "block"] },
+  { category: "程度・変化・因果関係", jp: "抑制する", answers: ["suppress", "restrain"] },
+  { category: "程度・変化・因果関係", jp: "促す", answers: ["prompt", "urge"] },
+  { category: "程度・変化・因果関係", jp: "妨げる", answers: ["hinder", "impede"] },
+  { category: "程度・変化・因果関係", jp: "加速する", answers: ["accelerate"] },
+  { category: "程度・変化・因果関係", jp: "減速する", answers: ["decelerate", "slow down"] },
+  { category: "程度・変化・因果関係", jp: "増加する", answers: ["increase"] },
+  { category: "程度・変化・因果関係", jp: "減少する", answers: ["decrease"] },
+  { category: "程度・変化・因果関係", jp: "急増する", answers: ["surge", "soar"] },
+  { category: "程度・変化・因果関係", jp: "急減する", answers: ["plummet", "plunge"] },
+  { category: "程度・変化・因果関係", jp: "変動する", answers: ["fluctuate"] },
+  { category: "程度・変化・因果関係", jp: "安定する", answers: ["stabilize"] },
+  { category: "程度・変化・因果関係", jp: "悪化させる", answers: ["aggravate", "worsen"] },
+  { category: "程度・変化・因果関係", jp: "改善する", answers: ["improve"] },
+  { category: "程度・変化・因果関係", jp: "劇的な", answers: ["dramatic"] },
+  { category: "程度・変化・因果関係", jp: "微妙な", answers: ["subtle"] },
+  { category: "程度・変化・因果関係", jp: "顕著な差", answers: ["marked difference"] },
+  { category: "程度・変化・因果関係", jp: "相対的な", answers: ["relative"] },
+  { category: "程度・変化・因果関係", jp: "絶対的な", answers: ["absolute"] },
+  { category: "程度・変化・因果関係", jp: "比例する", answers: ["be proportional to"] },
+  { category: "程度・変化・因果関係", jp: "反比例する", answers: ["be inversely proportional to"] },
+  { category: "程度・変化・因果関係", jp: "一時しのぎの", answers: ["stopgap", "makeshift"] },
+  { category: "程度・変化・因果関係", jp: "根本的な", answers: ["fundamental", "radical"] },
+  { category: "程度・変化・因果関係", jp: "表面的な", answers: ["superficial"] },
+  { category: "程度・変化・因果関係", jp: "一時的に", answers: ["temporarily"] },
+  { category: "程度・変化・因果関係", jp: "恒常的な", answers: ["constant", "persistent"] },
+  { category: "程度・変化・因果関係", jp: "断続的な", answers: ["intermittent"] },
+  { category: "程度・変化・因果関係", jp: "連続的な", answers: ["continuous"] },
+  { category: "程度・変化・因果関係", jp: "累積的な", answers: ["cumulative"] }
+];
+
+// ------------------------------------------------------------------
+// Utility: shuffle an array in place (Fisher-Yates)
+// ------------------------------------------------------------------
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+// ------------------------------------------------------------------
+// App state
+// ------------------------------------------------------------------
+let queue = [];
+let currentIndex = 0;
+
+const el = (id) => document.getElementById(id);
+
+// ------------------------------------------------------------------
+// Build category checkboxes from the question bank
+// ------------------------------------------------------------------
+const categories = [...new Set(QUESTIONS.map((q) => q.category))];
+const categoryChecks = el("categoryChecks");
+categories.forEach((cat) => {
+  const label = document.createElement("label");
+  const input = document.createElement("input");
+  input.type = "checkbox";
+  input.checked = true;
+  input.dataset.category = cat;
+  label.appendChild(input);
+  label.appendChild(document.createTextNode(" " + cat));
+  categoryChecks.appendChild(label);
+});
+
+// ------------------------------------------------------------------
+// Start quiz: filter questions by selected categories, then shuffle
+// ------------------------------------------------------------------
+el("startBtn").addEventListener("click", () => {
+  const selectedCategories = [...categoryChecks.querySelectorAll("input:checked")].map(
+    (c) => c.dataset.category
+  );
+
+  queue = QUESTIONS.filter((q) => selectedCategories.includes(q.category));
+  shuffle(queue);
+
+  if (queue.length === 0) {
+    alert("条件に合う問題がありません。カテゴリーを選び直してください。");
+    return;
+  }
+
+  currentIndex = 0;
+  el("settingsPanel").style.display = "none";
+  el("resultPanel").style.display = "none";
+  el("quizPanel").style.display = "block";
+  showQuestion();
+});
+
+function showQuestion() {
+  const q = queue[currentIndex];
+  el("progressLine").textContent =
+    "問題 " + (currentIndex + 1) + " / " + queue.length + "　[" + q.category + "]";
+  el("jpWord").textContent = q.jp;
+  el("answerInput").value = "";
+  el("answerBox").style.display = "none";
+  el("nextBtn").disabled = true;
+  el("answerInput").focus();
+}
+
+// ------------------------------------------------------------------
+// Reveal the example answers for the current question (no grading)
+// ------------------------------------------------------------------
+el("showBtn").addEventListener("click", () => {
+  const q = queue[currentIndex];
+  const list = el("answerList");
+  list.innerHTML = "";
+  q.answers.forEach((a) => {
+    const li = document.createElement("li");
+    li.textContent = a;
+    list.appendChild(li);
+  });
+  el("answerBox").style.display = "block";
+  el("nextBtn").disabled = false;
+});
+
+// ------------------------------------------------------------------
+// Move to next question or finish
+// ------------------------------------------------------------------
+el("nextBtn").addEventListener("click", () => {
+  currentIndex++;
+  if (currentIndex >= queue.length) {
+    showResults();
+  } else {
+    showQuestion();
+  }
+});
+
+function showResults() {
+  el("quizPanel").style.display = "none";
+  el("resultPanel").style.display = "block";
+  el("finalDetail").textContent = "全" + queue.length + "問終了しました。";
+}
+
+el("restartBtn").addEventListener("click", () => {
+  el("resultPanel").style.display = "none";
+  el("settingsPanel").style.display = "block";
+});
+
+// Allow pressing Enter in the answer field to reveal the example answers
+el("answerInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") el("showBtn").click();
+});
+</script>
+
+</body>
+</html>
