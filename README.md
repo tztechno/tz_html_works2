@@ -42,5 +42,4 @@ https://tztechno.github.io/tz_html_works2/16_learn_english/waei_quiz_2.html
 
 https://tztechno.github.io/tz_html_works2/16_learn_english/eibun_qa_2.html
 
-
-
+https://tztechno.github.io/tz_html_works2/17_classify/classification_quiz_app.html
