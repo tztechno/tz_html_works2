@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>分類クイズアプリ</title>
+<style>
+  :root {
+    --bg: #f6f7fb;
+    --card-bg: #ffffff;
+    --border: #dde1ea;
+    --text: #1f2430;
+    --text-muted: #6b7280;
+    --accent: #4f6df5;
+    --accent-light: #eef1ff;
+    --correct: #1f9d55;
+    --correct-bg: #e8f8ee;
+    --incorrect: #d64545;
+    --incorrect-bg: #fdecec;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px;
+  }
+  .wrap { max-width: 960px; margin: 0 auto; }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  .subtitle { color: var(--text-muted); margin-bottom: 24px; font-size: 14px; }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .card h2 { font-size: 16px; margin: 0 0 12px; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  button {
+    font-family: inherit;
+    font-size: 14px;
+    padding: 9px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--text);
+    cursor: pointer;
+  }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  button.primary:hover { filter: brightness(1.05); }
+  button:hover { background: #f0f2f8; }
+  button.primary:hover { background: var(--accent); filter: brightness(1.08); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  input[type="file"] { font-size: 14px; }
+  select, input[type="number"] {
+    font-family: inherit;
+    font-size: 14px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: #fff;
+  }
+  label.field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--text-muted); }
+  .hint { font-size: 12px; color: var(--text-muted); margin-top: 8px; line-height: 1.6; }
+  .pool {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-height: 48px;
+    padding: 10px;
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    background: #fbfbfd;
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: var(--accent-light);
+    border: 1px solid #c9d2ff;
+    color: #2c3a8f;
+    font-size: 13px;
+    cursor: pointer;
+    user-select: none;
+    transition: transform 0.1s ease;
+  }
+  .chip:active { transform: scale(0.97); }
+  .chip.selected { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .chip.correct { background: var(--correct-bg); border-color: #9fd8b5; color: var(--correct); }
+  .chip.incorrect { background: var(--incorrect-bg); border-color: #f0b8b8; color: var(--incorrect); }
+  .chip.locked { cursor: default; }
+  .boxes {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 14px;
+    margin-top: 16px;
+  }
+  .box {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    min-height: 90px;
+    background: #fbfbfd;
+  }
+  .box.dragover { border-color: var(--accent); background: var(--accent-light); }
+  .box-title { font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--text); }
+  .box-items { display: flex; flex-wrap: wrap; gap: 6px; min-height: 28px; }
+  .score-banner {
+    font-size: 16px;
+    font-weight: 600;
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+  }
+  .score-banner.good { background: var(--correct-bg); color: var(--correct); }
+  .score-banner.bad { background: var(--incorrect-bg); color: var(--incorrect); }
+  table.review { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+  table.review th, table.review td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  table.review th { color: var(--text-muted); font-weight: 600; }
+  .status-ok { color: var(--correct); font-weight: 600; }
+  .status-ng { color: var(--incorrect); font-weight: 600; }
+  .stage-hidden { display: none; }
+  .file-name { font-size: 13px; color: var(--text-muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>分類クイズアプリ</h1>
+  <div class="subtitle">CSVを読み込んで、アイテムを正しいカテゴリのボックスにドラッグ＆ドロップ（またはタップ）して分類しましょう。</div>
+
+  <!-- Stage 1: upload -->
+  <div class="card" id="stage-upload">
+    <h2>1. CSVを読み込む</h2>
+    <div class="row">
+      <input type="file" id="file-input" accept=".csv,text/csv">
+      <button id="btn-sample">サンプルCSVを使う（薬名と適応症）</button>
+    </div>
+    <div class="hint">
+      CSVは1行目をヘッダーとし、少なくとも2列（アイテム名の列とカテゴリの列）が必要です。<br>
+      例: 「薬名,適応症」のように、1つのアイテムに1つの正解カテゴリが対応する形式にしてください。
+    </div>
+  </div>
+
+  <!-- Stage 2: configure -->
+  <div class="card stage-hidden" id="stage-configure">
+    <h2>2. 列と出題数を設定する</h2>
+    <div class="row">
+      <label class="field">アイテム名の列
+        <select id="select-item-col"></select>
+      </label>
+      <label class="field">カテゴリ（正解）の列
+        <select id="select-category-col"></select>
+      </label>
+      <label class="field">出題数
+        <input type="number" id="input-count" min="1" value="1">
+      </label>
+    </div>
+    <div class="row" style="margin-top:14px;">
+      <button class="primary" id="btn-start-quiz">クイズを開始する</button>
+      <button id="btn-back-upload">別のCSVを読み込む</button>
+    </div>
+    <div class="file-name" id="detected-info" style="margin-top:10px;"></div>
+  </div>
+
+  <!-- Stage 3: quiz -->
+  <div class="card stage-hidden" id="stage-quiz">
+    <h2>3. アイテムをカテゴリに分類する</h2>
+    <div id="score-banner-slot"></div>
+    <div class="hint">未配置のアイテム（下の枠）をクリック（またはドラッグ）して選択し、正しいカテゴリのボックスをクリックして配置します。配置済みのアイテムをクリックすると枠に戻ります。</div>
+    <div style="margin-top:10px;">
+      <div class="box-title">未配置のアイテム</div>
+      <div class="pool" id="pool" ondragover="event.preventDefault(); this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')"></div>
+    </div>
+    <div class="boxes" id="boxes"></div>
+    <div class="row" style="margin-top:18px;">
+      <button class="primary" id="btn-grade">採点する</button>
+      <button id="btn-reset">配置をリセット</button>
+      <button id="btn-new-quiz">別の問題を出す</button>
+      <button id="btn-back-upload-2">別のCSVを読み込む</button>
+    </div>
+    <div id="review-slot"></div>
+  </div>
+</div>
+
+<script>
+// ---- Sample data (drug name / indication) used as a built-in demo dataset ----
+const SAMPLE_CSV = `薬名,適応症
+アムロジピン,高血圧
+ロサルタン,高血圧
+メトホルミン,糖尿病
+シタグリプチン,糖尿病
+オメプラゾール,胃潰瘍
+ランソプラゾール,胃潰瘍
+アトルバスタチン,脂質異常症
+ロスバスタチン,脂質異常症
+ワルファリン,血栓症
+アピキサバン,血栓症
+サルブタモール,気管支喘息
+モンテルカスト,気管支喘息
+フルオキセチン,うつ病
+セルトラリン,うつ病
+レボチロキシン,甲状腺機能低下症`;
+
+// ---- Global state ----
+let headers = [];
+let dataRows = [];       // array of arrays, excludes header row
+let itemColIdx = 0;
+let categoryColIdx = 1;
+let quizItems = [];      // [{id, name, category}]
+let placements = {};     // id -> category name or null
+let selectedId = null;
+let isGraded = false;
+
+// ---- Minimal RFC4180-ish CSV parser (handles quoted fields, commas, newlines) ----
+function parseCSV(text) {
+  const rows = [];
+  let field = '';
+  let row = [];
+  let inQuotes = false;
+  // Normalize line endings first is risky inside quoted fields, so parse char by char instead.
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++; }
+        else { inQuotes = false; }
+      } else {
+        field += c;
+      }
+    } else {
+      if (c === '"') {
+        inQuotes = true;
+      } else if (c === ',') {
+        row.push(field);
+        field = '';
+      } else if (c === '\n') {
+        row.push(field);
+        rows.push(row);
+        row = [];
+        field = '';
+      } else if (c === '\r') {
+        // skip, handled together with \n
+      } else {
+        field += c;
+      }
+    }
+  }
+  if (field.length > 0 || row.length > 0) {
+    row.push(field);
+    rows.push(row);
+  }
+  // Drop fully empty rows (e.g. trailing blank lines)
+  return rows.filter(r => r.some(cell => cell.trim() !== ''));
+}
+
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function showStage(id) {
+  ['stage-upload', 'stage-configure', 'stage-quiz'].forEach(s => {
+    document.getElementById(s).classList.toggle('stage-hidden', s !== id);
+  });
+}
+
+// ---- Stage 1: load CSV text and move to configure stage ----
+function loadCsvText(text) {
+  const rows = parseCSV(text);
+  if (rows.length < 2) {
+    alert('CSVにデータ行が見つかりませんでした。1行目はヘッダー、2行目以降がデータである必要があります。');
+    return;
+  }
+  headers = rows[0];
+  dataRows = rows.slice(1).filter(r => r.length >= 2);
+  itemColIdx = 0;
+  categoryColIdx = headers.length > 1 ? 1 : 0;
+
+  const itemSelect = document.getElementById('select-item-col');
+  const catSelect = document.getElementById('select-category-col');
+  itemSelect.innerHTML = '';
+  catSelect.innerHTML = '';
+  headers.forEach((h, idx) => {
+    const label = h && h.trim() ? h.trim() : `列${idx + 1}`;
+    itemSelect.appendChild(new Option(label, idx));
+    catSelect.appendChild(new Option(label, idx));
+  });
+  itemSelect.value = itemColIdx;
+  catSelect.value = categoryColIdx;
+
+  const countInput = document.getElementById('input-count');
+  countInput.max = dataRows.length;
+  countInput.value = dataRows.length;
+
+  document.getElementById('detected-info').textContent =
+    `${dataRows.length} 件のデータ行を検出しました。`;
+
+  showStage('stage-configure');
+}
+
+document.getElementById('file-input').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => loadCsvText(ev.target.result);
+  reader.readAsText(file, 'utf-8');
+});
+
+document.getElementById('btn-sample').addEventListener('click', () => {
+  loadCsvText(SAMPLE_CSV);
+});
+
+document.getElementById('btn-back-upload').addEventListener('click', () => {
+  showStage('stage-upload');
+});
+document.getElementById('btn-back-upload-2').addEventListener('click', () => {
+  showStage('stage-upload');
+});
+
+// ---- Stage 2: build quiz items from selected columns ----
+function buildQuizItems(count) {
+  itemColIdx = parseInt(document.getElementById('select-item-col').value, 10);
+  categoryColIdx = parseInt(document.getElementById('select-category-col').value, 10);
+
+  const seen = new Set();
+  const pairs = [];
+  dataRows.forEach(r => {
+    const name = (r[itemColIdx] || '').trim();
+    const category = (r[categoryColIdx] || '').trim();
+    if (!name || !category) return;
+    if (seen.has(name)) return; // dedupe by item name
+    seen.add(name);
+    pairs.push({ name, category });
+  });
+
+  const shuffled = shuffle(pairs).slice(0, count);
+  quizItems = shuffled.map((p, idx) => ({ id: 'item-' + idx, name: p.name, category: p.category }));
+  placements = {};
+  quizItems.forEach(it => { placements[it.id] = null; });
+  selectedId = null;
+  isGraded = false;
+}
+
+document.getElementById('btn-start-quiz').addEventListener('click', () => {
+  const count = Math.max(1, parseInt(document.getElementById('input-count').value, 10) || 1);
+  buildQuizItems(count);
+  if (quizItems.length === 0) {
+    alert('選択した列からは有効なデータが見つかりませんでした。列の選択を確認してください。');
+    return;
+  }
+  showStage('stage-quiz');
+  renderQuiz();
+});
+
+document.getElementById('btn-new-quiz').addEventListener('click', () => {
+  const count = quizItems.length;
+  buildQuizItems(count);
+  renderQuiz();
+});
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+  quizItems.forEach(it => { placements[it.id] = null; });
+  selectedId = null;
+  isGraded = false;
+  renderQuiz();
+});
+
+// ---- Stage 3: quiz rendering and interaction ----
+function placeItem(id, category) {
+  if (isGraded) return;
+  placements[id] = category;
+  selectedId = null;
+  renderQuiz();
+}
+
+function onChipClick(id) {
+  if (isGraded) return;
+  if (placements[id]) {
+    // Placed chip clicked -> send back to pool
+    placements[id] = null;
+    selectedId = null;
+  } else {
+    // Pool chip clicked -> toggle selection
+    selectedId = (selectedId === id) ? null : id;
+  }
+  renderQuiz();
+}
+
+function makeChipEl(item) {
+  const el = document.createElement('div');
+  el.className = 'chip';
+  el.textContent = item.name;
+  el.dataset.id = item.id;
+  if (!isGraded) {
+    el.draggable = true;
+    el.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData('text/plain', item.id);
+    });
+    el.addEventListener('click', () => onChipClick(item.id));
+    if (selectedId === item.id) el.classList.add('selected');
+  } else {
+    el.classList.add('locked');
+    if (placements[item.id] === item.category) {
+      el.classList.add('correct');
+    } else {
+      el.classList.add('incorrect');
+      const note = document.createElement('span');
+      note.style.fontSize = '11px';
+      note.style.opacity = '0.85';
+      note.textContent = `→ 正解: ${item.category}`;
+      el.appendChild(note);
+    }
+  }
+  return el;
+}
+
+function renderQuiz() {
+  // Pool: unplaced items
+  const pool = document.getElementById('pool');
+  pool.innerHTML = '';
+  quizItems.filter(it => !placements[it.id]).forEach(it => {
+    pool.appendChild(makeChipEl(it));
+  });
+  pool.ondrop = (e) => {
+    e.preventDefault();
+    pool.classList.remove('dragover');
+    const id = e.dataTransfer.getData('text/plain');
+    if (id) placeItem(id, null);
+  };
+
+  // Boxes: one per unique category, sorted for stable order
+  const categories = Array.from(new Set(quizItems.map(it => it.category))).sort((a, b) => a.localeCompare(b, 'ja'));
+  const boxesEl = document.getElementById('boxes');
+  boxesEl.innerHTML = '';
+  categories.forEach(cat => {
+    const box = document.createElement('div');
+    box.className = 'box';
+    box.ondragover = (e) => { e.preventDefault(); box.classList.add('dragover'); };
+    box.ondragleave = () => box.classList.remove('dragover');
+    box.ondrop = (e) => {
+      e.preventDefault();
+      box.classList.remove('dragover');
+      const id = e.dataTransfer.getData('text/plain');
+      if (id) placeItem(id, cat);
+    };
+    box.addEventListener('click', () => {
+      if (selectedId) placeItem(selectedId, cat);
+    });
+
+    const title = document.createElement('div');
+    title.className = 'box-title';
+    title.textContent = cat;
+    box.appendChild(title);
+
+    const itemsWrap = document.createElement('div');
+    itemsWrap.className = 'box-items';
+    quizItems.filter(it => placements[it.id] === cat).forEach(it => {
+      itemsWrap.appendChild(makeChipEl(it));
+    });
+    box.appendChild(itemsWrap);
+
+    boxesEl.appendChild(box);
+  });
+
+  // Score banner + review table (only meaningful after grading)
+  const bannerSlot = document.getElementById('score-banner-slot');
+  const reviewSlot = document.getElementById('review-slot');
+  if (isGraded) {
+    const total = quizItems.length;
+    const correct = quizItems.filter(it => placements[it.id] === it.category).length;
+    const pct = Math.round((correct / total) * 100);
+    const banner = document.createElement('div');
+    banner.className = 'score-banner ' + (pct === 100 ? 'good' : 'bad');
+    banner.textContent = `採点結果: ${correct} / ${total} 問正解（${pct}%）`;
+    bannerSlot.innerHTML = '';
+    bannerSlot.appendChild(banner);
+
+    const wrong = quizItems.filter(it => placements[it.id] !== it.category);
+    reviewSlot.innerHTML = '';
+    if (wrong.length > 0) {
+      const h = document.createElement('h2');
+      h.textContent = '間違えた問題の復習';
+      h.style.fontSize = '14px';
+      h.style.marginTop = '18px';
+      reviewSlot.appendChild(h);
+
+      const table = document.createElement('table');
+      table.className = 'review';
+      table.innerHTML = `<thead><tr><th>アイテム</th><th>あなたの回答</th><th>正解</th></tr></thead>`;
+      const tbody = document.createElement('tbody');
+      wrong.forEach(it => {
+        const tr = document.createElement('tr');
+        const yourAnswer = placements[it.id] || '（未回答）';
+        tr.innerHTML = `<td>${escapeHtml(it.name)}</td><td class="status-ng">${escapeHtml(yourAnswer)}</td><td class="status-ok">${escapeHtml(it.category)}</td>`;
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      reviewSlot.appendChild(table);
+    }
+  } else {
+    bannerSlot.innerHTML = '';
+    reviewSlot.innerHTML = '';
+  }
+
+  document.getElementById('btn-grade').disabled = isGraded;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+document.getElementById('btn-grade').addEventListener('click', () => {
+  isGraded = true;
+  selectedId = null;
+  renderQuiz();
+});
+</script>
+</body>
+</html>
