@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>和文英訳クイズ</title>
+<style>
+  :root{
+    --bg:#f7f7f5;
+    --panel:#ffffff;
+    --accent:#c96442;
+    --accent-dark:#a84f34;
+    --text:#2b2620;
+    --muted:#8a8378;
+    --border:#e4e0d8;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    background:var(--bg);
+    color:var(--text);
+  }
+  header{
+    padding:16px 20px;
+    background:var(--panel);
+    border-bottom:1px solid var(--border);
+  }
+  header h1{
+    font-size:18px;
+    margin:0;
+  }
+  .container{
+    max-width:720px;
+    margin:0 auto;
+    padding:16px;
+  }
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:18px;
+    margin-bottom:16px;
+  }
+  .panel h2{
+    font-size:15px;
+    margin:0 0 12px 0;
+    color:var(--accent-dark);
+  }
+  .checkbox-row{
+    display:flex;
+    gap:14px;
+    flex-wrap:wrap;
+    margin-bottom:12px;
+  }
+  .checkbox-row label{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:14px;
+  }
+  button{
+    cursor:pointer;
+    border:none;
+    border-radius:8px;
+    padding:9px 18px;
+    font-size:14px;
+    font-weight:600;
+  }
+  .btn-primary{background:var(--accent); color:#fff;}
+  .btn-primary:hover{background:var(--accent-dark);}
+  .btn-secondary{background:#efece5; color:var(--text);}
+  .btn-secondary:disabled{opacity:0.5; cursor:not-allowed;}
+  #quizPanel{display:none;}
+  #resultPanel{display:none;}
+  .progress{
+    font-size:13px;
+    color:var(--muted);
+    margin-bottom:6px;
+  }
+  .jp-sentence{
+    font-size:20px;
+    font-weight:700;
+    line-height:1.6;
+    margin-bottom:14px;
+  }
+  textarea{
+    width:100%;
+    min-height:70px;
+    padding:10px;
+    border:1px solid var(--border);
+    border-radius:8px;
+    font-size:15px;
+    font-family:inherit;
+    resize:vertical;
+  }
+  .action-row{
+    display:flex;
+    gap:10px;
+    margin-top:12px;
+    flex-wrap:wrap;
+  }
+  .answer-box{
+    margin-top:16px;
+    padding:14px;
+    background:#faf9f6;
+    border:1px solid var(--border);
+    border-radius:10px;
+    display:none;
+  }
+  .answer-box .label{
+    font-size:12px;
+    color:var(--muted);
+    margin-bottom:8px;
+  }
+  .answer-box ul{
+    margin:0;
+    padding-left:20px;
+  }
+  .answer-box li{
+    font-size:16px;
+    margin-bottom:6px;
+  }
+  .answer-note{
+    font-size:12px;
+    color:var(--muted);
+    margin-top:8px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>和文英訳クイズ</h1>
+</header>
+
+<div class="container">
+
+  <!-- Settings panel -->
+  <div class="panel" id="settingsPanel">
+    <h2>出題設定</h2>
+    <div class="checkbox-row" id="categoryChecks"></div>
+    <div class="checkbox-row">
+      <label><input type="checkbox" id="levelBeginner" checked> 初級</label>
+      <label><input type="checkbox" id="levelIntermediate" checked> 中級</label>
+      <label><input type="checkbox" id="levelAdvanced" checked> 上級</label>
+    </div>
+    <button class="btn-primary" id="startBtn">クイズを始める</button>
+  </div>
+
+  <!-- Quiz panel -->
+  <div class="panel" id="quizPanel">
+    <div class="progress" id="progressLine"></div>
+    <div class="jp-sentence" id="jpSentence"></div>
+    <textarea id="answerInput" placeholder="ここに自分で考えた英訳を書いてみてください（送信はされません）"></textarea>
+    <div class="action-row">
+      <button class="btn-primary" id="showBtn">解答例を見る</button>
+      <button class="btn-secondary" id="nextBtn" disabled>次の問題へ</button>
+    </div>
+
+    <div class="answer-box" id="answerBox">
+      <div class="label">解答例(参考)</div>
+      <ul id="answerList"></ul>
+      <div class="answer-note">正解は一通りではありません。意味が同じように伝われば、表現が違っていても問題ありません。</div>
+    </div>
+  </div>
+
+  <!-- Result panel -->
+  <div class="panel" id="resultPanel">
+    <h2>お疲れさまでした</h2>
+    <div id="finalDetail" style="color:var(--muted); font-size:14px;"></div>
+    <button class="btn-primary" id="restartBtn" style="margin-top:14px;">もう一度挑戦する</button>
+  </div>
+
+</div>
+
+<script>
+// ------------------------------------------------------------------
+// Question bank: each item has a Japanese prompt and 1-2 example
+// English translations. These are examples, not the single "correct"
+// answer - many other phrasings can be equally correct.
+// ------------------------------------------------------------------
+const QUESTIONS = [
+  // Daily conversation
+  { category: "日常会話", level: "beginner", jp: "私は毎朝コーヒーを飲みます。", answers: ["I drink coffee every morning.", "I have coffee every morning."] },
+  { category: "日常会話", level: "beginner", jp: "今日はとても暑いです。", answers: ["It is very hot today.", "Today is very hot."] },
+  { category: "日常会話", level: "beginner", jp: "彼は速く走ることができます。", answers: ["He can run fast.", "He is able to run fast."] },
+  { category: "日常会話", level: "beginner", jp: "私は犬が好きです。", answers: ["I like dogs.", "I love dogs."] },
+  { category: "日常会話", level: "intermediate", jp: "私たちは公園で野球をしました。", answers: ["We played baseball in the park.", "We played baseball at the park."] },
+  { category: "日常会話", level: "intermediate", jp: "彼女はいつも笑顔です。", answers: ["She is always smiling.", "She always has a smile."] },
+  { category: "日常会話", level: "intermediate", jp: "明日は雨が降るかもしれません。", answers: ["It might rain tomorrow.", "It may rain tomorrow."] },
+  { category: "日常会話", level: "intermediate", jp: "週末は家でゆっくり過ごすつもりです。", answers: ["I'm going to relax at home this weekend.", "I plan to spend a quiet weekend at home."] },
+  { category: "日常会話", level: "advanced", jp: "最近、忙しくてなかなか運動する時間がありません。", answers: ["I've been so busy lately that I can hardly find time to exercise.", "Lately I've been too busy to make time for exercise."] },
+  { category: "日常会話", level: "advanced", jp: "もっと早く伝えておけばよかったと思っています。", answers: ["I wish I had told you sooner.", "I regret not telling you earlier."] },
+  { category: "日常会話", level: "advanced", jp: "彼の言っていることは一理あると思います。", answers: ["I think what he's saying makes sense.", "I think there's some truth in what he says."] },
+  { category: "日常会話", level: "advanced", jp: "新しい環境に慣れるまでには時間がかかるものです。", answers: ["It takes time to get used to a new environment.", "Getting used to a new environment naturally takes time."] },
+
+  // Travel
+  { category: "旅行", level: "beginner", jp: "駅までどうやって行けばいいですか。", answers: ["How can I get to the station?", "How do I get to the station?"] },
+  { category: "旅行", level: "beginner", jp: "このバスは空港に行きますか。", answers: ["Does this bus go to the airport?", "Is this the bus to the airport?"] },
+  { category: "旅行", level: "beginner", jp: "写真を撮ってもらえますか。", answers: ["Could you take a picture for me?", "Can you take a photo of me?"] },
+  { category: "旅行", level: "beginner", jp: "これは何という料理ですか。", answers: ["What is this dish called?", "What's the name of this dish?"] },
+  { category: "旅行", level: "intermediate", jp: "チェックインは何時からですか。", answers: ["What time does check-in start?", "What time can I check in?"] },
+  { category: "旅行", level: "intermediate", jp: "荷物を預けたいのですが。", answers: ["I would like to check my luggage.", "I'd like to check in my baggage."] },
+  { category: "旅行", level: "intermediate", jp: "おすすめの観光地はありますか。", answers: ["Do you have any recommended sightseeing spots?", "Can you recommend any tourist spots?"] },
+  { category: "旅行", level: "intermediate", jp: "両替はどこでできますか。", answers: ["Where can I exchange money?", "Where can I change currency?"] },
+  { category: "旅行", level: "advanced", jp: "予約を一日早めていただくことは可能でしょうか。", answers: ["Would it be possible to move my reservation up by one day?", "Could I change my reservation to one day earlier?"] },
+  { category: "旅行", level: "advanced", jp: "手荷物が届いていないのですが、どうすればいいですか。", answers: ["My luggage hasn't arrived, what should I do?", "My baggage hasn't shown up—what should I do?"] },
+  { category: "旅行", level: "advanced", jp: "できれば、静かな部屋にしていただきたいのですが。", answers: ["If possible, I would like a quiet room.", "I'd prefer a quiet room, if that's possible."] },
+  { category: "旅行", level: "advanced", jp: "出発時刻が変更になった場合はどのように連絡がありますか。", answers: ["How will I be notified if the departure time changes?", "If the departure time changes, how will I be informed?"] },
+
+  // Shopping
+  { category: "買い物", level: "beginner", jp: "これはいくらですか。", answers: ["How much is this?", "How much does this cost?"] },
+  { category: "買い物", level: "beginner", jp: "試着してもいいですか。", answers: ["Can I try this on?", "May I try this on?"] },
+  { category: "買い物", level: "beginner", jp: "他の色はありますか。", answers: ["Do you have other colors?", "Do you have this in other colors?"] },
+  { category: "買い物", level: "beginner", jp: "袋をもらえますか。", answers: ["Can I have a bag?", "Could I get a bag?"] },
+  { category: "買い物", level: "intermediate", jp: "もっと安いものはありますか。", answers: ["Do you have anything cheaper?", "Is there a cheaper one?"] },
+  { category: "買い物", level: "intermediate", jp: "カードで支払うことはできますか。", answers: ["Can I pay by card?", "Can I pay with a credit card?"] },
+  { category: "買い物", level: "intermediate", jp: "返品したいのですが。", answers: ["I would like to return this.", "I'd like to return this item."] },
+  { category: "買い物", level: "intermediate", jp: "これはセール対象ですか。", answers: ["Is this on sale?", "Is this item included in the sale?"] },
+  { category: "買い物", level: "advanced", jp: "サイズが合わなかった場合、交換していただけますか。", answers: ["If the size doesn't fit, could I exchange it?", "Could I exchange this if the size doesn't fit?"] },
+  { category: "買い物", level: "advanced", jp: "保証書はついていますか。", answers: ["Does it come with a warranty?", "Is a warranty included?"] },
+  { category: "買い物", level: "advanced", jp: "配送にはどのくらい日数がかかりますか。", answers: ["How many days does delivery take?", "How long does shipping usually take?"] },
+  { category: "買い物", level: "advanced", jp: "できれば、包装紙を変えていただけますか。", answers: ["Could you use different wrapping paper, if possible?", "If possible, could you change the gift wrap?"] },
+
+  // Work / requests
+  { category: "仕事・依頼", level: "beginner", jp: "会議は何時に始まりますか。", answers: ["What time does the meeting start?", "What time will the meeting begin?"] },
+  { category: "仕事・依頼", level: "beginner", jp: "明日までに終わらせます。", answers: ["I will finish it by tomorrow.", "I'll finish it by tomorrow."] },
+  { category: "仕事・依頼", level: "beginner", jp: "少し時間をいただけますか。", answers: ["Could you give me a little time?", "Could I have a little more time?"] },
+  { category: "仕事・依頼", level: "beginner", jp: "今、お時間よろしいですか。", answers: ["Do you have a moment now?", "Is now a good time?"] },
+  { category: "仕事・依頼", level: "intermediate", jp: "この資料を確認していただけますか。", answers: ["Could you check this document?", "Could you look over this document?"] },
+  { category: "仕事・依頼", level: "intermediate", jp: "すみませんが、もう一度説明していただけますか。", answers: ["I'm sorry, but could you explain it again?", "Sorry, could you explain that one more time?"] },
+  { category: "仕事・依頼", level: "intermediate", jp: "彼にメッセージを伝えていただけますか。", answers: ["Could you give him a message?", "Could you pass a message to him?"] },
+  { category: "仕事・依頼", level: "intermediate", jp: "会議の日程を変更してもよろしいでしょうか。", answers: ["Would it be all right to change the meeting date?", "Could we reschedule the meeting?"] },
+  { category: "仕事・依頼", level: "advanced", jp: "この件については、改めてご連絡させていただきます。", answers: ["I will get back to you on this matter later.", "I'll follow up with you on this separately."] },
+  { category: "仕事・依頼", level: "advanced", jp: "ご都合のよろしい時にお知らせいただければ幸いです。", answers: ["I would appreciate it if you could let me know when it's convenient for you.", "Please let me know whenever it's convenient for you."] },
+  { category: "仕事・依頼", level: "advanced", jp: "予算の関係で、計画を見直す必要があるかもしれません。", answers: ["We may need to reconsider the plan due to budget constraints.", "Because of the budget, we might have to revise the plan."] },
+  { category: "仕事・依頼", level: "advanced", jp: "恐れ入りますが、資料を事前にお送りいただけますでしょうか。", answers: ["I'm sorry to trouble you, but could you send the materials in advance?", "Would it be possible to send the documents beforehand?"] },
+
+  // Restaurant
+  { category: "レストラン", level: "beginner", jp: "二人分の席をお願いします。", answers: ["A table for two, please.", "Could we have a table for two?"] },
+  { category: "レストラン", level: "beginner", jp: "メニューを見せてください。", answers: ["Can I see the menu?", "Could I have the menu, please?"] },
+  { category: "レストラン", level: "beginner", jp: "お水をください。", answers: ["Can I have some water?", "Could I get some water, please?"] },
+  { category: "レストラン", level: "beginner", jp: "お会計をお願いします。", answers: ["Check, please.", "Could I have the bill, please?"] },
+  { category: "レストラン", level: "intermediate", jp: "これは辛いですか。", answers: ["Is this spicy?", "Does this dish taste spicy?"] },
+  { category: "レストラン", level: "intermediate", jp: "おすすめは何ですか。", answers: ["What do you recommend?", "What would you recommend?"] },
+  { category: "レストラン", level: "intermediate", jp: "アレルギーがあるので、卵抜きでお願いします。", answers: ["I have an allergy, so could you leave out the eggs?", "Could you make it without eggs? I have an allergy."] },
+  { category: "レストラン", level: "intermediate", jp: "別々に会計できますか。", answers: ["Can we pay separately?", "Could we split the check?"] },
+  { category: "レストラン", level: "advanced", jp: "できれば、量を少なめにしていただけますか。", answers: ["Could you make the portion a bit smaller, if possible?", "If possible, I'd like a smaller portion."] },
+  { category: "レストラン", level: "advanced", jp: "予約の人数を一人増やすことはできますか。", answers: ["Could I add one more person to my reservation?", "Is it possible to increase my reservation by one person?"] },
+  { category: "レストラン", level: "advanced", jp: "こちらの料理はどのように調理されていますか。", answers: ["How is this dish prepared?", "Could you tell me how this dish is cooked?"] },
+  { category: "レストラン", level: "advanced", jp: "混んでいるようであれば、後でまた来ます。", answers: ["If it's crowded, I'll come back later.", "If you're busy right now, I can come back another time."] },
+
+  // School / study
+  { category: "学校・勉強", level: "beginner", jp: "私は毎日英語を勉強します。", answers: ["I study English every day.", "I study English every day of the week."] },
+  { category: "学校・勉強", level: "beginner", jp: "宿題はもう終わりましたか。", answers: ["Have you finished your homework yet?", "Is your homework done yet?"] },
+  { category: "学校・勉強", level: "beginner", jp: "このテストは難しかったです。", answers: ["This test was difficult.", "This test was hard."] },
+  { category: "学校・勉強", level: "beginner", jp: "明日は学校に行きません。", answers: ["I'm not going to school tomorrow.", "I won't go to school tomorrow."] },
+  { category: "学校・勉強", level: "intermediate", jp: "もう一度その単語の意味を教えてください。", answers: ["Could you tell me the meaning of that word again?", "Please explain that word's meaning once more."] },
+  { category: "学校・勉強", level: "intermediate", jp: "次の授業はいつ始まりますか。", answers: ["When does the next class start?", "What time does the next class begin?"] },
+  { category: "学校・勉強", level: "intermediate", jp: "この問題の解き方が分かりません。", answers: ["I don't understand how to solve this problem.", "I don't know how to solve this question."] },
+  { category: "学校・勉強", level: "intermediate", jp: "先生に質問してもいいですか。", answers: ["May I ask the teacher a question?", "Can I ask the teacher something?"] },
+  { category: "学校・勉強", level: "advanced", jp: "もっと早くから準備しておくべきでした。", answers: ["I should have started preparing earlier.", "I wish I had begun preparing sooner."] },
+  { category: "学校・勉強", level: "advanced", jp: "この分野については、まだ十分に理解できていません。", answers: ["I don't fully understand this subject yet.", "I still haven't fully grasped this area of study."] },
+  { category: "学校・勉強", level: "advanced", jp: "先生のおかげで、英語に自信が持てるようになりました。", answers: ["Thanks to my teacher, I've become more confident in English.", "Because of my teacher, I now feel more confident speaking English."] },
+  { category: "学校・勉強", level: "advanced", jp: "締め切りに間に合うように頑張ります。", answers: ["I'll do my best to meet the deadline.", "I'll try hard to make the deadline."] }
+];
+
+// ------------------------------------------------------------------
+// Utility: shuffle an array in place (Fisher-Yates)
+// ------------------------------------------------------------------
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+// ------------------------------------------------------------------
+// App state
+// ------------------------------------------------------------------
+let queue = [];
+let currentIndex = 0;
+
+const el = (id) => document.getElementById(id);
+
+// ------------------------------------------------------------------
+// Build category checkboxes from the question bank
+// ------------------------------------------------------------------
+const categories = [...new Set(QUESTIONS.map((q) => q.category))];
+const categoryChecks = el("categoryChecks");
+categories.forEach((cat) => {
+  const label = document.createElement("label");
+  const input = document.createElement("input");
+  input.type = "checkbox";
+  input.checked = true;
+  input.dataset.category = cat;
+  label.appendChild(input);
+  label.appendChild(document.createTextNode(" " + cat));
+  categoryChecks.appendChild(label);
+});
+
+// ------------------------------------------------------------------
+// Start quiz: filter questions by selected categories/levels, shuffle
+// ------------------------------------------------------------------
+el("startBtn").addEventListener("click", () => {
+  const selectedCategories = [...categoryChecks.querySelectorAll("input:checked")].map(
+    (c) => c.dataset.category
+  );
+  const wantBeginner = el("levelBeginner").checked;
+  const wantIntermediate = el("levelIntermediate").checked;
+  const wantAdvanced = el("levelAdvanced").checked;
+
+  queue = QUESTIONS.filter((q) => {
+    const catOk = selectedCategories.includes(q.category);
+    const levelOk =
+      (q.level === "beginner" && wantBeginner) ||
+      (q.level === "intermediate" && wantIntermediate) ||
+      (q.level === "advanced" && wantAdvanced);
+    return catOk && levelOk;
+  });
+  shuffle(queue);
+
+  if (queue.length === 0) {
+    alert("条件に合う問題がありません。カテゴリーかレベルを選び直してください。");
+    return;
+  }
+
+  currentIndex = 0;
+  el("settingsPanel").style.display = "none";
+  el("resultPanel").style.display = "none";
+  el("quizPanel").style.display = "block";
+  showQuestion();
+});
+
+const LEVEL_LABELS = { beginner: "初級", intermediate: "中級", advanced: "上級" };
+
+function showQuestion() {
+  const q = queue[currentIndex];
+  el("progressLine").textContent =
+    "問題 " + (currentIndex + 1) + " / " + queue.length + "　[" + q.category + " / " + LEVEL_LABELS[q.level] + "]";
+  el("jpSentence").textContent = q.jp;
+  el("answerInput").value = "";
+  el("answerBox").style.display = "none";
+  el("nextBtn").disabled = true;
+  el("answerInput").focus();
+}
+
+// ------------------------------------------------------------------
+// Reveal the example answers for the current question (no grading)
+// ------------------------------------------------------------------
+el("showBtn").addEventListener("click", () => {
+  const q = queue[currentIndex];
+  const list = el("answerList");
+  list.innerHTML = "";
+  q.answers.forEach((a) => {
+    const li = document.createElement("li");
+    li.textContent = a;
+    list.appendChild(li);
+  });
+  el("answerBox").style.display = "block";
+  el("nextBtn").disabled = false;
+});
+
+// ------------------------------------------------------------------
+// Move to next question or finish
+// ------------------------------------------------------------------
+el("nextBtn").addEventListener("click", () => {
+  currentIndex++;
+  if (currentIndex >= queue.length) {
+    showResults();
+  } else {
+    showQuestion();
+  }
+});
+
+function showResults() {
+  el("quizPanel").style.display = "none";
+  el("resultPanel").style.display = "block";
+  el("finalDetail").textContent = "全" + queue.length + "問終了しました。";
+}
+
+el("restartBtn").addEventListener("click", () => {
+  el("resultPanel").style.display = "none";
+  el("settingsPanel").style.display = "block";
+});
+</script>
+
+</body>
+</html>
