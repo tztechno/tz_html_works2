@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>英文要約ツール</title>
+<style>
+  :root{
+    --bg:#f7f7f5;
+    --panel:#ffffff;
+    --accent:#c96442;
+    --accent-dark:#a84f34;
+    --text:#2b2620;
+    --muted:#8a8378;
+    --border:#e4e0d8;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    background:var(--bg);
+    color:var(--text);
+  }
+  header{
+    padding:16px 20px;
+    background:var(--panel);
+    border-bottom:1px solid var(--border);
+  }
+  header h1{
+    font-size:18px;
+    margin:0;
+  }
+  .container{
+    max-width:820px;
+    margin:0 auto;
+    padding:16px;
+  }
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:18px;
+    margin-bottom:16px;
+  }
+  .panel h2{
+    font-size:15px;
+    margin:0 0 12px 0;
+    color:var(--accent-dark);
+  }
+  textarea{
+    width:100%;
+    min-height:180px;
+    padding:10px;
+    border:1px solid var(--border);
+    border-radius:8px;
+    font-size:14px;
+    font-family:inherit;
+    resize:vertical;
+    line-height:1.6;
+  }
+  input[type="number"]{
+    width:70px;
+    padding:8px 10px;
+    border:1px solid var(--border);
+    border-radius:8px;
+    font-size:14px;
+    font-family:inherit;
+  }
+  button{
+    cursor:pointer;
+    border:none;
+    border-radius:8px;
+    padding:9px 18px;
+    font-size:14px;
+    font-weight:600;
+  }
+  .btn-primary{background:var(--accent); color:#fff;}
+  .btn-primary:hover{background:var(--accent-dark);}
+  .btn-secondary{background:#efece5; color:var(--text);}
+  .btn-secondary:disabled{opacity:0.5; cursor:not-allowed;}
+  .action-row{
+    display:flex;
+    gap:10px;
+    margin-top:10px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+  .action-row label{
+    font-size:13px;
+    color:var(--muted);
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  #resultPanel{display:none;}
+  .stat-badge{
+    display:inline-block;
+    background:#f1efe9;
+    border-radius:8px;
+    padding:6px 12px;
+    font-size:13px;
+    color:var(--muted);
+    margin-bottom:10px;
+  }
+  .stat-badge strong{color:var(--accent-dark);}
+  .summary-text{
+    font-size:15px;
+    line-height:1.8;
+    white-space:pre-wrap;
+    padding:12px;
+    background:#faf9f6;
+    border:1px solid var(--border);
+    border-radius:10px;
+  }
+  .limit-note{
+    font-size:12px;
+    color:var(--muted);
+    margin-top:8px;
+  }
+  #historyPanel{display:none;}
+  .history-item{
+    border-bottom:1px solid var(--border);
+    padding:10px 0;
+  }
+  .history-item:last-child{border-bottom:none;}
+  .history-item summary{
+    cursor:pointer;
+    font-size:13px;
+    color:var(--accent-dark);
+    font-weight:600;
+  }
+  .history-item .body{
+    font-size:13px;
+    line-height:1.7;
+    margin-top:8px;
+    color:var(--text);
+    white-space:pre-wrap;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>英文要約ツール</h1>
+</header>
+
+<div class="container">
+
+  <!-- Input panel -->
+  <div class="panel">
+    <h2>① 英文を入力</h2>
+    <textarea id="sourceText" placeholder="ニュース記事などの英文をここに貼り付けてください（複数行OK）"></textarea>
+    <div class="action-row">
+      <button class="btn-primary" id="summarizeBtn">要約する</button>
+      <label>
+        目標の圧縮率:
+        <input type="number" id="ratioInput" value="50" min="10" max="90">%
+      </label>
+    </div>
+    <div class="limit-note">元の文から重要度の高い文を選んで再構成する簡易的な要約です（原文の言い回しをそのまま抜き出す方式）。</div>
+  </div>
+
+  <!-- Result panel -->
+  <div class="panel" id="resultPanel">
+    <h2>② 要約結果（Pass <span id="passNum"></span>）</h2>
+    <div class="stat-badge" id="statBadge"></div>
+    <div class="summary-text" id="summaryText"></div>
+    <div class="action-row">
+      <button class="btn-primary" id="continueBtn">この要約をさらに要約する</button>
+      <button class="btn-secondary" id="resetBtn">最初からやり直す</button>
+    </div>
+    <div class="limit-note" id="limitNote"></div>
+  </div>
+
+  <!-- History panel -->
+  <div class="panel" id="historyPanel">
+    <h2>③ 処理履歴（すべてのPass）</h2>
+    <div id="historyList"></div>
+  </div>
+
+</div>
+
+<script>
+// ------------------------------------------------------------------
+// Stopword list: common function words excluded from keyword/frequency
+// scoring. Same style of list as used in the keyword-search companion app.
+// ------------------------------------------------------------------
+const STOPWORDS = new Set([
+  "a","an","the","and","or","but","if","then","so","because","as","of","in","on","at","to","for",
+  "with","by","from","into","onto","up","down","out","off","over","under","again","further","once",
+  "here","there","when","where","why","how","all","any","both","each","few","more","most","other",
+  "some","such","no","nor","not","only","own","same","than","too","very","s","t","can","will","just",
+  "don","now","is","are","was","were","be","been","being","have","has","had","having","do","does",
+  "did","doing","would","should","could","might","must","shall","may","i","me","my","myself","we",
+  "our","ours","ourselves","you","your","yours","yourself","yourselves","he","him","his","himself",
+  "she","her","hers","herself","it","its","itself","they","them","their","theirs","themselves",
+  "what","which","who","whom","this","that","these","those","am","about","against","between",
+  "through","during","before","after","above","below","also","said","says","say","one","two","three",
+  "new","get","gets","got","like","many","much","us","per","via","among"
+]);
+
+// ------------------------------------------------------------------
+// Common abbreviations whose periods should NOT be treated as sentence
+// boundaries. Periods inside these are temporarily masked before
+// splitting, then restored.
+// ------------------------------------------------------------------
+const ABBREVIATIONS = [
+  "Mr.", "Mrs.", "Ms.", "Dr.", "Prof.", "Sr.", "Jr.", "St.", "vs.",
+  "etc.", "e.g.", "i.e.", "U.S.", "U.K.", "U.N.", "E.U.",
+  "Inc.", "Corp.", "Ltd.", "Co.", "No.", "approx."
+];
+
+function protectAbbreviations(text) {
+  let out = text;
+  ABBREVIATIONS.forEach((abbr) => {
+    const placeholder = abbr.replace(/\./g, "§"); // use a rare char as a period placeholder
+    out = out.split(abbr).join(placeholder);
+  });
+  return out;
+}
+
+function restoreAbbreviations(text) {
+  return text.replace(/§/g, ".");
+}
+
+// ------------------------------------------------------------------
+// Split text into sentences, protecting common abbreviations from
+// being mistaken for sentence boundaries.
+// ------------------------------------------------------------------
+function splitSentences(rawText) {
+  const normalized = rawText.replace(/\s+/g, " ").trim();
+  if (!normalized) return [];
+  const protectedText = protectAbbreviations(normalized);
+  const chunks = protectedText.match(/[^.!?]+[.!?]+(\s+|$)/g) || [protectedText];
+  return chunks.map((s) => restoreAbbreviations(s.trim())).filter(Boolean);
+}
+
+function countWords(s) {
+  return (s.match(/[A-Za-z']+/g) || []).length;
+}
+
+// ------------------------------------------------------------------
+// Score each sentence by the average frequency-weight of its
+// significant (non-stopword) words, with a small bonus for the first
+// sentence (news ledes usually carry the core information).
+// ------------------------------------------------------------------
+function scoreSentences(sentences) {
+  const sentenceWords = sentences.map((s) => (s.toLowerCase().match(/[a-z']+/g) || []));
+  const wordFreq = {};
+  sentenceWords.forEach((words) => {
+    words.forEach((w) => {
+      if (w.length < 3 || STOPWORDS.has(w)) return;
+      wordFreq[w] = (wordFreq[w] || 0) + 1;
+    });
+  });
+  const maxFreq = Math.max(1, ...Object.values(wordFreq), 1);
+
+  return sentenceWords.map((words, idx) => {
+    let sum = 0;
+    let count = 0;
+    words.forEach((w) => {
+      if (wordFreq[w]) {
+        sum += wordFreq[w] / maxFreq;
+        count++;
+      }
+    });
+    const avg = count > 0 ? sum / count : 0;
+    const positionBonus = idx === 0 ? 0.15 : 0;
+    return avg + positionBonus;
+  });
+}
+
+// ------------------------------------------------------------------
+// Extractive summarization: pick the highest-scoring sentences until
+// the target word count (ratioPercent of the original) is reached,
+// then reassemble them in their original order.
+// ------------------------------------------------------------------
+function summarize(text, ratioPercent) {
+  const sentences = splitSentences(text);
+  const originalWords = countWords(text);
+
+  if (sentences.length <= 1) {
+    return { summary: text.trim(), originalWords, summaryWords: originalWords, sentenceCount: sentences.length, keptCount: sentences.length };
+  }
+
+  const scores = scoreSentences(sentences);
+  const totalWords = sentences.reduce((sum, s) => sum + countWords(s), 0);
+  const targetWords = Math.max(1, Math.round(totalWords * (ratioPercent / 100)));
+
+  const ranked = scores
+    .map((score, idx) => ({ idx, score }))
+    .sort((a, b) => b.score - a.score);
+
+  const selected = new Set();
+  let accumulated = 0;
+  for (const { idx } of ranked) {
+    if (accumulated >= targetWords) break;
+    selected.add(idx);
+    accumulated += countWords(sentences[idx]);
+  }
+  if (selected.size === 0) selected.add(ranked[0].idx);
+
+  const summarySentences = sentences.filter((_, idx) => selected.has(idx));
+
+  return {
+    summary: summarySentences.join(" "),
+    originalWords: totalWords,
+    summaryWords: accumulated,
+    sentenceCount: sentences.length,
+    keptCount: selected.size
+  };
+}
+
+function escapeHtml(str) {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+// ------------------------------------------------------------------
+// App state: a running history of summarization passes.
+// history[0] is always the original input text (Pass 0).
+// ------------------------------------------------------------------
+let history = [];
+
+const el = (id) => document.getElementById(id);
+
+function renderHistory() {
+  const list = el("historyList");
+  list.innerHTML = "";
+  history.forEach((h, i) => {
+    const wrap = document.createElement("div");
+    wrap.className = "history-item";
+    const details = document.createElement("details");
+    if (i === history.length - 1) details.open = true;
+    const summaryEl = document.createElement("summary");
+    summaryEl.textContent =
+      (i === 0 ? "Pass 0（原文）" : "Pass " + i) + "　" + h.words + "語";
+    const body = document.createElement("div");
+    body.className = "body";
+    body.textContent = h.text;
+    details.appendChild(summaryEl);
+    details.appendChild(body);
+    wrap.appendChild(details);
+    list.appendChild(wrap);
+  });
+  el("historyPanel").style.display = history.length ? "block" : "none";
+}
+
+function showResult(passIndex) {
+  const current = history[passIndex];
+  const original = history[0];
+  const reductionPct = original.words > 0 ? Math.round((current.words / original.words) * 100) : 100;
+
+  el("passNum").textContent = passIndex;
+  el("statBadge").innerHTML =
+    "原文: <strong>" + original.words + "語</strong>　→　今回の結果: <strong>" + current.words +
+    "語</strong>　(原文の約" + reductionPct + "%)";
+  el("summaryText").textContent = current.text;
+  el("resultPanel").style.display = "block";
+
+  const prev = history[passIndex - 1];
+  const reducedThisPass = prev ? current.words < prev.words : true;
+  el("continueBtn").disabled = !reducedThisPass || current.text.trim().split(/\s+/).length <= 3;
+  el("limitNote").textContent = reducedThisPass
+    ? ""
+    : "これ以上は要約による短縮ができませんでした（文がすでに1〜2文程度まで凝縮されています）。";
+
+  renderHistory();
+}
+
+// ------------------------------------------------------------------
+// Start a new summarization chain from the textarea's current content
+// ------------------------------------------------------------------
+el("summarizeBtn").addEventListener("click", () => {
+  const text = el("sourceText").value;
+  if (!text.trim()) {
+    alert("英文を入力してください。");
+    return;
+  }
+  const ratio = Math.max(10, Math.min(90, parseInt(el("ratioInput").value, 10) || 50));
+
+  const originalWords = countWords(text);
+  history = [{ text: text.trim(), words: originalWords }];
+
+  const result = summarize(text, ratio);
+  history.push({ text: result.summary, words: result.summaryWords });
+
+  showResult(1);
+});
+
+// ------------------------------------------------------------------
+// Continue: summarize the latest pass again
+// ------------------------------------------------------------------
+el("continueBtn").addEventListener("click", () => {
+  const ratio = Math.max(10, Math.min(90, parseInt(el("ratioInput").value, 10) || 50));
+  const latest = history[history.length - 1];
+  const result = summarize(latest.text, ratio);
+  history.push({ text: result.summary, words: result.summaryWords });
+  showResult(history.length - 1);
+});
+
+// ------------------------------------------------------------------
+// Reset everything
+// ------------------------------------------------------------------
+el("resetBtn").addEventListener("click", () => {
+  history = [];
+  el("resultPanel").style.display = "none";
+  el("historyPanel").style.display = "none";
+  el("sourceText").value = "";
+});
+</script>
+
+</body>
+</html>
