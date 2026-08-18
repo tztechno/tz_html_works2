@@ -38,3 +38,9 @@ https://tztechno.github.io/tz_html_works2/14_youtube_dashboard/youtube_dashboard
 
 https://tztechno.github.io/tz_html_works2/15_earthquake_dashboard/indonesia_earthquake_dashboard.html
 
+https://tztechno.github.io/tz_html_works2/16_learn_english/waei_quiz_2.html
+
+
+
+
+
