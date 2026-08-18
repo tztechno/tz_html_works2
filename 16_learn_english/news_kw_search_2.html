@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>英文キーワード検索</title>
+<style>
+  :root{
+    --bg:#f7f7f5;
+    --panel:#ffffff;
+    --accent:#c96442;
+    --accent-dark:#a84f34;
+    --text:#2b2620;
+    --muted:#8a8378;
+    --border:#e4e0d8;
+    --mark-bg:#fff1a8;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    background:var(--bg);
+    color:var(--text);
+  }
+  header{
+    padding:16px 20px;
+    background:var(--panel);
+    border-bottom:1px solid var(--border);
+  }
+  header h1{
+    font-size:18px;
+    margin:0;
+  }
+  .container{
+    max-width:820px;
+    margin:0 auto;
+    padding:16px;
+  }
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:18px;
+    margin-bottom:16px;
+  }
+  .panel h2{
+    font-size:15px;
+    margin:0 0 12px 0;
+    color:var(--accent-dark);
+  }
+  textarea{
+    width:100%;
+    min-height:180px;
+    padding:10px;
+    border:1px solid var(--border);
+    border-radius:8px;
+    font-size:14px;
+    font-family:inherit;
+    resize:vertical;
+    line-height:1.5;
+  }
+  input[type="text"], input[type="number"]{
+    padding:9px 10px;
+    border:1px solid var(--border);
+    border-radius:8px;
+    font-size:14px;
+    font-family:inherit;
+  }
+  input[type="text"]{width:100%;}
+  input[type="number"]{width:80px;}
+  button{
+    cursor:pointer;
+    border:none;
+    border-radius:8px;
+    padding:9px 18px;
+    font-size:14px;
+    font-weight:600;
+  }
+  .btn-primary{background:var(--accent); color:#fff;}
+  .btn-primary:hover{background:var(--accent-dark);}
+  .btn-secondary{background:#efece5; color:var(--text);}
+  .action-row{
+    display:flex;
+    gap:10px;
+    margin-top:10px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+  .stat-line{
+    font-size:13px;
+    color:var(--muted);
+    margin-top:8px;
+  }
+  .kw-controls{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:12px;
+    font-size:13px;
+    color:var(--muted);
+  }
+  .kw-chips{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .kw-chip{
+    background:#f1efe9;
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:5px 12px;
+    font-size:13px;
+    cursor:pointer;
+  }
+  .kw-chip:hover{
+    background:var(--accent);
+    color:#fff;
+    border-color:var(--accent);
+  }
+  .kw-chip .count{
+    color:var(--muted);
+    margin-left:4px;
+    font-size:11px;
+  }
+  .kw-chip:hover .count{color:#fff;}
+  .kw-group-label{
+    font-size:12px;
+    font-weight:600;
+    color:var(--accent-dark);
+    margin-bottom:8px;
+  }
+  #searchPanel{display:none;}
+  #resultList{
+    margin-top:12px;
+  }
+  .result-item{
+    padding:10px 12px;
+    border-bottom:1px solid var(--border);
+    font-size:14px;
+    line-height:1.6;
+  }
+  .result-item:last-child{border-bottom:none;}
+  .result-item .idx{
+    color:var(--muted);
+    font-size:12px;
+    margin-right:6px;
+  }
+  mark{
+    background:var(--mark-bg);
+    padding:0 2px;
+    border-radius:3px;
+  }
+  #sentenceListPanel{display:none;}
+  #sentenceListPanel .result-item{font-size:13px;}
+  details summary{
+    cursor:pointer;
+    font-size:13px;
+    color:var(--accent-dark);
+    font-weight:600;
+  }
+  .empty-note{
+    color:var(--muted);
+    font-size:13px;
+    padding:8px 0;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>英文キーワード検索</h1>
+</header>
+
+<div class="container">
+
+  <!-- Input panel -->
+  <div class="panel">
+    <h2>① 英文を入力</h2>
+    <textarea id="sourceText" placeholder="ニュース記事などの英文をここに貼り付けてください（複数行OK）"></textarea>
+    <div class="action-row">
+      <button class="btn-primary" id="analyzeBtn">解析する</button>
+      <label style="font-size:13px; color:var(--muted);">
+        抽出するキーワード数:
+        <input type="number" id="kwCount" value="30" min="5" max="100">
+      </label>
+    </div>
+    <div class="stat-line" id="statLine"></div>
+  </div>
+
+  <!-- Keyword panel -->
+  <div class="panel" id="kwPanel" style="display:none;">
+    <h2>② 抽出されたキーワード</h2>
+    <div class="kw-controls">クリックすると、その語を含む英文を検索します（単純な出現回数ではなく、固有名詞らしさ・概念語らしさを考慮して選んでいます）</div>
+
+    <div class="kw-group-label">固有名詞・重要な名前（人名・組織名・地名など）</div>
+    <div class="kw-chips" id="kwChipsProper"></div>
+
+    <div class="kw-group-label" style="margin-top:16px;">概念キーワード（テーマ・トピックを表す語）</div>
+    <div class="kw-chips" id="kwChipsConcept"></div>
+  </div>
+
+  <!-- Search panel -->
+  <div class="panel" id="searchPanel">
+    <h2>③ 検索</h2>
+    <input type="text" id="searchInput" placeholder="任意の単語・キーワードを入力（部分一致、大文字小文字は区別しません）">
+    <div class="stat-line" id="resultStat"></div>
+    <div id="resultList"></div>
+  </div>
+
+  <!-- Full sentence list (optional) -->
+  <div class="panel" id="sentenceListPanel">
+    <details>
+      <summary id="allSentencesSummary">全文（行ごと）を表示</summary>
+      <div id="allSentenceList" style="margin-top:10px;"></div>
+    </details>
+  </div>
+
+</div>
+
+<script>
+// ------------------------------------------------------------------
+// Stopword list: common function words excluded from keyword extraction.
+// Not exhaustive, but covers the most frequent English function words.
+// ------------------------------------------------------------------
+const STOPWORDS = new Set([
+  "a","an","the","and","or","but","if","then","so","because","as","of","in","on","at","to","for",
+  "with","by","from","into","onto","up","down","out","off","over","under","again","further","once",
+  "here","there","when","where","why","how","all","any","both","each","few","more","most","other",
+  "some","such","no","nor","not","only","own","same","than","too","very","s","t","can","will","just",
+  "don","now","is","are","was","were","be","been","being","have","has","had","having","do","does",
+  "did","doing","would","should","could","might","must","shall","may","i","me","my","myself","we",
+  "our","ours","ourselves","you","your","yours","yourself","yourselves","he","him","his","himself",
+  "she","her","hers","herself","it","its","itself","they","them","their","theirs","themselves",
+  "what","which","who","whom","this","that","these","those","am","about","against","between","into",
+  "through","during","before","after","above","below","to","from","up","down","in","out","on","off",
+  "over","under","again","further","then","once","also","said","says","say","one","two","three",
+  "new","get","gets","got","like","many","much","us","per","via","among"
+]);
+
+// ------------------------------------------------------------------
+// Split raw text into sentences by period. Each resulting chunk
+// (trimmed, non-empty) becomes one "line" of data, as requested.
+// ------------------------------------------------------------------
+function splitIntoSentences(text) {
+  return text
+    .split(".")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+}
+
+// ------------------------------------------------------------------
+// Extract keywords from the sentence list, split into two groups:
+//
+// 1. Proper nouns / named entities: words that are capitalized in the
+//    middle of a sentence (not just because they start a sentence),
+//    or that look like all-caps acronyms (US, EU, NASA...). This is a
+//    simple heuristic, not real named-entity recognition, but it
+//    approximates "important names" better than raw frequency alone.
+//
+// 2. Concept keywords: remaining content words, scored by frequency
+//    but boosted for abstract-noun suffixes (-tion, -ment, -ity, etc.)
+//    and for longer/more specific words, so generic frequent words
+//    don't drown out thematically important ones.
+// ------------------------------------------------------------------
+function extractKeywords(sentenceList, topN) {
+  const totalCount = {};   // lowercase word -> total occurrences
+  const properHits = {};   // lowercase word -> capitalized, non-sentence-initial occurrences
+  const displayForm = {};  // lowercase word -> preferred original-case form to display
+  const acronyms = new Set(); // lowercase word -> seen as an ALL-CAPS acronym at least once
+
+  sentenceList.forEach((sentence) => {
+    const tokens = sentence.match(/[A-Za-z']+/g) || [];
+    tokens.forEach((tok, idx) => {
+      const lower = tok.toLowerCase();
+      totalCount[lower] = (totalCount[lower] || 0) + 1;
+
+      // Keep a capitalized display form if we've ever seen one
+      if (!displayForm[lower] || (/^[A-Z]/.test(tok) && !/^[A-Z]/.test(displayForm[lower]))) {
+        displayForm[lower] = tok;
+      }
+
+      if (/^[A-Z]{2,5}$/.test(tok)) acronyms.add(lower);
+
+      // idx > 0 means this word is not the first word of the sentence,
+      // so a capital letter here is a real signal (not just sentence-start capitalization)
+      if (idx > 0 && /^[A-Z]/.test(tok)) {
+        properHits[lower] = (properHits[lower] || 0) + 1;
+      }
+    });
+  });
+
+  const properNouns = [];
+  const conceptCandidates = [];
+
+  Object.keys(totalCount).forEach((lower) => {
+    if (lower.length < 2) return;
+    const count = totalCount[lower];
+    const hits = properHits[lower] || 0;
+    const ratio = hits / count;
+    const isProper = acronyms.has(lower) || ratio >= 0.5;
+
+    if (isProper) {
+      properNouns.push({ word: displayForm[lower], count });
+    } else {
+      if (lower.length < 3 || STOPWORDS.has(lower)) return;
+      const hasConceptSuffix = /(tion|sion|ment|ness|ity|ism|ship|ance|ence|ology|acy|hood)$/.test(lower);
+      const lengthBonus = lower.length >= 7 ? 1.15 : 1.0;
+      const suffixBonus = hasConceptSuffix ? 1.4 : 1.0;
+      conceptCandidates.push({ word: lower, count, score: count * suffixBonus * lengthBonus });
+    }
+  });
+
+  properNouns.sort((a, b) => b.count - a.count);
+  conceptCandidates.sort((a, b) => b.score - a.score);
+
+  return {
+    properNouns: properNouns.slice(0, topN),
+    conceptWords: conceptCandidates.slice(0, topN).map(({ word, count }) => ({ word, count }))
+  };
+}
+
+function escapeHtml(str) {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+// Escape a string for safe use inside a RegExp
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Wrap all case-insensitive occurrences of `term` in <mark> tags (HTML-safe)
+function highlight(sentence, term) {
+  const escaped = escapeHtml(sentence);
+  if (!term) return escaped;
+  const re = new RegExp(escapeRegex(escapeHtml(term)), "gi");
+  return escaped.replace(re, (m) => "<mark>" + m + "</mark>");
+}
+
+// ------------------------------------------------------------------
+// App state
+// ------------------------------------------------------------------
+let sentences = [];
+
+const el = (id) => document.getElementById(id);
+
+// ------------------------------------------------------------------
+// Analyze: split into sentences + extract keywords
+// ------------------------------------------------------------------
+el("analyzeBtn").addEventListener("click", () => {
+  const text = el("sourceText").value;
+  if (!text.trim()) {
+    alert("英文を入力してください。");
+    return;
+  }
+
+  sentences = splitIntoSentences(text);
+  const topN = Math.max(5, Math.min(100, parseInt(el("kwCount").value, 10) || 30));
+  const { properNouns, conceptWords } = extractKeywords(sentences, topN);
+
+  el("statLine").textContent =
+    "文の数: " + sentences.length +
+    "　/　固有名詞: " + properNouns.length +
+    "件　/　概念キーワード: " + conceptWords.length + "件";
+
+  // Render a chip list into the given container; clicking a chip searches for that word
+  function renderChips(containerId, list) {
+    const container = el(containerId);
+    container.innerHTML = "";
+    if (list.length === 0) {
+      const note = document.createElement("div");
+      note.className = "empty-note";
+      note.textContent = "該当する語が見つかりませんでした。";
+      container.appendChild(note);
+      return;
+    }
+    list.forEach((k) => {
+      const chip = document.createElement("span");
+      chip.className = "kw-chip";
+      chip.innerHTML = escapeHtml(k.word) + '<span class="count">(' + k.count + ")</span>";
+      chip.addEventListener("click", () => {
+        el("searchInput").value = k.word;
+        runSearch();
+      });
+      container.appendChild(chip);
+    });
+  }
+
+  renderChips("kwChipsProper", properNouns);
+  renderChips("kwChipsConcept", conceptWords);
+  el("kwPanel").style.display = "block";
+
+  // Render the full sentence list (collapsed by default)
+  const allList = el("allSentenceList");
+  allList.innerHTML = "";
+  sentences.forEach((s, i) => {
+    const div = document.createElement("div");
+    div.className = "result-item";
+    div.innerHTML = '<span class="idx">' + (i + 1) + ".</span>" + escapeHtml(s);
+    allList.appendChild(div);
+  });
+  el("allSentencesSummary").textContent = "全文（行ごと）を表示（" + sentences.length + "件）";
+  el("sentenceListPanel").style.display = sentences.length ? "block" : "none";
+
+  // Show search panel and clear previous search
+  el("searchPanel").style.display = "block";
+  el("searchInput").value = "";
+  el("resultList").innerHTML = "";
+  el("resultStat").textContent = "";
+});
+
+// ------------------------------------------------------------------
+// Search: filter sentences containing the term (case-insensitive,
+// partial match), and highlight the matched text.
+// ------------------------------------------------------------------
+function runSearch() {
+  const term = el("searchInput").value.trim();
+  const resultList = el("resultList");
+  const resultStat = el("resultStat");
+  resultList.innerHTML = "";
+
+  if (!term) {
+    resultStat.textContent = "";
+    return;
+  }
+
+  const lowerTerm = term.toLowerCase();
+  const matches = sentences.filter((s) => s.toLowerCase().includes(lowerTerm));
+
+  resultStat.textContent = '"' + term + '" にヒットした文: ' + matches.length + "件 / 全" + sentences.length + "件中";
+
+  if (matches.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "empty-note";
+    empty.textContent = "ヒットする文が見つかりませんでした。";
+    resultList.appendChild(empty);
+    return;
+  }
+
+  matches.forEach((s, i) => {
+    const div = document.createElement("div");
+    div.className = "result-item";
+    div.innerHTML = '<span class="idx">' + (i + 1) + ".</span>" + highlight(s, term);
+    resultList.appendChild(div);
+  });
+}
+
+el("searchInput").addEventListener("input", runSearch);
+</script>
+
+</body>
+</html>
