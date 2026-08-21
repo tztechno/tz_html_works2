@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MP3/MP4 English Transcriber</title>
+<style>
+  :root{
+    --bg:#0f1220;
+    --panel:#171b2e;
+    --panel-2:#1f2440;
+    --border:#2c3153;
+    --text:#eef0fb;
+    --text-dim:#a4a9c9;
+    --accent:#7c9dff;
+    --accent-2:#5fd0c0;
+    --danger:#ff6b6b;
+    --radius:14px;
+  }
+  * { box-sizing: border-box; }
+  html,body{
+    margin:0; padding:0;
+    background: radial-gradient(1200px 800px at 10% -10%, #1b2040 0%, var(--bg) 55%);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Hiragino Sans, "Noto Sans JP", Roboto, sans-serif;
+    min-height:100vh;
+  }
+  .wrap{
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 32px 20px 80px;
+  }
+  header{ margin-bottom: 24px; }
+  h1{
+    font-size: 22px;
+    margin: 0 0 6px;
+    letter-spacing: -0.02em;
+  }
+  .subtitle{
+    color: var(--text-dim);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .card{
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 18px;
+  }
+  .card h2{
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    margin: 0 0 14px;
+    font-weight: 600;
+  }
+  /* --- File drop zone --- */
+  .drop{
+    border: 1.5px dashed var(--border);
+    border-radius: 12px;
+    padding: 28px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .15s ease, background .15s ease;
+  }
+  .drop:hover, .drop.dragover{
+    border-color: var(--accent);
+    background: rgba(124,157,255,0.06);
+  }
+  .drop input{ display:none; }
+  .drop .hint{ color: var(--text-dim); font-size: 13px; margin-top: 6px; }
+  .file-info{
+    display:flex; align-items:center; justify-content:space-between;
+    gap: 10px; margin-top: 14px; font-size: 13px; color: var(--text-dim);
+  }
+  .file-info strong{ color: var(--text); font-weight:600; }
+  video{
+    width: 100%;
+    border-radius: 10px;
+    margin-top: 14px;
+    background: #000;
+    display:none;
+  }
+  /* --- Range slider --- */
+  .range-wrap{
+    position: relative;
+    height: 40px;
+    margin: 18px 0 6px;
+  }
+  .range-track{
+    position:absolute; top:18px; left:0; right:0; height:4px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+  }
+  .range-highlight{
+    position:absolute; top:18px; height:4px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    border-radius: 2px;
+  }
+  input[type=range]{
+    position:absolute; top:0; left:0; width:100%; height:40px;
+    margin:0; background:transparent; pointer-events:none;
+    -webkit-appearance:none; appearance:none;
+  }
+  input[type=range]::-webkit-slider-runnable-track{ background:transparent; height:40px; }
+  input[type=range]::-webkit-slider-thumb{
+    pointer-events:auto; -webkit-appearance:none;
+    width:16px; height:16px; border-radius:50%;
+    background: var(--text); border: 3px solid var(--accent);
+    cursor:pointer; margin-top:14px;
+  }
+  input[type=range]::-moz-range-track{ background:transparent; height:4px; }
+  input[type=range]::-moz-range-thumb{
+    pointer-events:auto; width:14px; height:14px; border-radius:50%;
+    background: var(--text); border: 3px solid var(--accent); cursor:pointer;
+  }
+  .time-row{
+    display:flex; justify-content:space-between; align-items:center;
+    font-size: 13px; color: var(--text-dim); margin-bottom: 6px;
+  }
+  .time-fields{
+    display:flex; gap: 14px; margin-top: 10px; flex-wrap: wrap;
+  }
+  .time-field{ display:flex; flex-direction:column; gap:4px; }
+  .time-field label{ font-size: 11px; color: var(--text-dim); text-transform:uppercase; letter-spacing:.05em; }
+  .time-field input[type=text]{
+    width: 90px; padding: 7px 9px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--panel-2);
+    color: var(--text); font-size: 14px; font-variant-numeric: tabular-nums;
+  }
+  .btn-row{ display:flex; gap:10px; margin-top: 14px; flex-wrap: wrap; }
+  button{
+    font-family: inherit; font-size: 14px; font-weight: 600;
+    padding: 10px 16px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--panel-2); color: var(--text); cursor: pointer;
+    transition: transform .05s ease, border-color .15s ease, background .15s ease;
+  }
+  button:hover:not(:disabled){ border-color: var(--accent); }
+  button:active:not(:disabled){ transform: scale(0.98); }
+  button:disabled{ opacity: .45; cursor: not-allowed; }
+  button.primary{
+    background: linear-gradient(135deg, var(--accent), #5b7ce0);
+    border: none; color: #0b0e1a;
+  }
+  select{
+    font-family: inherit; font-size: 14px; padding: 9px 12px;
+    border-radius: 10px; border: 1px solid var(--border);
+    background: var(--panel-2); color: var(--text); width: 100%;
+  }
+  .field-group{ margin-bottom: 14px; }
+  .field-group:last-child{ margin-bottom: 0; }
+  .field-group label{
+    display:block; font-size: 12px; color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+  .field-group .desc{ font-size: 12px; color: var(--text-dim); margin-top: 6px; line-height:1.5; }
+  .progress-outer{
+    height: 8px; border-radius: 4px; background: var(--panel-2);
+    border: 1px solid var(--border); overflow: hidden; margin-top: 10px; display:none;
+  }
+  .progress-inner{
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    transition: width .2s ease;
+  }
+  .status{ font-size: 13px; color: var(--text-dim); margin-top: 8px; min-height: 18px; }
+  .status.err{ color: var(--danger); }
+  textarea{
+    width: 100%; min-height: 160px; margin-top: 12px;
+    padding: 12px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--panel-2); color: var(--text); font-size: 14px;
+    line-height: 1.6; resize: vertical; font-family: inherit;
+  }
+  .note{
+    font-size: 12px; color: var(--text-dim); line-height: 1.6;
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 14px; margin-top: 10px;
+  }
+  .note code{
+    background: rgba(255,255,255,0.08); padding: 1px 5px; border-radius: 4px;
+    font-size: 11px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🎧 MP3/MP4 → English Transcript</h1>
+    <div class="subtitle">
+      ファイルを選び、文字起こししたい時間範囲を指定すると、選んだ区間だけをブラウザ内で英語のテキストに変換します。
+      音声処理・AIモデルの実行はすべてこの端末のブラウザ内で行われ、ファイルはどこにもアップロードされません。
+    </div>
+  </header>
+
+  <!-- Step 1: file selection -->
+  <div class="card">
+    <h2>1. ファイルを選択</h2>
+    <div class="drop" id="dropZone">
+      <div>クリックしてファイルを選ぶ、またはドラッグ&ドロップ</div>
+      <div class="hint">対応形式: MP3, WAV, M4A, MP4, MOV など（ブラウザが再生できる形式）</div>
+      <input type="file" id="fileInput" accept="audio/*,video/*" />
+    </div>
+    <div class="file-info" id="fileInfo" style="display:none;">
+      <span>選択中: <strong id="fileName"></strong></span>
+      <span id="fileMeta"></span>
+    </div>
+    <video id="preview" controls></video>
+  </div>
+
+  <!-- Step 2: time range -->
+  <div class="card" id="rangeCard" style="display:none;">
+    <h2>2. 時間範囲を指定</h2>
+    <div class="time-row">
+      <span id="rangeDurationLabel">総再生時間: --:--</span>
+      <span id="rangeSelectedLabel">選択区間: --:-- 〜 --:--</span>
+    </div>
+    <div class="range-wrap">
+      <div class="range-track"></div>
+      <div class="range-highlight" id="rangeHighlight"></div>
+      <input type="range" id="startSlider" min="0" max="100" step="0.1" value="0" />
+      <input type="range" id="endSlider" min="0" max="100" step="0.1" value="100" />
+    </div>
+    <div class="time-fields">
+      <div class="time-field">
+        <label>開始 (mm:ss)</label>
+        <input type="text" id="startText" value="0:00" />
+      </div>
+      <div class="time-field">
+        <label>終了 (mm:ss)</label>
+        <input type="text" id="endText" value="0:00" />
+      </div>
+    </div>
+    <div class="btn-row">
+      <button id="btnPreview">▶ 選択区間を再生</button>
+      <button id="btnSetStartFromPlayer">現在位置を開始に設定</button>
+      <button id="btnSetEndFromPlayer">現在位置を終了に設定</button>
+      <button id="btnFullRange">全体を選択</button>
+    </div>
+  </div>
+
+  <!-- Step 3: transcription options -->
+  <div class="card" id="optionsCard" style="display:none;">
+    <h2>3. 文字起こし設定</h2>
+    <div class="field-group">
+      <label for="taskSelect">モード</label>
+      <select id="taskSelect">
+        <option value="transcribe-en">英語音声 → 英語テキスト（高速・推奨）</option>
+        <option value="translate">他言語の音声 → 英語に翻訳して出力</option>
+      </select>
+    </div>
+    <div class="field-group">
+      <label for="modelSelect">モデル（精度と速度のバランス）</label>
+      <select id="modelSelect">
+        <option value="tiny">Whisper Tiny — 最速・軽量（初回ダウンロード 約 40〜80MB）</option>
+        <option value="base" selected>Whisper Base — バランス型（初回ダウンロード 約 70〜150MB）</option>
+        <option value="small">Whisper Small — 高精度・やや低速（初回ダウンロード 約 250MB）</option>
+      </select>
+      <div class="desc">初回選択時のみモデルをダウンロードします。以降はブラウザにキャッシュされ、次回から高速に起動します。インターネット接続が必要です。</div>
+    </div>
+  </div>
+
+  <!-- Step 4: run -->
+  <div class="card" id="runCard" style="display:none;">
+    <h2>4. 実行</h2>
+    <div class="btn-row">
+      <button class="primary" id="btnTranscribe">文字起こしを実行</button>
+    </div>
+    <div class="progress-outer" id="progressOuter"><div class="progress-inner" id="progressInner"></div></div>
+    <div class="status" id="statusLine"></div>
+    <textarea id="resultText" placeholder="ここに文字起こし結果が表示されます..." readonly></textarea>
+    <div class="btn-row">
+      <button id="btnCopy" disabled>結果をコピー</button>
+      <button id="btnDownload" disabled>.txt でダウンロード</button>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>このツールについて：</strong> 文字起こしは <a href="https://github.com/huggingface/transformers.js" style="color:var(--accent)">Transformers.js</a> を用いて OpenAI Whisper モデルをブラウザ内（WebAssembly / WebGPU）で実行しています。
+    サーバーへの音声アップロードは一切行われません。最も安定して動作するのは <strong>Chrome または Edge の最新版</strong> です。
+    このページを Claude の会話内プレビューではなく、<strong>ダウンロードしてブラウザで直接開く</strong>ことを推奨します（モデルのダウンロード・キャッシュが正しく動作するためです）。
+  </div>
+</div>
+
+<script type="module">
+// ---------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------
+let currentFile = null;
+let mediaDuration = 0;
+let transcriberPipeline = null;
+let transcriberModelKey = null; // "task:model" combo currently loaded
+
+const els = {
+  dropZone: document.getElementById('dropZone'),
+  fileInput: document.getElementById('fileInput'),
+  fileInfo: document.getElementById('fileInfo'),
+  fileName: document.getElementById('fileName'),
+  fileMeta: document.getElementById('fileMeta'),
+  preview: document.getElementById('preview'),
+  rangeCard: document.getElementById('rangeCard'),
+  rangeDurationLabel: document.getElementById('rangeDurationLabel'),
+  rangeSelectedLabel: document.getElementById('rangeSelectedLabel'),
+  rangeHighlight: document.getElementById('rangeHighlight'),
+  startSlider: document.getElementById('startSlider'),
+  endSlider: document.getElementById('endSlider'),
+  startText: document.getElementById('startText'),
+  endText: document.getElementById('endText'),
+  btnPreview: document.getElementById('btnPreview'),
+  btnSetStartFromPlayer: document.getElementById('btnSetStartFromPlayer'),
+  btnSetEndFromPlayer: document.getElementById('btnSetEndFromPlayer'),
+  btnFullRange: document.getElementById('btnFullRange'),
+  optionsCard: document.getElementById('optionsCard'),
+  taskSelect: document.getElementById('taskSelect'),
+  modelSelect: document.getElementById('modelSelect'),
+  runCard: document.getElementById('runCard'),
+  btnTranscribe: document.getElementById('btnTranscribe'),
+  progressOuter: document.getElementById('progressOuter'),
+  progressInner: document.getElementById('progressInner'),
+  statusLine: document.getElementById('statusLine'),
+  resultText: document.getElementById('resultText'),
+  btnCopy: document.getElementById('btnCopy'),
+  btnDownload: document.getElementById('btnDownload'),
+};
+
+// ---------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------
+function formatTime(sec) {
+  if (!isFinite(sec) || sec < 0) sec = 0;
+  const m = Math.floor(sec / 60);
+  const s = (sec % 60).toFixed(1);
+  return `${m}:${s.padStart(4, '0')}`;
+}
+
+function parseTimeText(text) {
+  // Accepts "mm:ss", "mm:ss.s", or plain seconds
+  const t = text.trim();
+  if (t.includes(':')) {
+    const [m, s] = t.split(':');
+    const minutes = parseFloat(m) || 0;
+    const seconds = parseFloat(s) || 0;
+    return minutes * 60 + seconds;
+  }
+  return parseFloat(t) || 0;
+}
+
+function setStatus(msg, isError = false) {
+  els.statusLine.textContent = msg;
+  els.statusLine.classList.toggle('err', isError);
+}
+
+function setProgress(pct) {
+  els.progressOuter.style.display = 'block';
+  els.progressInner.style.width = `${Math.max(0, Math.min(100, pct))}%`;
+}
+
+function hideProgress() {
+  els.progressOuter.style.display = 'none';
+  els.progressInner.style.width = '0%';
+}
+
+// ---------------------------------------------------------------------
+// File selection
+// ---------------------------------------------------------------------
+els.dropZone.addEventListener('click', () => els.fileInput.click());
+els.dropZone.addEventListener('dragover', (e) => { e.preventDefault(); els.dropZone.classList.add('dragover'); });
+els.dropZone.addEventListener('dragleave', () => els.dropZone.classList.remove('dragover'));
+els.dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  els.dropZone.classList.remove('dragover');
+  if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+    handleFile(e.dataTransfer.files[0]);
+  }
+});
+els.fileInput.addEventListener('change', (e) => {
+  if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]);
+});
+
+function handleFile(file) {
+  currentFile = file;
+  els.fileName.textContent = file.name;
+  els.fileMeta.textContent = `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+  els.fileInfo.style.display = 'flex';
+
+  const url = URL.createObjectURL(file);
+  els.preview.src = url;
+  els.preview.style.display = 'block';
+
+  els.preview.onloadedmetadata = () => {
+    mediaDuration = els.preview.duration || 0;
+    initRangeControls(mediaDuration);
+    els.rangeCard.style.display = 'block';
+    els.optionsCard.style.display = 'block';
+    els.runCard.style.display = 'block';
+    setStatus('');
+    els.resultText.value = '';
+    els.btnCopy.disabled = true;
+    els.btnDownload.disabled = true;
+  };
+}
+
+// ---------------------------------------------------------------------
+// Range slider logic
+// ---------------------------------------------------------------------
+function initRangeControls(duration) {
+  els.startSlider.min = 0;
+  els.startSlider.max = duration;
+  els.startSlider.step = 0.1;
+  els.startSlider.value = 0;
+
+  els.endSlider.min = 0;
+  els.endSlider.max = duration;
+  els.endSlider.step = 0.1;
+  els.endSlider.value = duration;
+
+  updateRangeUI();
+}
+
+function updateRangeUI() {
+  let start = parseFloat(els.startSlider.value);
+  let end = parseFloat(els.endSlider.value);
+
+  // Keep start <= end with a minimum 0.5s gap
+  if (start > end - 0.5) {
+    if (document.activeElement === els.startSlider) {
+      start = Math.max(0, end - 0.5);
+      els.startSlider.value = start;
+    } else {
+      end = Math.min(mediaDuration, start + 0.5);
+      els.endSlider.value = end;
+    }
+  }
+
+  els.startText.value = formatTime(start);
+  els.endText.value = formatTime(end);
+
+  const pctStart = mediaDuration ? (start / mediaDuration) * 100 : 0;
+  const pctEnd = mediaDuration ? (end / mediaDuration) * 100 : 100;
+  els.rangeHighlight.style.left = `${pctStart}%`;
+  els.rangeHighlight.style.width = `${Math.max(0, pctEnd - pctStart)}%`;
+
+  els.rangeDurationLabel.textContent = `総再生時間: ${formatTime(mediaDuration)}`;
+  els.rangeSelectedLabel.textContent = `選択区間: ${formatTime(start)} 〜 ${formatTime(end)}（${(end - start).toFixed(1)}秒）`;
+}
+
+els.startSlider.addEventListener('input', updateRangeUI);
+els.endSlider.addEventListener('input', updateRangeUI);
+
+els.startText.addEventListener('change', () => {
+  const v = Math.max(0, Math.min(mediaDuration, parseTimeText(els.startText.value)));
+  els.startSlider.value = v;
+  updateRangeUI();
+});
+els.endText.addEventListener('change', () => {
+  const v = Math.max(0, Math.min(mediaDuration, parseTimeText(els.endText.value)));
+  els.endSlider.value = v;
+  updateRangeUI();
+});
+
+els.btnFullRange.addEventListener('click', () => {
+  els.startSlider.value = 0;
+  els.endSlider.value = mediaDuration;
+  updateRangeUI();
+});
+
+els.btnSetStartFromPlayer.addEventListener('click', () => {
+  els.startSlider.value = els.preview.currentTime;
+  updateRangeUI();
+});
+els.btnSetEndFromPlayer.addEventListener('click', () => {
+  els.endSlider.value = els.preview.currentTime;
+  updateRangeUI();
+});
+
+els.btnPreview.addEventListener('click', () => {
+  const start = parseFloat(els.startSlider.value);
+  const end = parseFloat(els.endSlider.value);
+  els.preview.currentTime = start;
+  els.preview.play();
+  const stopAt = () => {
+    if (els.preview.currentTime >= end) {
+      els.preview.pause();
+      els.preview.removeEventListener('timeupdate', stopAt);
+    }
+  };
+  els.preview.addEventListener('timeupdate', stopAt);
+});
+
+// ---------------------------------------------------------------------
+// Audio extraction: decode selected range and resample to 16kHz mono
+// ---------------------------------------------------------------------
+async function extractSamples(file, startSec, endSec, targetRate = 16000) {
+  const arrayBuffer = await file.arrayBuffer();
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  const audioCtx = new AudioCtx();
+
+  let audioBuffer;
+  try {
+    audioBuffer = await audioCtx.decodeAudioData(arrayBuffer.slice(0));
+  } finally {
+    await audioCtx.close();
+  }
+
+  const srcRate = audioBuffer.sampleRate;
+  const clampedStart = Math.max(0, Math.min(startSec, audioBuffer.duration));
+  const clampedEnd = Math.max(clampedStart, Math.min(endSec, audioBuffer.duration));
+
+  const startSample = Math.floor(clampedStart * srcRate);
+  const endSample = Math.floor(clampedEnd * srcRate);
+  const sliceLength = Math.max(1, endSample - startSample);
+
+  // Mix down all channels to mono over the selected slice
+  const mono = new Float32Array(sliceLength);
+  const numChannels = audioBuffer.numberOfChannels;
+  for (let ch = 0; ch < numChannels; ch++) {
+    const data = audioBuffer.getChannelData(ch);
+    for (let i = 0; i < sliceLength; i++) {
+      mono[i] += data[startSample + i] / numChannels;
+    }
+  }
+
+  if (srcRate === targetRate) {
+    return mono;
+  }
+
+  // Resample to targetRate (16kHz) using an OfflineAudioContext.
+  // Web Audio automatically resamples a source buffer to the context's
+  // sample rate when it differs, so we just build the buffer at srcRate
+  // and let the offline context (running at targetRate) do the work.
+  const OfflineCtx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  const offlineCtx = new OfflineCtx(1, Math.ceil(sliceLength * targetRate / srcRate), targetRate);
+
+  const buffer = offlineCtx.createBuffer(1, sliceLength, srcRate);
+  buffer.copyToChannel(mono, 0);
+
+  const source = offlineCtx.createBufferSource();
+  source.buffer = buffer;
+  source.connect(offlineCtx.destination);
+  source.start();
+
+  const rendered = await offlineCtx.startRendering();
+  return rendered.getChannelData(0);
+}
+
+// ---------------------------------------------------------------------
+// Transcription pipeline (Transformers.js, loaded on demand)
+// ---------------------------------------------------------------------
+async function getTranscriber(task, modelSize) {
+  // Map UI choices to actual Whisper model ids on the Hugging Face Hub
+  const modelMap = {
+    'transcribe-en': { tiny: 'Xenova/whisper-tiny.en', base: 'Xenova/whisper-base.en', small: 'Xenova/whisper-small.en' },
+    'translate': { tiny: 'Xenova/whisper-tiny', base: 'Xenova/whisper-base', small: 'Xenova/whisper-small' },
+  };
+  const modelId = modelMap[task][modelSize];
+  const key = `${task}:${modelSize}`;
+
+  if (transcriberPipeline && transcriberModelKey === key) {
+    return transcriberPipeline;
+  }
+
+  setStatus('モデルを読み込み中... (初回はダウンロードに時間がかかります)');
+  const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2');
+  env.allowLocalModels = false;
+
+  transcriberPipeline = await pipeline('automatic-speech-recognition', modelId, {
+    quantized: true,
+    progress_callback: (progress) => {
+      if (progress.status === 'progress' && progress.total) {
+        const pct = (progress.loaded / progress.total) * 100;
+        setProgress(pct);
+        setStatus(`モデルをダウンロード中: ${progress.file} (${pct.toFixed(0)}%)`);
+      } else if (progress.status === 'done') {
+        setStatus(`読み込み完了: ${progress.file}`);
+      }
+    },
+  });
+  transcriberModelKey = key;
+  return transcriberPipeline;
+}
+
+els.btnTranscribe.addEventListener('click', async () => {
+  if (!currentFile) return;
+
+  els.btnTranscribe.disabled = true;
+  els.btnCopy.disabled = true;
+  els.btnDownload.disabled = true;
+  els.resultText.value = '';
+  setProgress(0);
+
+  try {
+    const start = parseFloat(els.startSlider.value);
+    const end = parseFloat(els.endSlider.value);
+    const task = els.taskSelect.value;
+    const modelSize = els.modelSelect.value;
+
+    setStatus('音声データを抽出中...');
+    const samples = await extractSamples(currentFile, start, end, 16000);
+
+    const transcriber = await getTranscriber(task, modelSize);
+
+    setStatus('文字起こしを実行中... (この処理はブラウザ内で行われます)');
+    setProgress(100);
+
+    const options = { chunk_length_s: 30, stride_length_s: 5 };
+    if (task === 'transcribe-en') {
+      options.language = 'english';
+      options.task = 'transcribe';
+    } else {
+      options.task = 'translate';
+    }
+
+    const output = await transcriber(samples, options);
+    const text = (output && output.text ? output.text : '').trim();
+
+    els.resultText.value = text || '(テキストを検出できませんでした)';
+    setStatus('完了しました。');
+    els.btnCopy.disabled = !text;
+    els.btnDownload.disabled = !text;
+  } catch (err) {
+    console.error(err);
+    setStatus(`エラーが発生しました: ${err.message || err}`, true);
+  } finally {
+    els.btnTranscribe.disabled = false;
+    hideProgress();
+  }
+});
+
+els.btnCopy.addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(els.resultText.value);
+    setStatus('クリップボードにコピーしました。');
+  } catch (err) {
+    setStatus('コピーに失敗しました。テキストを手動で選択してください。', true);
+  }
+});
+
+els.btnDownload.addEventListener('click', () => {
+  const blob = new Blob([els.resultText.value], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const baseName = currentFile ? currentFile.name.replace(/\.[^/.]+$/, '') : 'transcript';
+  a.href = url;
+  a.download = `${baseName}_transcript.txt`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+});
+</script>
+</body>
+</html>
