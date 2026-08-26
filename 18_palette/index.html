@@ -1,0 +1,694 @@
+<title>色を混ぜるパレット</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Work+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+  /* ---------- tokens ---------- */
+  :root {
+    --canvas: #DAD5C6;
+    --canvas-deep: #C9C2AC;
+    --panel: #EDE9DD;
+    --ink: #26241E;
+    --ink-soft: #5B5646;
+    --ink-faint: #8A8471;
+    --accent: #B24A28;
+    --accent-ink: #FBF3EC;
+    --line: rgba(38, 36, 30, 0.14);
+    --well-shadow: rgba(38, 36, 30, 0.35);
+    --focus-ring: #1F4E96;
+
+    --font-display: "Fraunces", ui-serif, Georgia, "Noto Serif JP", serif;
+    --font-body: "Work Sans", "Hiragino Sans", "Yu Gothic", sans-serif;
+    --font-mono: "Space Mono", ui-monospace, SFMono-Regular, monospace;
+
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.5rem;
+    --space-6: 2rem;
+    --space-7: 3rem;
+    --space-8: 4.5rem;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --canvas: #201E19;
+      --canvas-deep: #17150F;
+      --panel: #2A2721;
+      --ink: #EDE8DA;
+      --ink-soft: #B4AC96;
+      --ink-faint: #7E7862;
+      --accent: #E27B4E;
+      --accent-ink: #201209;
+      --line: rgba(237, 232, 218, 0.14);
+      --well-shadow: rgba(0, 0, 0, 0.55);
+      --focus-ring: #7FAEE8;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --canvas: #201E19;
+    --canvas-deep: #17150F;
+    --panel: #2A2721;
+    --ink: #EDE8DA;
+    --ink-soft: #B4AC96;
+    --ink-faint: #7E7862;
+    --accent: #E27B4E;
+    --accent-ink: #201209;
+    --line: rgba(237, 232, 218, 0.14);
+    --well-shadow: rgba(0, 0, 0, 0.55);
+    --focus-ring: #7FAEE8;
+  }
+
+  /* pigment hues stay fixed across themes: they are the content, not the chrome */
+  :root {
+    --pig-white: #F7F4EC;
+    --pig-black: #1B1812;
+    --pig-red: #CE3527;
+    --pig-blue: #1F4E96;
+    --pig-yellow: #E4B627;
+    --pig-green: #3C7A3E;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    background: var(--canvas);
+    background-image:
+      radial-gradient(ellipse at 15% -10%, rgba(255,255,255,0.10), transparent 55%),
+      radial-gradient(ellipse at 100% 110%, rgba(0,0,0,0.06), transparent 50%);
+    color: var(--ink);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: var(--space-6) var(--space-4) var(--space-8);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+
+  a:focus-visible, button:focus-visible {
+    outline: 2.5px solid var(--focus-ring);
+    outline-offset: 3px;
+  }
+
+  .stage {
+    width: 100%;
+    max-width: 62rem;
+  }
+
+  /* ---------- header ---------- */
+  .masthead {
+    text-align: center;
+    max-width: 34rem;
+    margin: 0 auto var(--space-7);
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 var(--space-3);
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(2rem, 1.4rem + 2.6vw, 3rem);
+    line-height: 1.08;
+    letter-spacing: -0.01em;
+    margin: 0 0 var(--space-3);
+    text-wrap: balance;
+    color: var(--ink);
+  }
+
+  .lede {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--ink-soft);
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  /* ---------- workspace grid ---------- */
+  .workspace {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1fr);
+    gap: var(--space-6);
+    align-items: start;
+  }
+
+  @media (max-width: 780px) {
+    .workspace {
+      grid-template-columns: 1fr;
+      gap: var(--space-7);
+    }
+  }
+
+  .section-label {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 var(--space-4);
+  }
+
+  /* ---------- palette ---------- */
+  .palette {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 1.25rem;
+    padding: var(--space-5);
+  }
+
+  .swatch-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-4) var(--space-3);
+    justify-items: center;
+  }
+
+  @media (max-width: 780px) {
+    .swatch-row {
+      grid-template-columns: repeat(6, 1fr);
+    }
+  }
+
+  @media (max-width: 460px) {
+    .swatch-row {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  .swatch-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .swatch {
+    width: 3.6rem;
+    height: 3.6rem;
+    border: 1px solid rgba(38,36,30,0.18);
+    cursor: grab;
+    padding: 0;
+    touch-action: none;
+    box-shadow: 0 3px 0 rgba(38,36,30,0.10), inset 0 2px 3px rgba(255,255,255,0.35), inset 0 -3px 5px rgba(0,0,0,0.12);
+    transition: transform 0.15s ease;
+    position: relative;
+  }
+
+  .swatch:hover { transform: translateY(-2px) scale(1.04); }
+  .swatch:active { cursor: grabbing; }
+  .swatch.is-lifted { opacity: 0.35; }
+
+  .swatch[data-color="white"]  { background: var(--pig-white);  border-radius: 58% 42% 63% 37% / 42% 58% 42% 58%; }
+  .swatch[data-color="black"]  { background: var(--pig-black);  border-radius: 44% 56% 40% 60% / 62% 44% 56% 38%; }
+  .swatch[data-color="red"]    { background: var(--pig-red);    border-radius: 63% 37% 48% 52% / 40% 50% 50% 60%; }
+  .swatch[data-color="blue"]   { background: var(--pig-blue);   border-radius: 38% 62% 58% 42% / 55% 40% 60% 45%; }
+  .swatch[data-color="yellow"] { background: var(--pig-yellow); border-radius: 50% 50% 62% 38% / 60% 45% 55% 40%; }
+  .swatch[data-color="green"]  { background: var(--pig-green);  border-radius: 60% 40% 44% 56% / 46% 62% 38% 54%; }
+
+  .swatch-label {
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    text-align: center;
+  }
+
+  .swatch-hint {
+    font-size: 0.82rem;
+    color: var(--ink-faint);
+    margin: var(--space-4) 0 0;
+    line-height: 1.5;
+    text-align: center;
+  }
+
+  /* ---------- mixing well ---------- */
+  .mixing-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-5);
+  }
+
+  .well {
+    --fill: 0%;
+    width: min(15.5rem, 62vw);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 32% 28%, rgba(255,255,255,0.16), transparent 45%),
+      var(--canvas-deep);
+    box-shadow:
+      inset 0 10px 22px var(--well-shadow),
+      inset 0 -4px 10px rgba(255,255,255,0.06),
+      0 1px 0 rgba(255,255,255,0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: box-shadow 0.2s ease;
+  }
+
+  .well.is-armed {
+    box-shadow:
+      inset 0 10px 22px var(--well-shadow),
+      inset 0 -4px 10px rgba(255,255,255,0.06),
+      0 0 0 4px color-mix(in srgb, var(--accent) 45%, transparent);
+  }
+
+  .well-inner {
+    width: var(--fill);
+    height: var(--fill);
+    border-radius: 46% 54% 58% 42% / 52% 44% 56% 48%;
+    background: transparent;
+    transition: width 0.35s cubic-bezier(.2,.8,.3,1), height 0.35s cubic-bezier(.2,.8,.3,1), background-color 0.3s ease;
+    box-shadow: inset 0 3px 8px rgba(0,0,0,0.18), inset 0 -3px 6px rgba(255,255,255,0.12);
+  }
+
+  .well-inner.is-plopping {
+    animation: plop 0.32s ease;
+  }
+
+  @keyframes plop {
+    0%   { transform: scale(0.88); }
+    55%  { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+
+  .well-hint {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: var(--space-4);
+    font-size: 0.82rem;
+    color: var(--ink-faint);
+    pointer-events: none;
+    line-height: 1.6;
+  }
+
+  .well-code {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    letter-spacing: 0.04em;
+    color: var(--ink-soft);
+    min-height: 1.3em;
+    margin: 0;
+  }
+
+  .reset-btn {
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--ink-soft);
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 0.55rem 1.1rem;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease;
+  }
+
+  .reset-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* ---------- ledger ---------- */
+  .ledger {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 1.25rem;
+    padding: var(--space-5);
+  }
+
+  .ledger-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ledger-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--line);
+    opacity: 0.55;
+    transition: opacity 0.2s ease;
+  }
+
+  .ledger-row.is-used {
+    opacity: 1;
+  }
+
+  .ledger-row:last-child {
+    border-bottom: none;
+  }
+
+  .ledger-chip {
+    width: 1.2rem;
+    height: 1.2rem;
+    flex: none;
+    border: 1px solid rgba(38,36,30,0.2);
+  }
+
+  .ledger-chip[data-color="white"]  { background: var(--pig-white);  border-radius: 58% 42% 63% 37% / 42% 58% 42% 58%; }
+  .ledger-chip[data-color="black"]  { background: var(--pig-black);  border-radius: 44% 56% 40% 60% / 62% 44% 56% 38%; }
+  .ledger-chip[data-color="red"]    { background: var(--pig-red);    border-radius: 63% 37% 48% 52% / 40% 50% 50% 60%; }
+  .ledger-chip[data-color="blue"]   { background: var(--pig-blue);   border-radius: 38% 62% 58% 42% / 55% 40% 60% 45%; }
+  .ledger-chip[data-color="yellow"] { background: var(--pig-yellow); border-radius: 50% 50% 62% 38% / 60% 45% 55% 40%; }
+  .ledger-chip[data-color="green"]  { background: var(--pig-green);  border-radius: 60% 40% 44% 56% / 46% 62% 38% 54%; }
+
+  .ledger-name {
+    font-size: 0.88rem;
+    color: var(--ink);
+    flex: 1;
+  }
+
+  .ledger-count {
+    font-family: var(--font-mono);
+    font-size: 0.88rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-soft);
+    min-width: 1.6em;
+    text-align: right;
+  }
+
+  .ledger-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-top: var(--space-4);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--line);
+  }
+
+  .ledger-total-label {
+    font-size: 0.82rem;
+    color: var(--ink-soft);
+  }
+
+  .ledger-total-value {
+    font-family: var(--font-mono);
+    font-size: 1.5rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--accent);
+  }
+
+  /* ---------- drag ghost ---------- */
+  .drag-ghost {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 3.4rem;
+    height: 3.4rem;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 100;
+    box-shadow: 0 8px 18px rgba(0,0,0,0.28);
+    transform: translate(-50%, -50%);
+    opacity: 0.95;
+  }
+</style>
+
+<div class="stage">
+  <header class="masthead">
+    <p class="eyebrow">Palette Studio</p>
+    <h1>色を混ぜてみよう</h1>
+    <p class="lede">白・黒・赤・青・黄・緑の6色から、混ぜるスペースへドラッグ。1回のドラッグで1単位、色が加わっていきます。</p>
+  </header>
+
+  <div class="workspace">
+    <section class="palette" aria-label="使う色を選ぶ">
+      <p class="section-label">パレット</p>
+      <div class="swatch-row" id="swatchRow"></div>
+      <p class="swatch-hint">ドラッグ、またはキーボードで選んで Enter</p>
+    </section>
+
+    <section class="mixing-area" aria-label="混色スペース">
+      <div class="well" id="well">
+        <div class="well-inner" id="wellInner"></div>
+        <p class="well-hint" id="wellHint">ここに色を<br>ドラッグ</p>
+      </div>
+      <p class="well-code" id="wellCode"></p>
+      <button class="reset-btn" id="resetBtn" type="button">パレットを洗う</button>
+    </section>
+
+    <aside class="ledger" aria-label="使用記録">
+      <p class="section-label">使用記録</p>
+      <ul class="ledger-list" id="ledgerList"></ul>
+      <div class="ledger-total">
+        <span class="ledger-total-label">合計</span>
+        <span class="ledger-total-value" id="totalCount">0</span>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var COLORS = [
+    { key: "white",  label: "白", hex: "#F7F4EC" },
+    { key: "black",  label: "黒", hex: "#1B1812" },
+    { key: "red",    label: "赤", hex: "#CE3527" },
+    { key: "blue",   label: "青", hex: "#1F4E96" },
+    { key: "yellow", label: "黄", hex: "#E4B627" },
+    { key: "green",  label: "緑", hex: "#3C7A3E" }
+  ];
+
+  var counts = {};
+  COLORS.forEach(function (c) { counts[c.key] = 0; });
+
+  var swatchRow = document.getElementById("swatchRow");
+  var ledgerList = document.getElementById("ledgerList");
+  var well = document.getElementById("well");
+  var wellInner = document.getElementById("wellInner");
+  var wellHint = document.getElementById("wellHint");
+  var wellCode = document.getElementById("wellCode");
+  var totalCountEl = document.getElementById("totalCount");
+  var resetBtn = document.getElementById("resetBtn");
+
+  var ledgerCountEls = {};
+  var ledgerRowEls = {};
+
+  // ---------- build palette + ledger from config ----------
+  COLORS.forEach(function (c) {
+    var cell = document.createElement("div");
+    cell.className = "swatch-cell";
+
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "swatch";
+    btn.dataset.color = c.key;
+    btn.setAttribute("aria-label", c.label + "を混色スペースへ追加");
+
+    var label = document.createElement("span");
+    label.className = "swatch-label";
+    label.textContent = c.label;
+
+    cell.appendChild(btn);
+    cell.appendChild(label);
+    swatchRow.appendChild(cell);
+
+    btn.addEventListener("pointerdown", function (e) { startDrag(e, c); });
+    btn.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") {
+        e.preventDefault();
+        addUnit(c.key);
+        pulseWell();
+      }
+    });
+
+    var row = document.createElement("li");
+    row.className = "ledger-row";
+
+    var chip = document.createElement("span");
+    chip.className = "ledger-chip";
+    chip.dataset.color = c.key;
+
+    var name = document.createElement("span");
+    name.className = "ledger-name";
+    name.textContent = c.label;
+
+    var count = document.createElement("span");
+    count.className = "ledger-count";
+    count.textContent = "0";
+
+    row.appendChild(chip);
+    row.appendChild(name);
+    row.appendChild(count);
+    ledgerList.appendChild(row);
+
+    ledgerCountEls[c.key] = count;
+    ledgerRowEls[c.key] = row;
+  });
+
+  // ---------- color math ----------
+  function hexToRgb(hex) {
+    var n = parseInt(hex.slice(1), 16);
+    return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+  }
+
+  var RGB = {};
+  COLORS.forEach(function (c) { RGB[c.key] = hexToRgb(c.hex); });
+
+  function totalUnits() {
+    var t = 0;
+    COLORS.forEach(function (c) { t += counts[c.key]; });
+    return t;
+  }
+
+  function mixedRgb() {
+    var t = totalUnits();
+    if (t === 0) return null;
+    var r = 0, g = 0, b = 0;
+    COLORS.forEach(function (c) {
+      var n = counts[c.key];
+      if (!n) return;
+      r += RGB[c.key].r * n;
+      g += RGB[c.key].g * n;
+      b += RGB[c.key].b * n;
+    });
+    return {
+      r: Math.round(r / t),
+      g: Math.round(g / t),
+      b: Math.round(b / t)
+    };
+  }
+
+  function toHex(n) {
+    var h = n.toString(16);
+    return h.length === 1 ? "0" + h : h;
+  }
+
+  // ---------- render ----------
+  function render() {
+    var t = totalUnits();
+    var mix = mixedRgb();
+
+    COLORS.forEach(function (c) {
+      ledgerCountEls[c.key].textContent = String(counts[c.key]);
+      ledgerRowEls[c.key].classList.toggle("is-used", counts[c.key] > 0);
+    });
+    totalCountEl.textContent = String(t);
+
+    if (mix) {
+      var fillPct = Math.min(28 + t * 6, 94);
+      wellInner.style.setProperty("--fill", fillPct + "%");
+      wellInner.style.width = fillPct + "%";
+      wellInner.style.height = fillPct + "%";
+      wellInner.style.backgroundColor = "rgb(" + mix.r + "," + mix.g + "," + mix.b + ")";
+      wellHint.style.display = "none";
+      wellCode.textContent = "#" + toHex(mix.r) + toHex(mix.g) + toHex(mix.b) + "  ・  " + t + "滴";
+    } else {
+      wellInner.style.width = "0%";
+      wellInner.style.height = "0%";
+      wellInner.style.backgroundColor = "transparent";
+      wellHint.style.display = "flex";
+      wellCode.textContent = "";
+    }
+  }
+
+  function pulseWell() {
+    wellInner.classList.remove("is-plopping");
+    // force reflow so the animation can restart
+    void wellInner.offsetWidth;
+    wellInner.classList.add("is-plopping");
+  }
+
+  function addUnit(key) {
+    counts[key] += 1;
+    render();
+    pulseWell();
+  }
+
+  resetBtn.addEventListener("click", function () {
+    COLORS.forEach(function (c) { counts[c.key] = 0; });
+    render();
+  });
+
+  render();
+
+  // ---------- pointer-based drag (mouse + touch) ----------
+  var dragState = null;
+
+  function startDrag(e, color) {
+    e.preventDefault();
+    var swatchEl = e.currentTarget;
+    swatchEl.classList.add("is-lifted");
+
+    var ghost = document.createElement("div");
+    ghost.className = "drag-ghost";
+    ghost.style.background = color.hex;
+    ghost.style.left = e.clientX + "px";
+    ghost.style.top = e.clientY + "px";
+    document.body.appendChild(ghost);
+
+    dragState = { color: color, ghost: ghost, swatchEl: swatchEl };
+
+    window.addEventListener("pointermove", onDragMove);
+    window.addEventListener("pointerup", onDragEnd);
+    window.addEventListener("pointercancel", onDragEnd);
+  }
+
+  function isOverWell(x, y) {
+    var rect = well.getBoundingClientRect();
+    var cx = rect.left + rect.width / 2;
+    var cy = rect.top + rect.height / 2;
+    var dx = x - cx, dy = y - cy;
+    var r = rect.width / 2;
+    return (dx * dx + dy * dy) <= (r * r);
+  }
+
+  function onDragMove(e) {
+    if (!dragState) return;
+    dragState.ghost.style.left = e.clientX + "px";
+    dragState.ghost.style.top = e.clientY + "px";
+    well.classList.toggle("is-armed", isOverWell(e.clientX, e.clientY));
+  }
+
+  function onDragEnd(e) {
+    if (!dragState) return;
+    var hit = isOverWell(e.clientX, e.clientY);
+    dragState.swatchEl.classList.remove("is-lifted");
+    well.classList.remove("is-armed");
+    dragState.ghost.remove();
+
+    if (hit) {
+      addUnit(dragState.color.key);
+    }
+
+    dragState = null;
+    window.removeEventListener("pointermove", onDragMove);
+    window.removeEventListener("pointerup", onDragEnd);
+    window.removeEventListener("pointercancel", onDragEnd);
+  }
+})();
+</script>
