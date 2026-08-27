@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>和英自動翻訳（ローカルAI）</title>
+<style>
+  :root {
+    --bg: #f4f5f7;
+    --panel: #ffffff;
+    --bubble-user: #4a7dff;
+    --bubble-user-text: #ffffff;
+    --bubble-bot: #eef0f4;
+    --bubble-bot-text: #1a1a1a;
+    --accent: #4a7dff;
+    --muted: #8a8f98;
+    --border: #e2e4e9;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    height: 100%;
+    margin: 0;
+    font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: #1a1a1a;
+  }
+  .app {
+    max-width: 640px;
+    margin: 0 auto;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--panel);
+    box-shadow: 0 0 24px rgba(0,0,0,0.06);
+  }
+  header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  header .icon {
+    font-size: 22px;
+  }
+  header h1 {
+    font-size: 16px;
+    margin: 0;
+    font-weight: 600;
+  }
+  header p {
+    margin: 2px 0 0;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  #log {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .empty-state {
+    margin: auto;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.8;
+    padding: 24px;
+  }
+  .row {
+    display: flex;
+    flex-direction: column;
+    max-width: 84%;
+  }
+  .row.user { align-self: flex-end; align-items: flex-end; }
+  .row.bot { align-self: flex-start; align-items: flex-start; }
+  .row.system { align-self: center; align-items: center; max-width: 100%; }
+  .bubble {
+    padding: 10px 14px;
+    border-radius: 16px;
+    font-size: 15px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .row.user .bubble {
+    background: var(--bubble-user);
+    color: var(--bubble-user-text);
+    border-bottom-right-radius: 4px;
+  }
+  .row.bot .bubble {
+    background: var(--bubble-bot);
+    color: var(--bubble-bot-text);
+    border-bottom-left-radius: 4px;
+  }
+  .row.bot .bubble.error {
+    background: #fdecea;
+    color: #a13a2e;
+  }
+  .row.system .bubble {
+    background: transparent;
+    color: var(--muted);
+    font-size: 12px;
+    padding: 4px 10px;
+    text-align: center;
+  }
+  .row .label {
+    font-size: 11px;
+    color: var(--muted);
+    margin: 2px 6px;
+  }
+  .bot-actions {
+    margin-top: 4px;
+    display: flex;
+    gap: 8px;
+  }
+  .icon-btn {
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: var(--accent);
+    font-size: 13px;
+    padding: 2px 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .icon-btn:hover { text-decoration: underline; }
+  .dots {
+    display: inline-flex;
+    gap: 3px;
+  }
+  .dots span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--muted);
+    animation: blink 1.2s infinite ease-in-out;
+  }
+  .dots span:nth-child(2) { animation-delay: 0.2s; }
+  .dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes blink {
+    0%, 80%, 100% { opacity: 0.2; }
+    40% { opacity: 1; }
+  }
+  .progress-outer {
+    width: 220px;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--border);
+    overflow: hidden;
+    margin: 6px auto 0;
+  }
+  .progress-inner {
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
+    transition: width 0.2s ease;
+  }
+  form#composer {
+    display: flex;
+    gap: 8px;
+    padding: 12px;
+    border-top: 1px solid var(--border);
+    background: var(--panel);
+  }
+  textarea#input {
+    flex: 1;
+    resize: none;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 10px 16px;
+    font-size: 15px;
+    font-family: inherit;
+    line-height: 1.4;
+    max-height: 120px;
+    outline: none;
+  }
+  textarea#input:focus {
+    border-color: var(--accent);
+  }
+  button#sendBtn {
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 20px;
+    padding: 0 20px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  button#sendBtn:disabled {
+    background: #b9c4e0;
+    cursor: not-allowed;
+  }
+  footer.hint {
+    text-align: center;
+    font-size: 11px;
+    color: var(--muted);
+    padding: 4px 0 10px;
+  }
+  .note {
+    margin: 0 16px 12px;
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.6;
+    background: #f8f9fb;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="icon">🈯️🔊</div>
+    <div>
+      <h1>和英自動翻訳（ローカルAI）</h1>
+      <p>日本語を入力すると、ブラウザ内のAIモデルが英訳し、読み上げます</p>
+    </div>
+  </header>
+
+  <div id="log">
+    <div class="empty-state" id="emptyState">
+      下の欄に日本語を入力して「翻訳」を押してください。<br>
+      初回のみ翻訳モデルの読み込みが必要です（数十MB、要インターネット接続）。<br>
+      以降はブラウザにキャッシュされ、オフラインでも翻訳できます。
+    </div>
+  </div>
+
+  <div class="note">
+    翻訳は <a href="https://github.com/huggingface/transformers.js" target="_blank" rel="noopener">Transformers.js</a> を用いて Helsinki-NLP/opus-mt-ja-en モデルをブラウザ内（WebAssembly）で実行しています。入力文はどこにも送信されません。初回のみモデルのダウンロードにインターネット接続が必要です。最も安定して動作するのは Chrome または Edge の最新版です。このページは会話内プレビューではなく、<strong>ダウンロードしてブラウザで直接開く</strong>ことを推奨します（モデルのキャッシュが正しく機能するためです）。
+  </div>
+
+  <form id="composer">
+    <textarea id="input" rows="1" placeholder="日本語を入力…" autofocus></textarea>
+    <button type="submit" id="sendBtn">翻訳</button>
+  </form>
+  <footer class="hint">Enterで送信 / Shift+Enterで改行 &middot; 初回のみ要インターネット接続</footer>
+</div>
+
+<script type="module">
+// ---------------------------------------------------------------------
+// English text-to-speech (Web Speech API, built into the browser)
+// ---------------------------------------------------------------------
+let englishVoice = null;
+
+function pickEnglishVoice() {
+  const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+  if (!voices.length) return null;
+  const englishVoices = voices.filter(v => v.lang && v.lang.startsWith('en'));
+  if (!englishVoices.length) return null;
+  // Prefer a voice that runs on-device (localService) so reading aloud does
+  // not silently depend on network, matching this app's offline-first design.
+  return (
+    englishVoices.find(v => v.localService && v.lang === 'en-US') ||
+    englishVoices.find(v => v.localService) ||
+    englishVoices.find(v => v.lang === 'en-US') ||
+    englishVoices[0]
+  );
+}
+
+if (window.speechSynthesis) {
+  englishVoice = pickEnglishVoice();
+  window.speechSynthesis.onvoiceschanged = () => {
+    englishVoice = pickEnglishVoice();
+  };
+}
+
+function speakEnglish(text) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = 'en-US';
+  if (englishVoice) utterance.voice = englishVoice;
+  utterance.rate = 1;
+  window.speechSynthesis.speak(utterance);
+}
+
+// ---------------------------------------------------------------------
+// Local, in-browser Japanese -> English translation (Transformers.js)
+// ---------------------------------------------------------------------
+// The ONNX model is fetched once from the Hugging Face CDN, then cached by
+// the browser (via the Cache Storage API that Transformers.js uses
+// internally), so every translation after the first page load runs fully
+// offline with no per-request network call.
+let translatorPipeline = null;
+let translatorLoadingPromise = null;
+
+function setModelProgress(row, pct, label) {
+  const bubble = row.querySelector('.bubble');
+  bubble.textContent = label;
+  let bar = row.querySelector('.progress-outer');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.className = 'progress-outer';
+    bar.innerHTML = '<div class="progress-inner"></div>';
+    row.appendChild(bar);
+  }
+  bar.querySelector('.progress-inner').style.width = Math.max(0, Math.min(100, pct)) + '%';
+}
+
+async function getTranslator(onProgress) {
+  if (translatorPipeline) return translatorPipeline;
+  if (translatorLoadingPromise) return translatorLoadingPromise;
+
+  translatorLoadingPromise = (async () => {
+    const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2');
+    env.allowLocalModels = false;
+
+    const pipe = await pipeline('translation', 'Xenova/opus-mt-ja-en', {
+      quantized: true,
+      progress_callback: (progress) => {
+        if (progress.status === 'progress' && progress.total) {
+          const pct = (progress.loaded / progress.total) * 100;
+          onProgress(pct, `翻訳モデルをダウンロード中: ${progress.file} (${pct.toFixed(0)}%)`);
+        } else if (progress.status === 'done') {
+          onProgress(100, `読み込み完了: ${progress.file}`);
+        }
+      },
+    });
+    translatorPipeline = pipe;
+    return pipe;
+  })();
+
+  return translatorLoadingPromise;
+}
+
+async function translateToEnglish(text, row) {
+  let translator;
+  if (!translatorPipeline) {
+    setModelProgress(row, 0, '翻訳モデルを読み込み中…（初回のみ）');
+    try {
+      translator = await getTranslator((pct, label) => setModelProgress(row, pct, label));
+    } catch (err) {
+      translatorLoadingPromise = null; // allow retry on the next message
+      throw new Error('翻訳モデルの読み込みに失敗しました。初回はインターネット接続が必要です。接続を確認してもう一度お試しください。');
+    }
+    // Clear the progress UI now that the model is ready.
+    const bar = row.querySelector('.progress-outer');
+    if (bar) bar.remove();
+    row.querySelector('.bubble').innerHTML = '<span class="dots"><span></span><span></span><span></span></span>';
+  } else {
+    translator = translatorPipeline;
+  }
+
+  const output = await translator(text);
+  const translated = output && output[0] && output[0].translation_text;
+  if (!translated) throw new Error('翻訳結果を取得できませんでした。');
+  return translated;
+}
+
+// ---------------------------------------------------------------------
+// Chat UI wiring
+// ---------------------------------------------------------------------
+const log = document.getElementById('log');
+const emptyState = document.getElementById('emptyState');
+const form = document.getElementById('composer');
+const input = document.getElementById('input');
+const sendBtn = document.getElementById('sendBtn');
+
+function scrollToBottom() {
+  log.scrollTop = log.scrollHeight;
+}
+
+function addUserRow(text) {
+  const row = document.createElement('div');
+  row.className = 'row user';
+  row.innerHTML = '<div class="bubble"></div>';
+  row.querySelector('.bubble').textContent = text;
+  log.appendChild(row);
+  scrollToBottom();
+}
+
+function addBotLoadingRow() {
+  const row = document.createElement('div');
+  row.className = 'row bot';
+  row.innerHTML = '<div class="bubble"><span class="dots"><span></span><span></span><span></span></span></div>';
+  log.appendChild(row);
+  scrollToBottom();
+  return row;
+}
+
+function fillBotRowWithResult(row, englishText) {
+  const bubble = row.querySelector('.bubble');
+  bubble.textContent = englishText;
+
+  const actions = document.createElement('div');
+  actions.className = 'bot-actions';
+  const replayBtn = document.createElement('button');
+  replayBtn.type = 'button';
+  replayBtn.className = 'icon-btn';
+  replayBtn.innerHTML = '🔊 読み上げ';
+  replayBtn.addEventListener('click', () => speakEnglish(englishText));
+  actions.appendChild(replayBtn);
+  row.appendChild(actions);
+
+  scrollToBottom();
+}
+
+function fillBotRowWithError(row, message) {
+  const bar = row.querySelector('.progress-outer');
+  if (bar) bar.remove();
+  const bubble = row.querySelector('.bubble');
+  bubble.classList.add('error');
+  bubble.textContent = message;
+  scrollToBottom();
+}
+
+async function handleSubmit(event) {
+  event.preventDefault();
+  const text = input.value.trim();
+  if (!text) return;
+
+  if (emptyState) emptyState.remove();
+
+  addUserRow(text);
+  input.value = '';
+  autoResize();
+  sendBtn.disabled = true;
+
+  const botRow = addBotLoadingRow();
+  try {
+    const english = await translateToEnglish(text, botRow);
+    fillBotRowWithResult(botRow, english);
+    speakEnglish(english);
+  } catch (err) {
+    fillBotRowWithError(botRow, err.message || '翻訳中にエラーが発生しました。');
+  } finally {
+    sendBtn.disabled = false;
+    input.focus();
+  }
+}
+
+form.addEventListener('submit', handleSubmit);
+
+// Enter sends, Shift+Enter inserts a newline (standard chat-app behavior).
+input.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    form.requestSubmit();
+  }
+});
+
+// Auto-grow the textarea as the user types, up to the CSS max-height.
+function autoResize() {
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+}
+input.addEventListener('input', autoResize);
+</script>
+</body>
+</html>
