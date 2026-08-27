@@ -111,6 +111,10 @@ body{
 .app{
   display:flex;
   flex-direction:column;
+  /* A bounded height (not just min-height) is what actually caps the flex
+     chain below — otherwise nothing stops inspector content from growing
+     the whole page instead of scrolling inside its own panel. */
+  height:100vh;
   min-height:100vh;
 }
 
@@ -161,6 +165,10 @@ body{
   flex:1;
   display:grid;
   grid-template-columns: minmax(0,1fr) 360px;
+  /* An auto row sizes to its tallest item's intrinsic (content) height even
+     when that item has overflow:auto — only a bounded row height actually
+     makes overflow clip/scroll instead of growing the whole page. */
+  grid-template-rows: minmax(0, 1fr);
   gap:1px;
   background:var(--border);
   min-height:0;
@@ -181,6 +189,11 @@ body{
   min-height:420px;
   overflow:hidden;
 }
+/* Grid items default to min-height:auto, which lets their content force the
+   shared row taller than the viewport (pushing the bottom toolbar/HUD off
+   screen). min-height:0 lets this pane and the inspector actually fill —
+   and be clipped to — the workbench's available height. */
+.viewport-pane, .inspector{ min-height:0; }
 #viewportCanvas{
   display:block;
   width:100%;
