@@ -2,8 +2,6 @@
 
 A web tool for batch-converting image formats. Everything runs in your browser — no image is ever uploaded to a server.
 
-Published page: https://claude.ai/code/artifact/2366778e-bac7-4894-9749-47e39cd940f1
-
 ## Supported formats
 
 | | Formats |
