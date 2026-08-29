@@ -4,3 +4,7 @@
 
 
 Published page: https://claude.ai/code/artifact/2366778e-bac7-4894-9749-47e39cd940f1
+
+https://tztechno.github.io/tz_html_works2/20_rasterbench/rasterbench-ja.html
+
+
