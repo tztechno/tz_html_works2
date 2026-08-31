@@ -687,28 +687,50 @@
   }
   render();
 
-  /* ---------- Downloads capability ---------- */
-  // Wired up after the initial render() so a synchronous null-branch
-  // (window.claude entirely absent) never touches state before it exists.
-  // undefined = not yet resolved, null = unavailable in this view, object = ready to call
-  var downloadsApi;
-  function downloadsReady() { return !!downloadsApi; }
-  (function initDownloads() {
-    if (!(window.claude && typeof window.claude.use === 'function')) {
-      downloadsApi = null;
-      render();
-      return;
-    }
-    window.claude.use('downloads').then(function (api) {
-      downloadsApi = api || null;
-      var notice = document.getElementById('capabilityNotice');
-      if (!downloadsApi) {
-        notice.hidden = false;
-        notice.textContent = 'Saving isn\'t available in this view. Try reopening the page, or use a shared environment.';
+  /* ---------- Downloads: Claude capability, with a plain-browser fallback ---------- */
+  // Inside Claude, window.claude exposes the "downloads" capability, which
+  // shows a native save confirmation. Anywhere else — a saved .html file
+  // opened directly, or this page hosted on any other site — window.claude
+  // is absent, so we fall back to a normal browser download (a hidden
+  // <a download> click). Both paths run through saveEntry() below.
+  var claudeDownloadsPromise = (window.claude && typeof window.claude.use === 'function')
+    ? window.claude.use('downloads').catch(function () { return null; })
+    : null;
+
+  function requestDownloadsApi() {
+    return claudeDownloadsPromise ? claudeDownloadsPromise : Promise.resolve(null);
+  }
+
+  // Saving is always possible: either the Claude capability or the
+  // plain-browser fallback will handle it.
+  function downloadsReady() { return true; }
+
+  function fallbackSave(filename, blob) {
+    return new Promise(function (resolve, reject) {
+      try {
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+        resolve({ status: 'saved' });
+      } catch (err) {
+        reject(err);
       }
-      render();
-    }).catch(function () {
-      downloadsApi = null;
+    });
+  }
+
+  (function initDownloads() {
+    var notice = document.getElementById('capabilityNotice');
+    requestDownloadsApi().then(function (api) {
+      if (!api) {
+        notice.hidden = false;
+        notice.textContent = "Not running inside Claude — files will save through your browser's normal download prompt instead.";
+      }
       render();
     });
   })();
@@ -749,12 +771,14 @@
     render();
   });
 
-  /* ---------- Saving via the downloads capability ---------- */
+  /* ---------- Saving: Claude capability first, plain-browser fallback otherwise ---------- */
   function saveEntry(en) {
-    if (!downloadsReady() || !en.outputBlob) return Promise.resolve();
+    if (!en.outputBlob) return Promise.resolve();
     en.saveState = 'saving';
     render();
-    return downloadsApi.save({ filename: en.outputName, data: en.outputBlob }).then(function () {
+    return requestDownloadsApi().then(function (api) {
+      return api ? api.save({ filename: en.outputName, data: en.outputBlob }) : fallbackSave(en.outputName, en.outputBlob);
+    }).then(function () {
       en.saveState = 'saved';
       en.saveMsg = '';
       render();
