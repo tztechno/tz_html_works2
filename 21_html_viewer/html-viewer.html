@@ -1,0 +1,704 @@
+<meta charset="utf-8">
+<title>HTML Viewer</title>
+<style>
+  :root{
+    --bg:#121317;
+    --panel:#1b1d23;
+    --panel-raised:#22242b;
+    --border:#2c2f38;
+    --text:#eef0f4;
+    --text-muted:#8b8f9c;
+    --accent:#5b8cff;
+    --accent-text:#0b1020;
+    --ok:#33c17f;
+    --ok-soft:#173327;
+    --warn:#e0a72e;
+    --warn-soft:#332a12;
+    --err:#ef5b5b;
+    --err-soft:#331717;
+    --shadow:0 8px 24px rgba(0,0,0,0.35);
+    --radius:14px;
+    color-scheme:dark;
+  }
+  :root[data-theme="light"]{
+    --bg:#f5f6f8;
+    --panel:#ffffff;
+    --panel-raised:#eef0f4;
+    --border:#dfe2e9;
+    --text:#191b20;
+    --text-muted:#666a76;
+    --accent:#3366e6;
+    --accent-text:#ffffff;
+    --ok:#1f9d5c;
+    --ok-soft:#e2f6ec;
+    --warn:#b9790a;
+    --warn-soft:#faedd4;
+    --err:#d33a3a;
+    --err-soft:#fbe4e4;
+    --shadow:0 8px 24px rgba(20,24,34,0.12);
+    color-scheme:light;
+  }
+  @media (prefers-color-scheme: light){
+    :root:not([data-theme="dark"]){
+      --bg:#f5f6f8;
+      --panel:#ffffff;
+      --panel-raised:#eef0f4;
+      --border:#dfe2e9;
+      --text:#191b20;
+      --text-muted:#666a76;
+      --accent:#3366e6;
+      --accent-text:#ffffff;
+      --ok:#1f9d5c;
+      --ok-soft:#e2f6ec;
+      --warn:#b9790a;
+      --warn-soft:#faedd4;
+      --err:#d33a3a;
+      --err-soft:#fbe4e4;
+      --shadow:0 8px 24px rgba(20,24,34,0.12);
+      color-scheme:light;
+    }
+  }
+
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system, BlinkMacSystemFont, "SF Pro Text", "Hiragino Sans", "Segoe UI", sans-serif;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    height:100dvh;
+  }
+  .mono{ font-family:ui-monospace, "SF Mono", "Menlo", monospace; }
+
+  /* ---------- top bar ---------- */
+  .topbar{
+    flex:none;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:calc(env(safe-area-inset-top,0px) + 10px) 14px 10px;
+    background:var(--panel);
+    border-bottom:1px solid var(--border);
+    z-index:20;
+  }
+  .topbar .title{
+    font-size:15px;
+    font-weight:700;
+    letter-spacing:0.01em;
+    flex:1;
+    min-width:0;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .status-pill{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    padding:4px 9px;
+    border-radius:999px;
+    font-size:11px;
+    font-weight:600;
+    white-space:nowrap;
+  }
+  .status-pill .dot{ width:6px; height:6px; border-radius:50%; flex:none; }
+  .status-pill.idle{ background:var(--panel-raised); color:var(--text-muted); }
+  .status-pill.idle .dot{ background:var(--text-muted); }
+  .status-pill.ready{ background:var(--ok-soft); color:var(--ok); }
+  .status-pill.ready .dot{ background:var(--ok); }
+  .status-pill.missing{ background:var(--warn-soft); color:var(--warn); }
+  .status-pill.missing .dot{ background:var(--warn); }
+
+  .icon-btn{
+    flex:none;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    height:32px;
+    padding:0 12px;
+    border-radius:9px;
+    border:1px solid var(--border);
+    background:var(--panel-raised);
+    color:var(--text);
+    font-size:13px;
+    font-weight:600;
+    font-family:inherit;
+    cursor:pointer;
+  }
+  .icon-btn:active{ transform:scale(0.96); }
+  .icon-btn .count{
+    min-width:16px;
+    padding:0 4px;
+    height:16px;
+    border-radius:8px;
+    background:var(--accent);
+    color:var(--accent-text);
+    font-size:10px;
+    font-weight:800;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  /* ---------- stage ---------- */
+  .stage{
+    position:relative;
+    flex:1;
+    min-height:0;
+    background:#000;
+  }
+  .stage iframe{
+    display:block;
+    width:100%;
+    height:100%;
+    border:0;
+    background:#fff;
+  }
+  .stage-tools{
+    position:absolute;
+    right:12px;
+    bottom:calc(env(safe-area-inset-bottom,0px) + 12px);
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    z-index:10;
+  }
+  .fab{
+    width:40px;
+    height:40px;
+    border-radius:50%;
+    border:1px solid var(--border);
+    background:var(--panel);
+    color:var(--text);
+    box-shadow:var(--shadow);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:16px;
+    cursor:pointer;
+  }
+  .fab:active{ transform:scale(0.94); }
+
+  /* ---------- drawer ---------- */
+  .scrim{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.45);
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .18s ease;
+    z-index:30;
+  }
+  .scrim.open{ opacity:1; pointer-events:auto; }
+
+  .drawer{
+    position:fixed;
+    left:0; right:0; bottom:0;
+    max-height:78vh;
+    background:var(--panel);
+    border-top:1px solid var(--border);
+    border-radius:18px 18px 0 0;
+    box-shadow:var(--shadow);
+    transform:translateY(100%);
+    transition:transform .22s cubic-bezier(.32,.72,0,1);
+    z-index:31;
+    display:flex;
+    flex-direction:column;
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  .drawer.open{ transform:translateY(0); }
+  .drawer-handle{
+    width:36px; height:4px; border-radius:2px;
+    background:var(--border);
+    margin:10px auto 6px;
+    flex:none;
+  }
+  .drawer-head{
+    flex:none;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:2px 16px 12px;
+    border-bottom:1px solid var(--border);
+  }
+  .drawer-head h2{
+    margin:0;
+    font-size:15px;
+    font-weight:700;
+  }
+  .link-btn{
+    background:none;
+    border:0;
+    color:var(--accent);
+    font-size:13px;
+    font-weight:600;
+    font-family:inherit;
+    padding:6px 2px;
+    cursor:pointer;
+  }
+  .drawer-body{
+    overflow-y:auto;
+    padding:12px 16px 4px;
+  }
+  .help-text{
+    font-size:12.5px;
+    line-height:1.6;
+    color:var(--text-muted);
+    margin:0 0 14px;
+  }
+  .add-btn{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    width:100%;
+    height:44px;
+    border-radius:11px;
+    border:1px dashed var(--border);
+    background:var(--panel-raised);
+    color:var(--accent);
+    font-size:14px;
+    font-weight:700;
+    font-family:inherit;
+    cursor:pointer;
+    margin-bottom:14px;
+  }
+  .add-btn:active{ transform:scale(0.98); }
+
+  .file-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:9px 0;
+    border-bottom:1px solid var(--border);
+  }
+  .file-row:last-child{ border-bottom:0; }
+  .file-badge{
+    flex:none;
+    width:30px; height:30px;
+    border-radius:8px;
+    background:var(--panel-raised);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:10px;
+    font-weight:800;
+    letter-spacing:0.02em;
+    color:var(--text-muted);
+    text-transform:uppercase;
+  }
+  .file-badge.html{ background:var(--ok-soft); color:var(--ok); }
+  .file-meta{ flex:1; min-width:0; }
+  .file-name{
+    font-size:13px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .file-size{
+    font-size:11px;
+    color:var(--text-muted);
+  }
+  .file-remove{
+    flex:none;
+    width:26px; height:26px;
+    border-radius:50%;
+    border:0;
+    background:var(--panel-raised);
+    color:var(--text-muted);
+    font-size:13px;
+    cursor:pointer;
+  }
+  .empty-list{
+    text-align:center;
+    color:var(--text-muted);
+    font-size:12.5px;
+    padding:18px 0 26px;
+  }
+
+  #filePicker{ display:none; }
+
+  @media (prefers-reduced-motion: reduce){
+    .drawer, .scrim, .icon-btn, .fab{ transition:none !important; }
+  }
+</style>
+
+<div class="topbar">
+  <div class="title" id="titleText">HTML Viewer</div>
+  <span class="status-pill idle" id="statusPill"><span class="dot"></span><span id="statusText">未読み込み</span></span>
+  <button class="icon-btn" id="drawerToggle" type="button">
+    ファイル<span class="count" id="fileCount">0</span>
+  </button>
+</div>
+
+<div class="stage">
+  <iframe id="preview" title="preview" sandbox="allow-scripts allow-forms allow-popups allow-modals allow-pointer-lock allow-same-origin"></iframe>
+  <div class="stage-tools">
+    <button class="fab" id="openTabBtn" type="button" title="新しいタブで開く" aria-label="新しいタブで開く">⤢</button>
+  </div>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-handle"></div>
+  <div class="drawer-head">
+    <h2>読み込んだファイル</h2>
+    <button class="link-btn" id="clearAllBtn" type="button">すべて削除</button>
+  </div>
+  <div class="drawer-body">
+    <p class="help-text">
+      index.html を含むファイルをまとめて選んでください。フォルダの中に
+      サブフォルダがある場合、iPhoneのSafariはフォルダそのものを渡せないため、
+      サブフォルダの中身は「ファイルを追加」をもう一度使って個別に選び足してください。
+      ファイル名が同じ場合はフォルダの位置に関わらず上書きされます。
+    </p>
+    <button class="add-btn" id="addBtn" type="button">＋ ファイルを追加</button>
+    <input id="filePicker" type="file" multiple accept="*/*">
+    <div id="fileList"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var files = new Map();      // name (lowercase) -> File
+  var blobUrls = new Map();   // name (lowercase) -> object URL (raw or CSS-processed)
+  var currentRenderedBlobUrl = null;
+
+  var preview = document.getElementById('preview');
+  var drawer = document.getElementById('drawer');
+  var scrim = document.getElementById('scrim');
+  var drawerToggle = document.getElementById('drawerToggle');
+  var addBtn = document.getElementById('addBtn');
+  var clearAllBtn = document.getElementById('clearAllBtn');
+  var filePicker = document.getElementById('filePicker');
+  var fileList = document.getElementById('fileList');
+  var fileCount = document.getElementById('fileCount');
+  var statusPill = document.getElementById('statusPill');
+  var statusText = document.getElementById('statusText');
+  var titleText = document.getElementById('titleText');
+  var openTabBtn = document.getElementById('openTabBtn');
+
+  function openDrawer(){ drawer.classList.add('open'); scrim.classList.add('open'); }
+  function closeDrawer(){ drawer.classList.remove('open'); scrim.classList.remove('open'); }
+  drawerToggle.addEventListener('click', function(){
+    drawer.classList.contains('open') ? closeDrawer() : openDrawer();
+  });
+  scrim.addEventListener('click', closeDrawer);
+  addBtn.addEventListener('click', function(){ filePicker.click(); });
+
+  function humanSize(bytes){
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  function extBadge(name){
+    var dot = name.lastIndexOf('.');
+    var ext = dot >= 0 ? name.slice(dot + 1) : '?';
+    return ext.slice(0, 4);
+  }
+
+  function renderFileList(){
+    fileCount.textContent = String(files.size);
+    if (files.size === 0){
+      fileList.innerHTML = '<div class="empty-list">まだファイルがありません</div>';
+      return;
+    }
+    var rows = [];
+    files.forEach(function(file, key){
+      var isHtml = /\.html?$/i.test(file.name);
+      rows.push(
+        '<div class="file-row" data-key="' + escapeAttr(key) + '">' +
+          '<div class="file-badge' + (isHtml ? ' html' : '') + '">' + escapeHtml(extBadge(file.name)) + '</div>' +
+          '<div class="file-meta">' +
+            '<div class="file-name mono">' + escapeHtml(file.name) + '</div>' +
+            '<div class="file-size mono">' + humanSize(file.size) + '</div>' +
+          '</div>' +
+          '<button class="file-remove" data-remove="' + escapeAttr(key) + '" aria-label="削除">✕</button>' +
+        '</div>'
+      );
+    });
+    fileList.innerHTML = rows.join('');
+    fileList.querySelectorAll('[data-remove]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        removeFile(btn.getAttribute('data-remove'));
+      });
+    });
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+    });
+  }
+  function escapeAttr(s){ return escapeHtml(s); }
+
+  function removeFile(key){
+    files.delete(key);
+    var url = blobUrls.get(key);
+    if (url) URL.revokeObjectURL(url);
+    blobUrls.delete(key);
+    renderFileList();
+    updateStatus();
+    if (!findIndexFile()) showDemo();
+  }
+
+  clearAllBtn.addEventListener('click', function(){
+    blobUrls.forEach(function(url){ URL.revokeObjectURL(url); });
+    files.clear();
+    blobUrls.clear();
+    renderFileList();
+    updateStatus();
+    showDemo();
+  });
+
+  filePicker.addEventListener('change', function(){
+    var picked = Array.prototype.slice.call(filePicker.files || []);
+    picked.forEach(function(file){
+      files.set(file.name.toLowerCase(), file);
+    });
+    filePicker.value = '';
+    renderFileList();
+    updateStatus();
+    if (findIndexFile()) render();
+  });
+
+  function findIndexFile(){
+    return files.get('index.html') || files.get('index.htm') || null;
+  }
+
+  function updateStatus(){
+    if (files.size === 0){
+      statusPill.className = 'status-pill idle';
+      statusText.textContent = '未読み込み';
+      titleText.textContent = 'HTML Viewer';
+      return;
+    }
+    if (findIndexFile()){
+      statusPill.className = 'status-pill ready';
+      statusText.textContent = '表示中';
+    } else {
+      statusPill.className = 'status-pill missing';
+      statusText.textContent = 'index.htmlが必要';
+      titleText.textContent = 'HTML Viewer';
+    }
+  }
+
+  // --- Resolves a relative URL against the picked-file map. Absolute /
+  // data: / blob: / same-page anchors are left untouched. ---
+  function resolveRef(url){
+    if (!url) return url;
+    if (/^([a-z][a-z0-9+.-]*:)?\/\//i.test(url)) return url;
+    if (/^(data|blob):/i.test(url)) return url;
+    if (url.charAt(0) === '#') return url;
+    var clean = url.split('#')[0].split('?')[0].replace(/^\.\//, '');
+    var lower = clean.toLowerCase();
+    if (blobUrls.has(lower)) return blobUrls.get(lower);
+    var base = lower.split('/').pop();
+    if (base && blobUrls.has(base)) return blobUrls.get(base);
+    return url;
+  }
+
+  var FORCED_MIME = {
+    js: 'text/javascript',
+    mjs: 'text/javascript',
+    json: 'application/json',
+    svg: 'image/svg+xml',
+    wasm: 'application/wasm',
+    xml: 'application/xml'
+  };
+  function guessMime(name){
+    var dot = name.lastIndexOf('.');
+    if (dot < 0) return '';
+    var ext = name.slice(dot + 1).toLowerCase();
+    return FORCED_MIME[ext] || '';
+  }
+
+  function rewriteCssUrls(cssText){
+    return cssText.replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/g, function(m, q, ref){
+      var resolved = resolveRef(ref.trim());
+      return 'url(' + q + resolved + q + ')';
+    });
+  }
+
+  function rewriteAttrs(doc){
+    var targets = doc.querySelectorAll('script[src], link[href], img[src], source[src], audio[src], video[src], iframe[src]');
+    targets.forEach(function(el){
+      var attr = el.hasAttribute('src') ? 'src' : 'href';
+      var val = el.getAttribute(attr);
+      var resolved = resolveRef(val);
+      if (resolved !== val) el.setAttribute(attr, resolved);
+    });
+    doc.querySelectorAll('style').forEach(function(styleEl){
+      styleEl.textContent = rewriteCssUrls(styleEl.textContent || '');
+    });
+    doc.querySelectorAll('[style]').forEach(function(el){
+      var inline = el.getAttribute('style');
+      if (inline && inline.indexOf('url(') !== -1){
+        el.setAttribute('style', rewriteCssUrls(inline));
+      }
+    });
+  }
+
+  // Injected as the very first thing in <head>: patches fetch()/XHR inside
+  // the sandboxed page so relative-path asset loading (JSON manifests,
+  // runtime-loaded images, etc.) also resolves against the picked files,
+  // not just <script src>/<link href> markup.
+  function buildShim(assetMap){
+    var json = JSON.stringify(assetMap).replace(/<\//g, '<\\/');
+    return '<script>(function(){' +
+      'var MAP=' + json + ';' +
+      'function resolve(u){try{' +
+        'if(typeof u!=="string")return u;' +
+        'if(/^([a-z][a-z0-9+.-]*:)?\\/\\//i.test(u))return u;' +
+        'if(/^(data|blob):/i.test(u))return u;' +
+        'if(u.charAt(0)==="#")return u;' +
+        'var c=u.split("#")[0].split("?")[0].replace(/^\\.\\//,"").toLowerCase();' +
+        'if(MAP[c])return MAP[c];' +
+        'var b=c.split("/").pop();' +
+        'if(b&&MAP[b])return MAP[b];' +
+        'return u;' +
+      '}catch(e){return u;}}' +
+      'var of=window.fetch;' +
+      'if(of){window.fetch=function(input,init){' +
+        'try{' +
+          'if(typeof input==="string"){input=resolve(input);}' +
+          'else if(input&&input.url){input=new Request(resolve(input.url),input);}' +
+        '}catch(e){}' +
+        'return of.call(this,input,init);' +
+      '};}' +
+      'var oo=XMLHttpRequest.prototype.open;' +
+      'XMLHttpRequest.prototype.open=function(method,url){' +
+        'arguments[1]=resolve(url);' +
+        'return oo.apply(this,arguments);' +
+      '};' +
+    '})();<\/script>';
+  }
+
+  function render(){
+    var indexFile = findIndexFile();
+    if (!indexFile) return;
+
+    // Revoke the previous rendered document's own blob URL (not the asset
+    // blob URLs, which stay alive for as long as their File is in the map).
+    if (currentRenderedBlobUrl){
+      URL.revokeObjectURL(currentRenderedBlobUrl);
+      currentRenderedBlobUrl = null;
+    }
+
+    // Refresh blob URLs for every non-index file, processing CSS text so
+    // that url(...) references inside it resolve too.
+    var pending = [];
+    files.forEach(function(file, key){
+      if (file === indexFile) return;
+      pending.push(
+        Promise.resolve().then(function(){
+          if (/\.css$/i.test(file.name)){
+            return file.text().then(function(text){
+              var old = blobUrls.get(key);
+              if (old) URL.revokeObjectURL(old);
+              // CSS url() refs need the *other* files' raw blob URLs, which
+              // are filled in below before this pass runs.
+              return { key: key, text: text, isCss: true };
+            });
+          }
+          if (!blobUrls.has(key)){
+            // iOS's file picker doesn't always report a usable MIME type for
+            // .js/.json/.svg/.wasm, and a wrong one silently breaks <script
+            // src="blob:...">. Force the types that matter; leave images/
+            // audio/fonts/etc. with whatever type the picker gave them.
+            var forcedType = guessMime(file.name);
+            var blob = forcedType ? new Blob([file], { type: forcedType }) : file;
+            blobUrls.set(key, URL.createObjectURL(blob));
+          }
+          return null;
+        })
+      );
+    });
+
+    Promise.all(pending).then(function(results){
+      // Second pass: now that every non-CSS file has a raw blob URL, rewrite
+      // and (re)create blobs for the CSS files.
+      results.forEach(function(r){
+        if (r && r.isCss){
+          var rewritten = rewriteCssUrls(r.text);
+          blobUrls.set(r.key, URL.createObjectURL(new Blob([rewritten], { type: 'text/css' })));
+        }
+      });
+
+      return indexFile.text();
+    }).then(function(htmlText){
+      var doc = new DOMParser().parseFromString(htmlText, 'text/html');
+      rewriteAttrs(doc);
+
+      var assetMap = {};
+      blobUrls.forEach(function(url, key){ assetMap[key] = url; });
+      var shim = buildShim(assetMap);
+      if (!doc.head){
+        doc.documentElement.insertBefore(doc.createElement('head'), doc.documentElement.firstChild);
+      }
+      doc.head.insertAdjacentHTML('afterbegin', shim);
+
+      var finalHtml = '<!doctype html>' + doc.documentElement.outerHTML;
+      var blob = new Blob([finalHtml], { type: 'text/html' });
+      currentRenderedBlobUrl = URL.createObjectURL(blob);
+      // srcdoc (set by showDemo()) takes priority over src for as long as
+      // the attribute is present, so it has to be removed before src can
+      // actually navigate the frame.
+      preview.removeAttribute('srcdoc');
+      preview.src = currentRenderedBlobUrl;
+      titleText.textContent = indexFile.webkitRelativePath || indexFile.name;
+      updateStatus();
+      closeDrawer();
+    });
+  }
+
+  openTabBtn.addEventListener('click', function(){
+    if (currentRenderedBlobUrl){
+      window.open(currentRenderedBlobUrl, '_blank');
+    }
+  });
+
+  function showDemo(){
+    var demo = [
+      '<!doctype html><html><head><meta charset="utf-8">',
+      '<meta name="viewport" content="width=device-width, initial-scale=1">',
+      '<style>',
+      'html,body{margin:0;height:100%;background:#0e0f13;color:#eef0f4;',
+      'font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;',
+      'display:flex;align-items:center;justify-content:center;text-align:center;}',
+      '.wrap{max-width:320px;padding:24px;}',
+      'canvas{display:block;margin:0 auto 18px;}',
+      'h1{font-size:16px;margin:0 0 8px;}',
+      'p{font-size:13px;line-height:1.6;color:#9aa0ad;margin:0;}',
+      '</style></head><body><div class="wrap">',
+      '<canvas id="c" width="72" height="72"></canvas>',
+      '<h1>ここにローカルのHTMLが表示されます</h1>',
+      '<p>右上の「ファイル」から index.html を選んでください。<br>',
+      'このデモ自体も普通のcanvas+requestAnimationFrameで動いています。</p>',
+      '</div>',
+      '<script>',
+      'var cv=document.getElementById("c"),ctx=cv.getContext("2d"),a=0;',
+      '(function loop(){a+=0.05;ctx.clearRect(0,0,72,72);ctx.strokeStyle="#5b8cff";',
+      'ctx.lineWidth=4;ctx.beginPath();ctx.arc(36,36,26,a,a+4.6);ctx.stroke();',
+      'requestAnimationFrame(loop);})();',
+      '<\/script></body></html>'
+    ].join('');
+    if (currentRenderedBlobUrl){
+      URL.revokeObjectURL(currentRenderedBlobUrl);
+      currentRenderedBlobUrl = null;
+    }
+    preview.srcdoc = demo;
+  }
+
+  renderFileList();
+  updateStatus();
+  showDemo();
+})();
+</script>
