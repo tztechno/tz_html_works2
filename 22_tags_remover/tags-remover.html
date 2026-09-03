@@ -79,14 +79,14 @@
   }
 
   @media (max-width: 600px) {
-    .wrap { padding: 22px 14px 40px; }
+    .wrap { padding: 20px 14px 36px; }
   }
 
   header {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    margin-bottom: 28px;
+    margin-bottom: 22px;
   }
 
   @media (max-width: 600px) {
@@ -112,7 +112,7 @@
   }
 
   @media (max-width: 600px) {
-    h1 { font-size: 23px; }
+    h1 { font-size: 22px; }
   }
 
   .sub {
@@ -122,7 +122,7 @@
   }
 
   @media (max-width: 600px) {
-    .sub { font-size: 13px; }
+    .sub { font-size: 12.5px; }
   }
 
   .sub code {
@@ -135,23 +135,82 @@
     color: var(--ink);
   }
 
-  /* Toggle strip */
+  /* Tab bar */
+  .tabbar {
+    display: flex;
+    gap: 4px;
+    background: var(--surface-sunken);
+    border: 1px solid var(--border);
+    padding: 4px;
+    border-radius: 11px;
+    margin-bottom: 16px;
+  }
+
+  .tab-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 9px 10px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+  }
+
+  .tab-btn:hover { color: var(--ink); }
+
+  .tab-btn:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+
+  .tab-btn[aria-selected="true"] {
+    background: var(--surface);
+    border-color: var(--border);
+    color: var(--ink);
+    box-shadow: var(--shadow);
+  }
+
+  .tab-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--ink-faint);
+    background: var(--surface-sunken);
+    border-radius: 20px;
+    padding: 1px 7px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tab-btn[aria-selected="true"] .tab-badge {
+    color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  [role="tabpanel"][hidden] { display: none; }
+
+  .options-intro {
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin: 0 0 14px;
+    max-width: 55ch;
+  }
+
+  /* Toggle strip (Options tab) */
   .toggles {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
     gap: 10px;
-    margin: 24px 0 20px;
   }
 
-  @media (max-width: 600px) {
-    .toggles {
-      grid-template-columns: repeat(3, 1fr);
-      gap: 6px;
-      margin: 14px 0 12px;
-    }
-  }
-
-  @media (max-width: 340px) {
+  @media (max-width: 480px) {
     .toggles { grid-template-columns: repeat(2, 1fr); }
   }
 
@@ -173,24 +232,6 @@
 
   .toggle:hover { border-color: var(--border-strong); }
   .toggle:active { transform: translateY(1px); }
-
-  @media (max-width: 600px) {
-    .toggle {
-      padding: 6px 7px;
-      min-height: 34px;
-      gap: 5px;
-      border-radius: 8px;
-    }
-    .toggle .glyph {
-      min-width: 19px;
-      height: 19px;
-      font-size: 11px;
-      border-radius: 5px;
-    }
-    .toggle .label { font-size: 10.5px; }
-    .toggle .label-full { display: none; }
-    .toggle .label-short { display: inline; }
-  }
 
   .toggle:focus-visible {
     outline: 2px solid var(--focus-ring);
@@ -218,13 +259,16 @@
     font-size: 13px;
     font-weight: 500;
     color: var(--ink-soft);
-    line-height: 1.25;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    line-height: 1.3;
   }
 
-  .toggle .label-short { display: none; }
+  .toggle .label small {
+    display: block;
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--ink-faint);
+    margin-top: 1px;
+  }
 
   .toggle.on {
     border-color: var(--accent);
@@ -238,7 +282,7 @@
 
   .toggle.on .label { color: var(--ink); }
 
-  /* Panels */
+  /* Panels (Convert tab) */
   .panels {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -306,8 +350,8 @@
 
   @media (max-width: 600px) {
     textarea {
-      height: 26vh;
-      min-height: 150px;
+      height: 30vh;
+      min-height: 160px;
       padding: 12px;
       font-size: 16px; /* 16px avoids iOS Safari auto-zoom on input focus */
     }
@@ -373,7 +417,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-top: 20px;
+    margin-top: 16px;
     gap: 12px;
     flex-wrap: wrap;
   }
@@ -382,7 +426,7 @@
     .actions {
       flex-direction: column;
       align-items: stretch;
-      margin-top: 16px;
+      margin-top: 14px;
       gap: 10px;
     }
   }
@@ -393,6 +437,8 @@
     border-color: var(--accent);
     padding: 10px 20px;
     font-size: 13.5px;
+    position: relative;
+    z-index: 1;
   }
   .btn-primary:hover { filter: brightness(1.06); }
 
@@ -422,7 +468,7 @@
   }
 
   footer {
-    margin-top: 34px;
+    margin-top: 30px;
     padding-top: 16px;
     border-top: 1px solid var(--border);
     font-size: 12px;
@@ -431,7 +477,7 @@
   }
 
   @media (max-width: 600px) {
-    footer { margin-top: 24px; padding-top: 12px; font-size: 10.5px; }
+    footer { margin-top: 22px; padding-top: 12px; font-size: 10.5px; }
   }
 </style>
 
@@ -439,68 +485,80 @@
   <header>
     <span class="eyebrow">Text Utility</span>
     <h1>Tags Remover</h1>
-    <p class="sub">Strip stray whitespace from pasted text — newlines, tabs, and spaces — before it goes into a spreadsheet cell, a <code>&lt;meta&gt;</code> tag, or a config value.</p>
+    <p class="sub">Strip stray whitespace from pasted text before it goes into a spreadsheet cell, a <code>&lt;meta&gt;</code> tag, or a config value.</p>
   </header>
 
-  <div class="toggles" role="group" aria-label="Whitespace to remove">
-    <button class="toggle on" data-opt="newlines" type="button" aria-label="Newlines">
-      <span class="glyph" aria-hidden="true">¶</span>
-      <span class="label"><span class="label-full">Newlines</span><span class="label-short">Newline</span></span>
-    </button>
-    <button class="toggle on" data-opt="tabs" type="button" aria-label="Tabs">
-      <span class="glyph" aria-hidden="true">⇥</span>
-      <span class="label"><span class="label-full">Tabs</span><span class="label-short">Tabs</span></span>
-    </button>
-    <button class="toggle on" data-opt="collapse" type="button" aria-label="Multiple spaces to single space">
-      <span class="glyph" aria-hidden="true">␣²</span>
-      <span class="label"><span class="label-full">Multiple → single space</span><span class="label-short">Multi␣→1</span></span>
-    </button>
-    <button class="toggle on" data-opt="trim" type="button" aria-label="Leading and trailing spaces">
-      <span class="glyph" aria-hidden="true">⎵</span>
-      <span class="label"><span class="label-full">Lead/Trail spaces</span><span class="label-short">Trim ends</span></span>
-    </button>
-    <button class="toggle on" data-opt="allspaces" type="button" aria-label="All spaces">
-      <span class="glyph" aria-hidden="true">␣</span>
-      <span class="label"><span class="label-full">All spaces</span><span class="label-short">All ␣</span></span>
+  <div class="tabbar" role="tablist" aria-label="Sections">
+    <button class="tab-btn" id="tabBtnConvert" role="tab" aria-selected="true" aria-controls="panelConvert" type="button">Convert</button>
+    <button class="tab-btn" id="tabBtnOptions" role="tab" aria-selected="false" aria-controls="panelOptions" type="button">
+      Options <span class="tab-badge" id="optCount">5/5</span>
     </button>
   </div>
 
-  <div class="panels">
-    <div class="panel">
-      <div class="panel-head">
-        <span class="panel-title">Input</span>
-        <span class="count" id="inCount">0 chars</span>
+  <section id="panelConvert" role="tabpanel" aria-labelledby="tabBtnConvert">
+    <div class="panels">
+      <div class="panel">
+        <div class="panel-head">
+          <span class="panel-title">Input</span>
+          <span class="count" id="inCount">0 chars</span>
+        </div>
+        <textarea id="input" placeholder="Paste text here…" spellcheck="false"></textarea>
+        <div class="panel-foot">
+          <span class="hint">Example text loaded</span>
+          <button class="btn-ghost" id="clearBtn" type="button">Clear</button>
+        </div>
       </div>
-      <textarea id="input" placeholder="Paste text here…" spellcheck="false"></textarea>
-      <div class="panel-foot">
-        <span class="hint">Example text loaded</span>
-        <button class="btn-ghost" id="clearBtn" type="button">Clear</button>
+
+      <div class="panel">
+        <div class="panel-head">
+          <span class="panel-title">Result</span>
+          <span class="count" id="outCount">0 chars</span>
+        </div>
+        <textarea id="output" readonly spellcheck="false"></textarea>
+        <div class="panel-foot">
+          <span class="hint" id="diffHint"></span>
+          <button class="btn-ghost" id="copyBtn" type="button">Copy</button>
+        </div>
       </div>
     </div>
 
-    <div class="panel">
-      <div class="panel-head">
-        <span class="panel-title">Result</span>
-        <span class="count" id="outCount">0 chars</span>
-      </div>
-      <textarea id="output" readonly spellcheck="false"></textarea>
-      <div class="panel-foot">
-        <span class="hint" id="diffHint"></span>
-        <button class="btn-ghost" id="copyBtn" type="button">Copy</button>
-      </div>
+    <div class="actions">
+      <button class="btn-primary" id="removeBtn" type="button">Remove whitespace</button>
+      <span class="live-note"><span class="live-dot"></span>Updates live as you type</span>
     </div>
-  </div>
+  </section>
 
-  <div class="actions">
-    <button class="btn-primary" id="removeBtn" type="button">Remove whitespace</button>
-    <span class="live-note"><span class="live-dot"></span>Updates live as you type or toggle options</span>
-  </div>
+  <section id="panelOptions" role="tabpanel" aria-labelledby="tabBtnOptions" hidden>
+    <p class="options-intro">Choose which kinds of whitespace to strip. Changes apply immediately and carry back to the Convert tab.</p>
+    <div class="toggles" role="group" aria-label="Whitespace to remove">
+      <button class="toggle on" data-opt="newlines" type="button">
+        <span class="glyph" aria-hidden="true">¶</span>
+        <span class="label">Newlines<small>Line breaks (\n)</small></span>
+      </button>
+      <button class="toggle on" data-opt="tabs" type="button">
+        <span class="glyph" aria-hidden="true">⇥</span>
+        <span class="label">Tabs<small>Tab characters (\t)</small></span>
+      </button>
+      <button class="toggle on" data-opt="collapse" type="button">
+        <span class="glyph" aria-hidden="true">␣²</span>
+        <span class="label">Multiple → single space<small>Collapse runs of spaces</small></span>
+      </button>
+      <button class="toggle on" data-opt="trim" type="button">
+        <span class="glyph" aria-hidden="true">⎵</span>
+        <span class="label">Lead/Trail spaces<small>Trim start and end</small></span>
+      </button>
+      <button class="toggle on" data-opt="allspaces" type="button">
+        <span class="glyph" aria-hidden="true">␣</span>
+        <span class="label">All spaces<small>Remove every space</small></span>
+      </button>
+    </div>
+  </section>
 
   <footer>tags-remover · runs entirely in your browser, nothing is sent anywhere</footer>
 </div>
 
 <script>
-  // State for the four whitespace-removal options, all on by default to match
+  // State for the five whitespace-removal options, all on by default to match
   // the original app's default checkbox values.
   const state = {
     newlines: true,
@@ -519,13 +577,19 @@
   const copyBtn = document.getElementById('copyBtn');
   const clearBtn = document.getElementById('clearBtn');
   const removeBtn = document.getElementById('removeBtn');
+  const optCount = document.getElementById('optCount');
 
-  // Sample text demonstrating the four kinds of whitespace this tool targets,
+  const tabBtnConvert = document.getElementById('tabBtnConvert');
+  const tabBtnOptions = document.getElementById('tabBtnOptions');
+  const panelConvert = document.getElementById('panelConvert');
+  const panelOptions = document.getElementById('panelOptions');
+
+  // Sample text demonstrating the kinds of whitespace this tool targets,
   // so the page shows real output the moment it loads.
   const SAMPLE = "  \tHello   world,\n\tthis is a   sample\n   paragraph with\ttabs,\n   newlines, and   extra   spaces.  \n";
 
-  // Mirrors the Python `remover()` function's logic and order, plus a new
-  // step that collapses runs of two or more plain spaces into one.
+  // Mirrors the Python `remover()` function's logic and order, plus a step
+  // that collapses runs of two or more plain spaces into one.
   function remover(text, opts) {
     if (opts.newlines) text = text.split('\n').join('');
     if (opts.tabs) text = text.split('\t').join('');
@@ -547,11 +611,29 @@
     diffHint.textContent = removed > 0 ? '−' + removed + ' characters removed' : '';
   }
 
+  function updateOptCount() {
+    const on = Object.values(state).filter(Boolean).length;
+    const total = Object.values(state).length;
+    optCount.textContent = on + '/' + total;
+  }
+
+  function switchTab(tab) {
+    const toConvert = tab === 'convert';
+    tabBtnConvert.setAttribute('aria-selected', String(toConvert));
+    tabBtnOptions.setAttribute('aria-selected', String(!toConvert));
+    panelConvert.hidden = !toConvert;
+    panelOptions.hidden = toConvert;
+  }
+
+  tabBtnConvert.addEventListener('click', () => switchTab('convert'));
+  tabBtnOptions.addEventListener('click', () => switchTab('options'));
+
   toggles.forEach(btn => {
     btn.addEventListener('click', () => {
       const key = btn.dataset.opt;
       state[key] = !state[key];
       btn.classList.toggle('on', state[key]);
+      updateOptCount();
       render();
     });
   });
@@ -586,4 +668,5 @@
   // Seed with example input so the tool shows real behavior at rest.
   inputEl.value = SAMPLE;
   render();
+  updateOptCount();
 </script>
