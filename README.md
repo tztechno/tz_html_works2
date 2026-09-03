@@ -46,8 +46,6 @@ https://tztechno.github.io/tz_html_works2/16_learn_english
 
 https://tztechno.github.io/tz_html_works2/17_classify/classification_quiz_app.html
 
-https://tztechno.github.io/tz_html_works2/19_3d_formats/poly-bench-3d-converter.html
-
 https://tztechno.github.io/tz_html_works2/21_html_viewer/html-viewer.html
 
 
