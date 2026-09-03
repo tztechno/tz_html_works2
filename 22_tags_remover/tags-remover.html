@@ -78,11 +78,20 @@
     padding: 40px 24px 64px;
   }
 
+  @media (max-width: 600px) {
+    .wrap { padding: 22px 14px 40px; }
+  }
+
   header {
     display: flex;
     flex-direction: column;
     gap: 6px;
     margin-bottom: 28px;
+  }
+
+  @media (max-width: 600px) {
+    header { margin-bottom: 14px; gap: 3px; }
+    .eyebrow { display: none; }
   }
 
   .eyebrow {
@@ -102,10 +111,18 @@
     text-wrap: balance;
   }
 
+  @media (max-width: 600px) {
+    h1 { font-size: 23px; }
+  }
+
   .sub {
     color: var(--ink-soft);
     font-size: 14.5px;
     max-width: 60ch;
+  }
+
+  @media (max-width: 600px) {
+    .sub { font-size: 13px; }
   }
 
   .sub code {
@@ -126,6 +143,18 @@
     margin: 24px 0 20px;
   }
 
+  @media (max-width: 600px) {
+    .toggles {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin: 14px 0 12px;
+    }
+  }
+
+  @media (max-width: 340px) {
+    .toggles { grid-template-columns: repeat(2, 1fr); }
+  }
+
   .toggle {
     display: flex;
     align-items: center;
@@ -144,6 +173,24 @@
 
   .toggle:hover { border-color: var(--border-strong); }
   .toggle:active { transform: translateY(1px); }
+
+  @media (max-width: 600px) {
+    .toggle {
+      padding: 6px 7px;
+      min-height: 34px;
+      gap: 5px;
+      border-radius: 8px;
+    }
+    .toggle .glyph {
+      min-width: 19px;
+      height: 19px;
+      font-size: 11px;
+      border-radius: 5px;
+    }
+    .toggle .label { font-size: 10.5px; }
+    .toggle .label-full { display: none; }
+    .toggle .label-short { display: inline; }
+  }
 
   .toggle:focus-visible {
     outline: 2px solid var(--focus-ring);
@@ -172,7 +219,12 @@
     font-weight: 500;
     color: var(--ink-soft);
     line-height: 1.25;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
+
+  .toggle .label-short { display: none; }
 
   .toggle.on {
     border-color: var(--accent);
@@ -194,7 +246,7 @@
   }
 
   @media (max-width: 720px) {
-    .panels { grid-template-columns: 1fr; }
+    .panels { grid-template-columns: 1fr; gap: 14px; }
   }
 
   .panel {
@@ -214,6 +266,10 @@
     padding: 10px 14px;
     border-bottom: 1px solid var(--border);
     background: var(--surface-sunken);
+  }
+
+  @media (max-width: 600px) {
+    .panel-head { padding: 8px 12px; }
   }
 
   .panel-title {
@@ -246,6 +302,15 @@
     line-height: 1.6;
     background: var(--surface);
     color: var(--ink);
+  }
+
+  @media (max-width: 600px) {
+    textarea {
+      height: 26vh;
+      min-height: 150px;
+      padding: 12px;
+      font-size: 16px; /* 16px avoids iOS Safari auto-zoom on input focus */
+    }
   }
 
   textarea::placeholder { color: var(--ink-faint); }
@@ -283,6 +348,10 @@
     transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
   }
 
+  @media (max-width: 600px) {
+    .btn-ghost { min-height: 38px; padding: 8px 14px; }
+  }
+
   button:focus-visible {
     outline: 2px solid var(--focus-ring);
     outline-offset: 2px;
@@ -309,6 +378,15 @@
     flex-wrap: wrap;
   }
 
+  @media (max-width: 600px) {
+    .actions {
+      flex-direction: column;
+      align-items: stretch;
+      margin-top: 16px;
+      gap: 10px;
+    }
+  }
+
   .btn-primary {
     background: var(--accent);
     color: var(--accent-ink);
@@ -318,6 +396,10 @@
   }
   .btn-primary:hover { filter: brightness(1.06); }
 
+  @media (max-width: 600px) {
+    .btn-primary { width: 100%; min-height: 46px; font-size: 14px; }
+  }
+
   .live-note {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 12px;
@@ -325,6 +407,10 @@
     display: flex;
     align-items: center;
     gap: 7px;
+  }
+
+  @media (max-width: 600px) {
+    .live-note { justify-content: center; font-size: 11px; }
   }
 
   .live-dot {
@@ -343,6 +429,10 @@
     color: var(--ink-faint);
     font-family: 'IBM Plex Mono', monospace;
   }
+
+  @media (max-width: 600px) {
+    footer { margin-top: 24px; padding-top: 12px; font-size: 10.5px; }
+  }
 </style>
 
 <div class="wrap">
@@ -353,25 +443,25 @@
   </header>
 
   <div class="toggles" role="group" aria-label="Whitespace to remove">
-    <button class="toggle on" data-opt="newlines" type="button">
+    <button class="toggle on" data-opt="newlines" type="button" aria-label="Newlines">
       <span class="glyph" aria-hidden="true">¶</span>
-      <span class="label">Newlines</span>
+      <span class="label"><span class="label-full">Newlines</span><span class="label-short">Newline</span></span>
     </button>
-    <button class="toggle on" data-opt="tabs" type="button">
+    <button class="toggle on" data-opt="tabs" type="button" aria-label="Tabs">
       <span class="glyph" aria-hidden="true">⇥</span>
-      <span class="label">Tabs</span>
+      <span class="label"><span class="label-full">Tabs</span><span class="label-short">Tabs</span></span>
     </button>
-    <button class="toggle on" data-opt="collapse" type="button">
+    <button class="toggle on" data-opt="collapse" type="button" aria-label="Multiple spaces to single space">
       <span class="glyph" aria-hidden="true">␣²</span>
-      <span class="label">Multiple → single space</span>
+      <span class="label"><span class="label-full">Multiple → single space</span><span class="label-short">Multi␣→1</span></span>
     </button>
-    <button class="toggle on" data-opt="trim" type="button">
+    <button class="toggle on" data-opt="trim" type="button" aria-label="Leading and trailing spaces">
       <span class="glyph" aria-hidden="true">⎵</span>
-      <span class="label">Lead/Trail spaces</span>
+      <span class="label"><span class="label-full">Lead/Trail spaces</span><span class="label-short">Trim ends</span></span>
     </button>
-    <button class="toggle on" data-opt="allspaces" type="button">
+    <button class="toggle on" data-opt="allspaces" type="button" aria-label="All spaces">
       <span class="glyph" aria-hidden="true">␣</span>
-      <span class="label">All spaces</span>
+      <span class="label"><span class="label-full">All spaces</span><span class="label-short">All ␣</span></span>
     </button>
   </div>
 
