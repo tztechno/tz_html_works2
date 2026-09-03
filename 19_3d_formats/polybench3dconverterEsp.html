@@ -485,6 +485,16 @@ table.matrix td{ color:var(--text-muted); }
     height:46vh;
     max-height:480px;
   }
+  /* Before a model is loaded, the pane only needs to fit the compact
+     file-picker card, not a full 3D viewport, so shrink it in that
+     state. JS flips the dropzone's inline display to "none" once a
+     model loads, which stops this override from matching and lets
+     the taller sizing above take over again. */
+  .viewport-pane:has(> .dropzone:not([style*="display: none"])){
+    min-height:200px;
+    height:34vh;
+    max-height:320px;
+  }
   .inspector{
     flex:none;
     overflow-y:visible;
@@ -497,9 +507,12 @@ table.matrix td{ color:var(--text-muted); }
 @media (max-width: 480px){
   .topbar .tagline{ display:none; }
   .topbar .formats-pill{ font-size:10px; padding:4px 8px; }
-  .dropzone{ padding:16px; }
-  .dropzone-card{ padding:28px 20px; }
-  .dropzone-card h2{ font-size:16px; }
+  .dropzone{ padding:14px; overflow-y:auto; }
+  .dropzone-card{ padding:22px 18px; }
+  .dropzone-card .icon{ width:36px; height:36px; margin:0 auto 10px; }
+  .dropzone-card h2{ font-size:15px; margin:0 0 6px; }
+  .dropzone-card p{ font-size:12px; margin:0 0 14px; }
+  .file-hint{ margin-top:10px; font-size:11px; }
 }
 
 @media (prefers-reduced-motion: reduce){
