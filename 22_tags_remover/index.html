@@ -1,0 +1,499 @@
+<title>Tags Remover</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+
+  :root {
+    /* Light theme (default) */
+    --bg: #eef0ef;
+    --surface: #ffffff;
+    --surface-sunken: #e4e7e5;
+    --border: #cdd2cf;
+    --border-strong: #a9b0ac;
+    --ink: #1c2321;
+    --ink-soft: #5a6560;
+    --ink-faint: #8b948f;
+    --accent: #1f6f63;
+    --accent-ink: #ffffff;
+    --accent-soft: #dcece7;
+    --warm: #b5702f;
+    --warm-soft: #f3e4d4;
+    --danger: #a3432f;
+    --shadow: 0 1px 2px rgba(20, 30, 27, 0.06), 0 6px 20px rgba(20, 30, 27, 0.06);
+    --focus-ring: #1f6f6355;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #121615;
+      --surface: #1a201e;
+      --surface-sunken: #101413;
+      --border: #2c3532;
+      --border-strong: #414d48;
+      --ink: #e9ede9;
+      --ink-soft: #a8b3ad;
+      --ink-faint: #6d7873;
+      --accent: #4fb8a3;
+      --accent-ink: #08201b;
+      --accent-soft: #1f3833;
+      --warm: #e0a25c;
+      --warm-soft: #3a2b19;
+      --danger: #e08469;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+      --focus-ring: #4fb8a355;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #121615;
+    --surface: #1a201e;
+    --surface-sunken: #101413;
+    --border: #2c3532;
+    --border-strong: #414d48;
+    --ink: #e9ede9;
+    --ink-soft: #a8b3ad;
+    --ink-faint: #6d7873;
+    --accent: #4fb8a3;
+    --accent-ink: #08201b;
+    --accent-soft: #1f3833;
+    --warm: #e0a25c;
+    --warm-soft: #3a2b19;
+    --danger: #e08469;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+    --focus-ring: #4fb8a355;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  .wrap {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 40px 24px 64px;
+  }
+
+  header {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 28px;
+  }
+
+  .eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  h1 {
+    font-size: 30px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  .sub {
+    color: var(--ink-soft);
+    font-size: 14.5px;
+    max-width: 60ch;
+  }
+
+  .sub code {
+    font-family: 'IBM Plex Mono', monospace;
+    background: var(--surface-sunken);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0 4px;
+    font-size: 0.92em;
+    color: var(--ink);
+  }
+
+  /* Toggle strip */
+  .toggles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+    margin: 24px 0 20px;
+  }
+
+  .toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    color: var(--ink);
+    box-shadow: var(--shadow);
+    transition: border-color 120ms ease, background 120ms ease, transform 80ms ease;
+  }
+
+  .toggle:hover { border-color: var(--border-strong); }
+  .toggle:active { transform: translateY(1px); }
+
+  .toggle:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+
+  .toggle .glyph {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 15px;
+    font-weight: 600;
+    min-width: 26px;
+    height: 26px;
+    padding: 0 3px;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    background: var(--surface-sunken);
+    color: var(--ink-faint);
+    transition: background 120ms ease, color 120ms ease;
+  }
+
+  .toggle .label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    line-height: 1.25;
+  }
+
+  .toggle.on {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .toggle.on .glyph {
+    background: var(--accent);
+    color: var(--accent-ink);
+  }
+
+  .toggle.on .label { color: var(--ink); }
+
+  /* Panels */
+  .panels {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  @media (max-width: 720px) {
+    .panels { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-sunken);
+  }
+
+  .panel-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+
+  .count {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--ink-faint);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .count strong { color: var(--ink); font-weight: 600; }
+
+  textarea {
+    width: 100%;
+    height: 320px;
+    resize: vertical;
+    border: none;
+    outline: none;
+    padding: 14px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13.5px;
+    line-height: 1.6;
+    background: var(--surface);
+    color: var(--ink);
+  }
+
+  textarea::placeholder { color: var(--ink-faint); }
+
+  textarea:focus-visible { box-shadow: inset 0 0 0 2px var(--focus-ring); }
+
+  #output {
+    background: var(--surface-sunken);
+    color: var(--ink);
+  }
+
+  .panel-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 10px;
+    border-top: 1px solid var(--border);
+  }
+
+  .hint {
+    font-size: 11.5px;
+    color: var(--ink-faint);
+    padding-left: 4px;
+  }
+
+  button {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 7px;
+    padding: 7px 13px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+  }
+
+  button:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+
+  .btn-ghost {
+    background: transparent;
+    border-color: var(--border);
+    color: var(--ink-soft);
+  }
+  .btn-ghost:hover { border-color: var(--border-strong); color: var(--ink); }
+
+  .btn-ghost.copied {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 20px;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: var(--accent-ink);
+    border-color: var(--accent);
+    padding: 10px 20px;
+    font-size: 13.5px;
+  }
+  .btn-primary:hover { filter: brightness(1.06); }
+
+  .live-note {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--ink-faint);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex: none;
+  }
+
+  footer {
+    margin-top: 34px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--ink-faint);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Text Utility</span>
+    <h1>Tags Remover</h1>
+    <p class="sub">Strip stray whitespace from pasted text — newlines, tabs, and spaces — before it goes into a spreadsheet cell, a <code>&lt;meta&gt;</code> tag, or a config value.</p>
+  </header>
+
+  <div class="toggles" role="group" aria-label="Whitespace to remove">
+    <button class="toggle on" data-opt="newlines" type="button">
+      <span class="glyph" aria-hidden="true">¶</span>
+      <span class="label">Newlines</span>
+    </button>
+    <button class="toggle on" data-opt="tabs" type="button">
+      <span class="glyph" aria-hidden="true">⇥</span>
+      <span class="label">Tabs</span>
+    </button>
+    <button class="toggle on" data-opt="collapse" type="button">
+      <span class="glyph" aria-hidden="true">␣²</span>
+      <span class="label">Multiple → single space</span>
+    </button>
+    <button class="toggle on" data-opt="trim" type="button">
+      <span class="glyph" aria-hidden="true">⎵</span>
+      <span class="label">Lead/Trail spaces</span>
+    </button>
+    <button class="toggle on" data-opt="allspaces" type="button">
+      <span class="glyph" aria-hidden="true">␣</span>
+      <span class="label">All spaces</span>
+    </button>
+  </div>
+
+  <div class="panels">
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">Input</span>
+        <span class="count" id="inCount">0 chars</span>
+      </div>
+      <textarea id="input" placeholder="Paste text here…" spellcheck="false"></textarea>
+      <div class="panel-foot">
+        <span class="hint">Example text loaded</span>
+        <button class="btn-ghost" id="clearBtn" type="button">Clear</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">Result</span>
+        <span class="count" id="outCount">0 chars</span>
+      </div>
+      <textarea id="output" readonly spellcheck="false"></textarea>
+      <div class="panel-foot">
+        <span class="hint" id="diffHint"></span>
+        <button class="btn-ghost" id="copyBtn" type="button">Copy</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn-primary" id="removeBtn" type="button">Remove whitespace</button>
+    <span class="live-note"><span class="live-dot"></span>Updates live as you type or toggle options</span>
+  </div>
+
+  <footer>tags-remover · runs entirely in your browser, nothing is sent anywhere</footer>
+</div>
+
+<script>
+  // State for the four whitespace-removal options, all on by default to match
+  // the original app's default checkbox values.
+  const state = {
+    newlines: true,
+    tabs: true,
+    collapse: true,
+    trim: true,
+    allspaces: true
+  };
+
+  const inputEl = document.getElementById('input');
+  const outputEl = document.getElementById('output');
+  const inCount = document.getElementById('inCount');
+  const outCount = document.getElementById('outCount');
+  const diffHint = document.getElementById('diffHint');
+  const toggles = document.querySelectorAll('.toggle');
+  const copyBtn = document.getElementById('copyBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const removeBtn = document.getElementById('removeBtn');
+
+  // Sample text demonstrating the four kinds of whitespace this tool targets,
+  // so the page shows real output the moment it loads.
+  const SAMPLE = "  \tHello   world,\n\tthis is a   sample\n   paragraph with\ttabs,\n   newlines, and   extra   spaces.  \n";
+
+  // Mirrors the Python `remover()` function's logic and order, plus a new
+  // step that collapses runs of two or more plain spaces into one.
+  function remover(text, opts) {
+    if (opts.newlines) text = text.split('\n').join('');
+    if (opts.tabs) text = text.split('\t').join('');
+    if (opts.collapse) text = text.replace(/ {2,}/g, ' ');
+    if (opts.trim) text = text.trim();
+    if (opts.allspaces) text = text.split(/\s+/).join('');
+    return text;
+  }
+
+  function render() {
+    const inputText = inputEl.value;
+    const result = remover(inputText, state);
+    outputEl.value = result;
+
+    inCount.textContent = inputText.length + ' chars';
+    outCount.textContent = result.length + ' chars';
+
+    const removed = inputText.length - result.length;
+    diffHint.textContent = removed > 0 ? '−' + removed + ' characters removed' : '';
+  }
+
+  toggles.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.opt;
+      state[key] = !state[key];
+      btn.classList.toggle('on', state[key]);
+      render();
+    });
+  });
+
+  inputEl.addEventListener('input', render);
+  removeBtn.addEventListener('click', render);
+
+  clearBtn.addEventListener('click', () => {
+    inputEl.value = '';
+    render();
+    inputEl.focus();
+  });
+
+  copyBtn.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(outputEl.value);
+      copyBtn.textContent = 'Copied';
+      copyBtn.classList.add('copied');
+      setTimeout(() => {
+        copyBtn.textContent = 'Copy';
+        copyBtn.classList.remove('copied');
+      }, 1400);
+    } catch (e) {
+      // Clipboard API unavailable — fall back to selecting the text so the
+      // user can copy it manually.
+      outputEl.removeAttribute('readonly');
+      outputEl.select();
+      outputEl.setAttribute('readonly', '');
+    }
+  });
+
+  // Seed with example input so the tool shows real behavior at rest.
+  inputEl.value = SAMPLE;
+  render();
+</script>
