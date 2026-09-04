@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>家計簿アプリ (CSV DB)</title>
+<style>
+  :root{
+    --bg:#f6f7f9;
+    --panel:#ffffff;
+    --border:#e2e5ea;
+    --text:#1f2430;
+    --muted:#6b7280;
+    --accent:#3b6fe0;
+    --accent-dark:#2c56b8;
+    --income:#1f9d55;
+    --expense:#d64545;
+    --hover:#f0f3f9;
+    --radius:10px;
+    font-size:15px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#15171c;
+      --panel:#1e2129;
+      --border:#2c303a;
+      --text:#e7e9ee;
+      --muted:#9aa1ad;
+      --accent:#5b8bf0;
+      --accent-dark:#3f6bd0;
+      --income:#3ecb7a;
+      --expense:#f0665f;
+      --hover:#262a34;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    padding:24px;
+  }
+  h1{
+    font-size:1.4rem;
+    margin:0 0 4px;
+  }
+  .sub{
+    color:var(--muted);
+    font-size:0.85rem;
+    margin-bottom:20px;
+  }
+  .layout{
+    display:grid;
+    grid-template-columns: 1fr;
+    gap:18px;
+    max-width:1180px;
+    margin:0 auto;
+  }
+  .row{
+    display:grid;
+    grid-template-columns: 2fr 1fr;
+    gap:18px;
+    align-items:start;
+  }
+  @media (max-width: 900px){
+    .row{grid-template-columns:1fr;}
+  }
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:18px 20px;
+  }
+  .panel h2{
+    font-size:1rem;
+    margin:0 0 14px;
+  }
+  .toolbar{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-bottom:16px;
+  }
+  button{
+    font:inherit;
+    cursor:pointer;
+    border:1px solid var(--border);
+    background:var(--panel);
+    color:var(--text);
+    padding:8px 14px;
+    border-radius:8px;
+    transition:background .15s, border-color .15s;
+  }
+  button:hover{ background:var(--hover); }
+  button.primary{
+    background:var(--accent);
+    border-color:var(--accent);
+    color:#fff;
+  }
+  button.primary:hover{ background:var(--accent-dark); }
+  button.danger{
+    color:var(--expense);
+  }
+  input[type=file]{ display:none; }
+  .filters{
+    display:grid;
+    grid-template-columns: repeat(5, minmax(0,1fr));
+    gap:10px;
+    margin-bottom:14px;
+  }
+  @media (max-width: 900px){
+    .filters{grid-template-columns: repeat(2, minmax(0,1fr));}
+  }
+  label{
+    display:block;
+    font-size:0.72rem;
+    color:var(--muted);
+    margin-bottom:4px;
+  }
+  input, select{
+    font:inherit;
+    width:100%;
+    padding:7px 9px;
+    border:1px solid var(--border);
+    border-radius:7px;
+    background:var(--bg);
+    color:var(--text);
+  }
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:0.88rem;
+  }
+  th, td{
+    text-align:left;
+    padding:8px 10px;
+    border-bottom:1px solid var(--border);
+    white-space:nowrap;
+  }
+  th{
+    cursor:pointer;
+    color:var(--muted);
+    font-weight:600;
+    user-select:none;
+    position:sticky;
+    top:0;
+    background:var(--panel);
+  }
+  th.sorted::after{
+    content:" " attr(data-dir);
+    font-size:0.7em;
+  }
+  td.memo, th.memo-col{
+    white-space:normal;
+    max-width:260px;
+  }
+  tbody tr:hover{ background:var(--hover); }
+  .amt-income{ color:var(--income); font-weight:600; }
+  .amt-expense{ color:var(--expense); font-weight:600; }
+  .table-wrap{
+    max-height:480px;
+    overflow:auto;
+    border:1px solid var(--border);
+    border-radius:8px;
+  }
+  .row-actions button{
+    padding:3px 8px;
+    font-size:0.78rem;
+    margin-right:4px;
+  }
+  .summary-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:10px;
+    margin-bottom:16px;
+  }
+  .summary-card{
+    background:var(--bg);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:10px 12px;
+  }
+  .summary-card .label{ font-size:0.72rem; color:var(--muted); }
+  .summary-card .value{ font-size:1.15rem; font-weight:700; margin-top:2px; }
+  .chart-title{ font-size:0.82rem; color:var(--muted); margin:14px 0 6px; }
+  svg text{ font-size:10px; fill:var(--muted); }
+  .modal-backdrop{
+    position:fixed; inset:0; background:rgba(0,0,0,.4);
+    display:flex; align-items:center; justify-content:center;
+    z-index:50;
+  }
+  .modal{
+    background:var(--panel);
+    border-radius:var(--radius);
+    padding:22px 24px;
+    width:360px;
+    max-width:92vw;
+    border:1px solid var(--border);
+  }
+  .modal h3{ margin-top:0; }
+  .field{ margin-bottom:12px; }
+  .modal-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:8px;
+    margin-top:18px;
+  }
+  .hidden{ display:none !important; }
+  .status{
+    font-size:0.78rem;
+    color:var(--muted);
+    margin-top:8px;
+    min-height:1.1em;
+  }
+  .badge{
+    display:inline-block;
+    padding:2px 7px;
+    border-radius:999px;
+    font-size:0.72rem;
+    font-weight:600;
+  }
+  .badge-income{ background:rgba(31,157,85,.15); color:var(--income); }
+  .badge-expense{ background:rgba(214,69,69,.15); color:var(--expense); }
+</style>
+</head>
+<body>
+
+<h1>家計簿アプリ</h1>
+<div class="sub">CSVファイルをデータベースとして使うブラウザ完結型アプリです。サンプルデータで開始しています。</div>
+
+<div class="layout">
+
+  <div class="panel">
+    <h2>取引一覧</h2>
+
+    <div class="toolbar">
+      <button class="primary" id="btnAdd">＋ 新規登録</button>
+      <button id="btnImport">CSVを開く</button>
+      <button id="btnExport">CSVとして保存</button>
+      <button id="btnSaveOverwrite" class="hidden">上書き保存</button>
+      <button id="btnReset">サンプルに戻す</button>
+      <input type="file" id="fileInput" accept=".csv,text/csv">
+    </div>
+    <div class="status" id="status"></div>
+
+    <div class="filters">
+      <div>
+        <label>種別</label>
+        <select id="fType">
+          <option value="">すべて</option>
+          <option value="income">収入</option>
+          <option value="expense">支出</option>
+        </select>
+      </div>
+      <div>
+        <label>カテゴリ</label>
+        <select id="fCategory"><option value="">すべて</option></select>
+      </div>
+      <div>
+        <label>開始日</label>
+        <input type="date" id="fFrom">
+      </div>
+      <div>
+        <label>終了日</label>
+        <input type="date" id="fTo">
+      </div>
+      <div>
+        <label>メモ検索</label>
+        <input type="text" id="fSearch" placeholder="キーワード">
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th data-key="date">日付</th>
+            <th data-key="type">種別</th>
+            <th data-key="category">カテゴリ</th>
+            <th data-key="amount">金額</th>
+            <th class="memo-col" data-key="memo">メモ</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="panel">
+      <h2>サマリー</h2>
+      <div class="summary-grid">
+        <div class="summary-card">
+          <div class="label">表示中の収入合計</div>
+          <div class="value amt-income" id="sumIncome">¥0</div>
+        </div>
+        <div class="summary-card">
+          <div class="label">表示中の支出合計</div>
+          <div class="value amt-expense" id="sumExpense">¥0</div>
+        </div>
+        <div class="summary-card">
+          <div class="label">収支</div>
+          <div class="value" id="sumBalance">¥0</div>
+        </div>
+      </div>
+
+      <div class="chart-title">カテゴリ別支出（表示範囲内）</div>
+      <svg id="chartCategory" width="100%" height="200" viewBox="0 0 520 200" preserveAspectRatio="xMinYMin meet"></svg>
+
+      <div class="chart-title">月別収支推移</div>
+      <svg id="chartMonthly" width="100%" height="200" viewBox="0 0 520 200" preserveAspectRatio="xMinYMin meet"></svg>
+    </div>
+  </div>
+
+</div>
+
+<!-- Add / edit modal -->
+<div class="modal-backdrop hidden" id="modalBackdrop">
+  <div class="modal">
+    <h3 id="modalTitle">新規登録</h3>
+    <div class="field">
+      <label>日付</label>
+      <input type="date" id="mDate">
+    </div>
+    <div class="field">
+      <label>種別</label>
+      <select id="mType">
+        <option value="expense">支出</option>
+        <option value="income">収入</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>カテゴリ</label>
+      <select id="mCategory"></select>
+    </div>
+    <div class="field">
+      <label>金額（円）</label>
+      <input type="number" id="mAmount" min="0" step="1">
+    </div>
+    <div class="field">
+      <label>メモ</label>
+      <input type="text" id="mMemo" placeholder="任意">
+    </div>
+    <div class="modal-actions">
+      <button id="mCancel">キャンセル</button>
+      <button class="primary" id="mSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---------------------------------------------------------------------
+// Household budget (kakeibo) app backed by CSV as its "database".
+// All data lives in memory as an array of records; CSV import/export
+// and localStorage are the only persistence mechanisms (no server).
+// ---------------------------------------------------------------------
+
+const CSV_HEADER = ["date", "type", "category", "amount", "memo"];
+const STORAGE_KEY = "kakeibo_csv_records_v1";
+
+const CATEGORIES = {
+  income: ["給与", "副業", "賞与", "利子・配当", "その他収入"],
+  expense: ["食費", "日用品", "交通費", "住居費", "光熱費", "通信費", "娯楽", "医療", "衣服", "教育", "その他支出"]
+};
+
+// Sample dataset shown on first launch (also restored via "サンプルに戻す").
+function buildSampleRecords() {
+  const rows = [
+    ["2026-07-01", "income", "給与", 320000, "7月分給与"],
+    ["2026-07-02", "expense", "住居費", 85000, "家賃"],
+    ["2026-07-03", "expense", "食費", 6400, "スーパー"],
+    ["2026-07-05", "expense", "光熱費", 9800, "電気・ガス"],
+    ["2026-07-07", "expense", "通信費", 5200, "携帯・ネット"],
+    ["2026-07-10", "expense", "交通費", 3200, "定期券"],
+    ["2026-07-14", "expense", "娯楽", 4500, "映画"],
+    ["2026-07-18", "expense", "食費", 8200, "外食"],
+    ["2026-07-25", "expense", "日用品", 3100, "ドラッグストア"],
+    ["2026-08-01", "income", "給与", 320000, "8月分給与"],
+    ["2026-08-02", "expense", "住居費", 85000, "家賃"],
+    ["2026-08-04", "expense", "食費", 7100, "スーパー"],
+    ["2026-08-06", "expense", "光熱費", 11200, "電気・ガス（猛暑）"],
+    ["2026-08-15", "expense", "食費", 5300, "外食"],
+    ["2026-08-19", "expense", "医療", 2600, "薬局"],
+    ["2026-09-01", "income", "給与", 320000, "9月分給与"],
+    ["2026-09-02", "expense", "住居費", 85000, "家賃"],
+    ["2026-09-03", "expense", "食費", 6800, "スーパー"]
+  ];
+  return rows.map((r, i) => ({
+    id: "s" + i,
+    date: r[0], type: r[1], category: r[2], amount: r[3], memo: r[4]
+  }));
+}
+
+let records = [];
+let sortKey = "date";
+let sortDir = "desc";
+
+// ------------------------- CSV parsing / serialization -------------------------
+
+// Minimal RFC4180-style CSV parser (handles quoted fields with commas/quotes).
+function parseCSV(text) {
+  const rows = [];
+  let row = [];
+  let field = "";
+  let inQuotes = false;
+  // Normalize line endings first.
+  text = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++; }
+        else { inQuotes = false; }
+      } else {
+        field += c;
+      }
+    } else {
+      if (c === '"') inQuotes = true;
+      else if (c === ',') { row.push(field); field = ""; }
+      else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ""; }
+      else field += c;
+    }
+  }
+  if (field.length > 0 || row.length > 0) { row.push(field); rows.push(row); }
+  return rows.filter(r => !(r.length === 1 && r[0] === ""));
+}
+
+function csvEscape(value) {
+  const s = String(value ?? "");
+  if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
+function recordsToCSV(list) {
+  const lines = [CSV_HEADER.join(",")];
+  for (const r of list) {
+    lines.push([r.date, r.type, r.category, r.amount, r.memo].map(csvEscape).join(","));
+  }
+  return lines.join("\n");
+}
+
+function csvToRecords(text) {
+  const rows = parseCSV(text);
+  if (rows.length === 0) return [];
+  const header = rows[0].map(h => h.trim().toLowerCase());
+  const idx = {
+    date: header.indexOf("date"),
+    type: header.indexOf("type"),
+    category: header.indexOf("category"),
+    amount: header.indexOf("amount"),
+    memo: header.indexOf("memo")
+  };
+  const out = [];
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    if (r.every(c => c === "")) continue;
+    const amount = Number(r[idx.amount]);
+    out.push({
+      id: "r" + Date.now() + "_" + i,
+      date: r[idx.date] || "",
+      type: (r[idx.type] || "expense").trim() === "income" ? "income" : "expense",
+      category: r[idx.category] || "その他支出",
+      amount: isNaN(amount) ? 0 : amount,
+      memo: r[idx.memo] || ""
+    });
+  }
+  return out;
+}
+
+// ------------------------- Persistence -------------------------
+
+function saveToLocalStorage() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+  } catch (e) {
+    // Storage can be unavailable (private browsing, quota) -- fail silently.
+  }
+}
+
+function loadFromLocalStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (Array.isArray(data)) return data;
+  } catch (e) {}
+  return null;
+}
+
+function setStatus(msg) {
+  document.getElementById("status").textContent = msg;
+}
+
+// ------------------------- Rendering -------------------------
+
+function currentCategoryOptions(type) {
+  return CATEGORIES[type] || [];
+}
+
+function refreshCategoryFilterOptions() {
+  const sel = document.getElementById("fCategory");
+  const current = sel.value;
+  const all = [...CATEGORIES.income, ...CATEGORIES.expense];
+  sel.innerHTML = '<option value="">すべて</option>' + all.map(c => `<option value="${c}">${c}</option>`).join("");
+  sel.value = current;
+}
+
+function getFiltered() {
+  const type = document.getElementById("fType").value;
+  const cat = document.getElementById("fCategory").value;
+  const from = document.getElementById("fFrom").value;
+  const to = document.getElementById("fTo").value;
+  const q = document.getElementById("fSearch").value.trim().toLowerCase();
+
+  let list = records.filter(r => {
+    if (type && r.type !== type) return false;
+    if (cat && r.category !== cat) return false;
+    if (from && r.date < from) return false;
+    if (to && r.date > to) return false;
+    if (q && !(r.memo || "").toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  list.sort((a, b) => {
+    let va = a[sortKey], vb = b[sortKey];
+    if (sortKey === "amount") { va = Number(va); vb = Number(vb); }
+    if (va < vb) return sortDir === "asc" ? -1 : 1;
+    if (va > vb) return sortDir === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  return list;
+}
+
+function fmtYen(n) {
+  return "¥" + Number(n).toLocaleString("ja-JP");
+}
+
+function render() {
+  const list = getFiltered();
+  const tbody = document.getElementById("tbody");
+  tbody.innerHTML = list.map(r => `
+    <tr data-id="${r.id}">
+      <td>${r.date}</td>
+      <td><span class="badge ${r.type === 'income' ? 'badge-income' : 'badge-expense'}">${r.type === 'income' ? '収入' : '支出'}</span></td>
+      <td>${r.category}</td>
+      <td class="${r.type === 'income' ? 'amt-income' : 'amt-expense'}">${r.type === 'income' ? '+' : '-'}${fmtYen(r.amount)}</td>
+      <td class="memo">${escapeHtml(r.memo || "")}</td>
+      <td class="row-actions">
+        <button data-action="edit">編集</button>
+        <button data-action="delete" class="danger">削除</button>
+      </td>
+    </tr>
+  `).join("") || `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px;">該当する取引がありません</td></tr>`;
+
+  // Update sort indicator on headers.
+  document.querySelectorAll("th[data-key]").forEach(th => {
+    th.classList.toggle("sorted", th.dataset.key === sortKey);
+    th.dataset.dir = sortDir === "asc" ? "▲" : "▼";
+  });
+
+  renderSummary(list);
+  renderCategoryChart(list);
+  renderMonthlyChart(records); // Monthly trend always shows all records, not filtered by date range.
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function renderSummary(list) {
+  const income = list.filter(r => r.type === "income").reduce((s, r) => s + Number(r.amount), 0);
+  const expense = list.filter(r => r.type === "expense").reduce((s, r) => s + Number(r.amount), 0);
+  document.getElementById("sumIncome").textContent = fmtYen(income);
+  document.getElementById("sumExpense").textContent = fmtYen(expense);
+  const balEl = document.getElementById("sumBalance");
+  balEl.textContent = fmtYen(income - expense);
+  balEl.className = "value " + (income - expense >= 0 ? "amt-income" : "amt-expense");
+}
+
+// ------------------------- Charts (plain inline SVG, no dependencies) -------------------------
+
+function renderCategoryChart(list) {
+  const svg = document.getElementById("chartCategory");
+  const totals = {};
+  list.filter(r => r.type === "expense").forEach(r => {
+    totals[r.category] = (totals[r.category] || 0) + Number(r.amount);
+  });
+  const entries = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+  const max = Math.max(1, ...entries.map(e => e[1]));
+  const barH = 22, gap = 8, left = 90, top = 10, width = 520;
+  const height = Math.max(200, entries.length * (barH + gap) + top);
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.setAttribute("height", height);
+
+  let svgContent = "";
+  entries.forEach(([cat, amt], i) => {
+    const y = top + i * (barH + gap);
+    const w = (amt / max) * (width - left - 70);
+    svgContent += `
+      <text x="${left - 8}" y="${y + barH / 2 + 4}" text-anchor="end">${cat}</text>
+      <rect x="${left}" y="${y}" width="${Math.max(2, w)}" height="${barH}" rx="4" fill="var(--expense, #d64545)"></rect>
+      <text x="${left + w + 8}" y="${y + barH / 2 + 4}">${fmtYen(amt)}</text>
+    `;
+  });
+  svg.innerHTML = svgContent || `<text x="20" y="30">データがありません</text>`;
+}
+
+function renderMonthlyChart(list) {
+  const svg = document.getElementById("chartMonthly");
+  const byMonth = {};
+  list.forEach(r => {
+    const m = (r.date || "").slice(0, 7); // YYYY-MM
+    if (!m) return;
+    byMonth[m] = byMonth[m] || { income: 0, expense: 0 };
+    byMonth[m][r.type] += Number(r.amount);
+  });
+  const months = Object.keys(byMonth).sort();
+  const width = 520, height = 200, left = 40, bottom = 24, top = 14;
+  const max = Math.max(1, ...months.map(m => Math.max(byMonth[m].income, byMonth[m].expense)));
+  const chartW = width - left - 10;
+  const chartH = height - bottom - top;
+  const colW = months.length ? chartW / months.length : chartW;
+
+  let svgContent = `<line x1="${left}" y1="${top}" x2="${left}" y2="${top + chartH}" stroke="var(--border,#ccc)"></line>
+    <line x1="${left}" y1="${top + chartH}" x2="${width - 10}" y2="${top + chartH}" stroke="var(--border,#ccc)"></line>`;
+
+  months.forEach((m, i) => {
+    const x = left + i * colW;
+    const incH = (byMonth[m].income / max) * chartH;
+    const expH = (byMonth[m].expense / max) * chartH;
+    const bw = Math.max(6, colW * 0.32);
+    svgContent += `
+      <rect x="${x + colW * 0.12}" y="${top + chartH - incH}" width="${bw}" height="${incH}" fill="var(--income,#1f9d55)"></rect>
+      <rect x="${x + colW * 0.52}" y="${top + chartH - expH}" width="${bw}" height="${expH}" fill="var(--expense,#d64545)"></rect>
+      <text x="${x + colW / 2}" y="${top + chartH + 16}" text-anchor="middle">${m.slice(5)}</text>
+    `;
+  });
+
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.innerHTML = svgContent || `<text x="20" y="30">データがありません</text>`;
+}
+
+// ------------------------- Modal (add / edit) -------------------------
+
+let editingId = null;
+
+function openModal(record) {
+  editingId = record ? record.id : null;
+  document.getElementById("modalTitle").textContent = record ? "取引を編集" : "新規登録";
+  const typeSel = document.getElementById("mType");
+  typeSel.value = record ? record.type : "expense";
+  populateModalCategories();
+  document.getElementById("mCategory").value = record ? record.category : currentCategoryOptions(typeSel.value)[0];
+  document.getElementById("mDate").value = record ? record.date : new Date().toISOString().slice(0, 10);
+  document.getElementById("mAmount").value = record ? record.amount : "";
+  document.getElementById("mMemo").value = record ? record.memo : "";
+  document.getElementById("modalBackdrop").classList.remove("hidden");
+}
+
+function populateModalCategories() {
+  const type = document.getElementById("mType").value;
+  const sel = document.getElementById("mCategory");
+  sel.innerHTML = currentCategoryOptions(type).map(c => `<option value="${c}">${c}</option>`).join("");
+}
+
+function closeModal() {
+  document.getElementById("modalBackdrop").classList.add("hidden");
+  editingId = null;
+}
+
+document.getElementById("mType").addEventListener("change", populateModalCategories);
+
+document.getElementById("mSave").addEventListener("click", () => {
+  const date = document.getElementById("mDate").value;
+  const type = document.getElementById("mType").value;
+  const category = document.getElementById("mCategory").value;
+  const amount = Number(document.getElementById("mAmount").value);
+  const memo = document.getElementById("mMemo").value;
+
+  if (!date || !amount || amount <= 0) {
+    setStatus("日付と金額（0より大きい値）を入力してください。");
+    return;
+  }
+
+  if (editingId) {
+    const r = records.find(r => r.id === editingId);
+    Object.assign(r, { date, type, category, amount, memo });
+    setStatus("取引を更新しました。");
+  } else {
+    records.push({ id: "n" + Date.now(), date, type, category, amount, memo });
+    setStatus("取引を追加しました。");
+  }
+  saveToLocalStorage();
+  closeModal();
+  render();
+});
+
+document.getElementById("mCancel").addEventListener("click", closeModal);
+document.getElementById("modalBackdrop").addEventListener("click", e => {
+  if (e.target.id === "modalBackdrop") closeModal();
+});
+
+// ------------------------- Table interactions -------------------------
+
+document.getElementById("tbody").addEventListener("click", e => {
+  const btn = e.target.closest("button");
+  if (!btn) return;
+  const tr = e.target.closest("tr");
+  const id = tr.dataset.id;
+  const record = records.find(r => r.id === id);
+  if (btn.dataset.action === "edit") {
+    openModal(record);
+  } else if (btn.dataset.action === "delete") {
+    if (confirm("この取引を削除しますか？")) {
+      records = records.filter(r => r.id !== id);
+      saveToLocalStorage();
+      render();
+      setStatus("取引を削除しました。");
+    }
+  }
+});
+
+document.querySelectorAll("th[data-key]").forEach(th => {
+  th.addEventListener("click", () => {
+    const key = th.dataset.key;
+    if (sortKey === key) sortDir = sortDir === "asc" ? "desc" : "asc";
+    else { sortKey = key; sortDir = "asc"; }
+    render();
+  });
+});
+
+["fType", "fCategory", "fFrom", "fTo", "fSearch"].forEach(id => {
+  document.getElementById(id).addEventListener("input", render);
+});
+
+document.getElementById("btnAdd").addEventListener("click", () => openModal(null));
+
+// ------------------------- CSV import / export -------------------------
+
+const fileInput = document.getElementById("fileInput");
+const btnImport = document.getElementById("btnImport");
+
+// Default import path: hidden <input type=file> + FileReader.
+// This is overridden below when the File System Access API is available.
+function fallbackImportHandler() { fileInput.click(); }
+btnImport.addEventListener("click", fallbackImportHandler);
+
+fileInput.addEventListener("change", () => {
+  const file = fileInput.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const imported = csvToRecords(reader.result);
+      records = imported;
+      saveToLocalStorage();
+      render();
+      setStatus(`${file.name} を読み込みました（${imported.length}件）。`);
+    } catch (err) {
+      setStatus("CSVの読み込みに失敗しました: " + err.message);
+    }
+  };
+  reader.readAsText(file, "utf-8");
+  fileInput.value = "";
+});
+
+function downloadCSV() {
+  const csv = "﻿" + recordsToCSV(records); // BOM for Excel(Japanese) compatibility
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "kakeibo_" + new Date().toISOString().slice(0, 10) + ".csv";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  setStatus("CSVファイルとして保存しました。");
+}
+
+document.getElementById("btnExport").addEventListener("click", downloadCSV);
+
+document.getElementById("btnReset").addEventListener("click", () => {
+  if (confirm("現在のデータを破棄してサンプルデータに戻しますか？")) {
+    records = buildSampleRecords();
+    saveToLocalStorage();
+    render();
+    setStatus("サンプルデータに戻しました。");
+  }
+});
+
+// Optional: File System Access API lets Chromium browsers overwrite the
+// same local CSV file directly, without a separate download step.
+let fileHandle = null;
+if ("showOpenFilePicker" in window) {
+  const btnOverwrite = document.getElementById("btnSaveOverwrite");
+  btnOverwrite.classList.remove("hidden");
+  btnOverwrite.textContent = "同じファイルに上書き保存";
+  btnOverwrite.disabled = true;
+
+  // Swap the import button over to the native picker so we can retain a
+  // handle for later overwrites (the hidden <input type=file> can't do that).
+  btnImport.removeEventListener("click", fallbackImportHandler);
+  btnImport.addEventListener("click", async () => {
+    try {
+      const [handle] = await window.showOpenFilePicker({
+        types: [{ description: "CSV", accept: { "text/csv": [".csv"] } }]
+      });
+      fileHandle = handle;
+      const file = await handle.getFile();
+      const text = await file.text();
+      records = csvToRecords(text);
+      saveToLocalStorage();
+      render();
+      btnOverwrite.disabled = false;
+      setStatus(`${file.name} を読み込みました（${records.length}件）。`);
+    } catch (err) {
+      // User cancelled the picker, or the API failed -- no action needed.
+    }
+  });
+
+  btnOverwrite.addEventListener("click", async () => {
+    if (!fileHandle) return;
+    try {
+      const writable = await fileHandle.createWritable();
+      await writable.write("﻿" + recordsToCSV(records));
+      await writable.close();
+      setStatus("元のCSVファイルに上書き保存しました。");
+    } catch (err) {
+      setStatus("上書き保存に失敗しました: " + err.message);
+    }
+  });
+}
+
+// ------------------------- Init -------------------------
+
+function init() {
+  const saved = loadFromLocalStorage();
+  records = saved && saved.length ? saved : buildSampleRecords();
+  refreshCategoryFilterOptions();
+  populateModalCategories();
+  render();
+  setStatus(saved && saved.length ? "前回のデータを復元しました。" : "サンプルデータで開始しました。");
+}
+
+init();
+</script>
+</body>
+</html>
