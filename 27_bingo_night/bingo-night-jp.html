@@ -1,0 +1,811 @@
+<title>Bingo Night</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
+<style>
+  /* ---------- Design tokens ---------- */
+  :root {
+    --bg: #f5efdf;
+    --surface: #fffdf7;
+    --surface-2: #ece1c4;
+    --ink: #24312a;
+    --ink-soft: #6b7367;
+    --accent: #c1462f;      /* stamp red */
+    --accent-ink: #fdf3ee;
+    --accent-2: #1b6b4a;    /* felt green */
+    --accent-2-ink: #f2fbf6;
+    --gold: #d8a13b;
+    --gold-ink: #2a1c04;
+    --line: rgba(36,49,42,0.14);
+    --shadow: rgba(36,49,42,0.16);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12201a;
+      --surface: #1a2c24;
+      --surface-2: #21382d;
+      --ink: #f0ece0;
+      --ink-soft: #a9b6ac;
+      --accent: #e2694f;
+      --accent-ink: #2a1108;
+      --accent-2: #6fbe94;
+      --accent-2-ink: #0d2419;
+      --gold: #e8b34a;
+      --gold-ink: #2a1c04;
+      --line: rgba(240,236,224,0.16);
+      --shadow: rgba(0,0,0,0.4);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #12201a;
+    --surface: #1a2c24;
+    --surface-2: #21382d;
+    --ink: #f0ece0;
+    --ink-soft: #a9b6ac;
+    --accent: #e2694f;
+    --accent-ink: #2a1108;
+    --accent-2: #6fbe94;
+    --accent-2-ink: #0d2419;
+    --gold: #e8b34a;
+    --gold-ink: #2a1c04;
+    --line: rgba(240,236,224,0.16);
+    --shadow: rgba(0,0,0,0.4);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Work Sans', -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, .display {
+    font-family: 'Fraunces', Georgia, serif;
+    text-wrap: balance;
+  }
+
+  button { font-family: inherit; }
+
+  .app {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 20px 20px 64px;
+  }
+
+  /* ---------- Top bar ---------- */
+  .topbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 8px 4px 24px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 28px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .brand-mark {
+    width: 42px;
+    height: 42px;
+    flex: none;
+  }
+
+  .brand-eyebrow {
+    display: block;
+    font-family: 'Space Mono', 'Courier New', monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    color: var(--ink-soft);
+    margin-bottom: 2px;
+  }
+
+  .brand-title {
+    margin: 0;
+    font-size: clamp(22px, 3.4vw, 30px);
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  .tabs {
+    position: relative;
+    display: inline-flex;
+    background: var(--surface-2);
+    border-radius: 999px;
+    padding: 4px;
+    gap: 2px;
+  }
+
+  .tab-btn {
+    position: relative;
+    z-index: 1;
+    border: none;
+    background: transparent;
+    color: var(--ink-soft);
+    font-weight: 600;
+    font-size: 14px;
+    padding: 9px 20px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color 0.2s ease;
+  }
+
+  .tab-btn[aria-selected="true"] {
+    color: var(--accent-2-ink);
+  }
+
+  .tab-indicator {
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    left: 4px;
+    width: calc(50% - 6px);
+    background: var(--accent-2);
+    border-radius: 999px;
+    transition: transform 0.28s cubic-bezier(.4,0,.2,1);
+  }
+
+  .tabs[data-active="organizer"] .tab-indicator {
+    transform: translateX(calc(100% + 4px));
+  }
+
+  .panel[hidden] { display: none; }
+
+  /* ---------- Participant: ticket card ---------- */
+  .participant-layout {
+    display: flex;
+    justify-content: center;
+  }
+
+  .ticket {
+    position: relative;
+    width: 100%;
+    max-width: 420px;
+    background: var(--surface-2);
+    border-radius: 22px;
+    padding: 26px 24px 22px;
+    box-shadow: 0 18px 40px -20px var(--shadow);
+  }
+
+  .ticket::before,
+  .ticket::after {
+    content: "";
+    position: absolute;
+    top: 96px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--bg);
+  }
+  .ticket::before { left: -11px; }
+  .ticket::after { right: -11px; }
+
+  .ticket-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+
+  .ticket-title {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+  }
+
+  .ticket-id {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+
+  .ticket-sub {
+    margin: 0 0 18px;
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+
+  .perforation {
+    height: 0;
+    border-top: 2px dashed var(--line);
+    margin: 18px 0 20px;
+  }
+
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+  }
+
+  .cell {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    font-size: clamp(14px, 4vw, 19px);
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+    cursor: pointer;
+    transition: transform 0.12s ease, background 0.2s ease, color 0.2s ease;
+    overflow: hidden;
+  }
+
+  .cell:focus-visible {
+    outline: 3px solid var(--gold);
+    outline-offset: 2px;
+  }
+
+  .cell:active { transform: scale(0.94); }
+
+  .cell.is-free {
+    background: var(--accent-2);
+    color: var(--accent-2-ink);
+    cursor: default;
+    font-family: 'Fraunces', serif;
+    font-size: clamp(11px, 3vw, 13px);
+    letter-spacing: 0.06em;
+    gap: 3px;
+    flex-direction: column;
+  }
+
+  .cell.is-free svg { width: 18px; height: 18px; }
+
+  .cell.is-marked:not(.is-free) {
+    color: var(--ink);
+  }
+
+  .cell.is-marked:not(.is-free)::after {
+    content: "";
+    position: absolute;
+    inset: 3px;
+    border: 3px solid var(--accent);
+    border-radius: 50%;
+    transform: rotate(-8deg);
+    opacity: 0.82;
+    mix-blend-mode: multiply;
+  }
+
+  .cell.is-winning {
+    background: var(--gold);
+    color: var(--gold-ink);
+  }
+  .cell.is-winning::after { border-color: var(--gold-ink); opacity: 0.55; }
+
+  .ribbon {
+    margin-top: 16px;
+    text-align: center;
+    font-family: 'Fraunces', serif;
+    font-weight: 700;
+    font-size: 22px;
+    letter-spacing: 0.04em;
+    color: var(--accent);
+    opacity: 0;
+    transform: translateY(-4px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  }
+  .ribbon.is-visible { opacity: 1; transform: translateY(0); }
+
+  .ticket-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+  }
+
+  /* ---------- Buttons ---------- */
+  .btn {
+    border: none;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 14px;
+    padding: 12px 26px;
+    cursor: pointer;
+    transition: transform 0.12s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  .btn-primary {
+    background: var(--accent);
+    color: var(--accent-ink);
+    box-shadow: 0 10px 24px -12px var(--shadow);
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--ink);
+    border: 1.5px solid var(--line);
+  }
+
+  /* ---------- Organizer ---------- */
+  .organizer-grid {
+    display: grid;
+    grid-template-columns: minmax(240px, 320px) 1fr;
+    gap: 32px;
+    align-items: start;
+  }
+
+  @media (max-width: 760px) {
+    .organizer-grid { grid-template-columns: 1fr; }
+  }
+
+  .draw-console {
+    background: var(--surface-2);
+    border-radius: 22px;
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .ball-stage {
+    width: 168px;
+    height: 168px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 6px 0;
+  }
+
+  .ball {
+    width: 152px;
+    height: 152px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 34% 30%, color-mix(in srgb, var(--gold) 55%, white 20%), var(--gold) 60%, color-mix(in srgb, var(--gold) 70%, black 25%) 100%);
+    box-shadow: 0 16px 30px -12px var(--shadow), inset 0 -8px 16px rgba(0,0,0,0.18);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    transition: transform 0.4s cubic-bezier(.34,1.4,.64,1);
+  }
+
+  .ball.just-drawn { transform: scale(1.06) rotate(-3deg); }
+
+  .ball-label {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    color: var(--gold-ink);
+    opacity: 0.75;
+    font-weight: 600;
+  }
+
+  .ball-number {
+    font-family: 'Fraunces', serif;
+    font-weight: 700;
+    font-size: 52px;
+    color: var(--gold-ink);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+
+  .remaining {
+    margin: 0;
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+
+  .history {
+    width: 100%;
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 4px 2px 2px;
+    scroll-behavior: smooth;
+  }
+
+  .history-chip {
+    flex: none;
+    min-width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .history-chip.is-latest {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .history-empty {
+    font-size: 13px;
+    color: var(--ink-soft);
+    padding: 6px 2px;
+  }
+
+  .board-wrap {
+    min-width: 0;
+  }
+
+  .board-title {
+    margin: 0 0 12px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .board {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 5px;
+  }
+
+  .board-cell {
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    font-family: 'Space Mono', monospace;
+    font-size: clamp(10px, 1.6vw, 13px);
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-soft);
+    transition: background 0.25s ease, color 0.25s ease, transform 0.2s ease;
+  }
+
+  .board-cell.is-drawn {
+    background: var(--accent-2);
+    color: var(--accent-2-ink);
+    font-weight: 700;
+  }
+
+  .board-cell.just-drawn { transform: scale(1.12); }
+
+  /* Shrink the console on small screens (phones held during a live draw) so
+     the controls take less vertical space, leaving more of the viewport for
+     the control board's own scroll panel below. */
+  @media (max-width: 480px), (max-height: 700px) {
+    .app { padding: 14px 16px 48px; }
+    .draw-console { padding: 16px; gap: 10px; }
+    .ball-stage { width: 128px; height: 128px; margin: 2px 0; }
+    .ball { width: 116px; height: 116px; }
+    .ball-number { font-size: 36px; }
+
+    /* On a small screen the full 75-number board rarely fits below the
+       console; contain it in its own scroll panel so the controls above
+       stay put and a fade hints that more numbers are reachable. */
+    .board-scroll {
+      max-height: 320px;
+      overflow-y: auto;
+      padding: 2px 4px 2px 2px;
+      -webkit-mask-image: linear-gradient(to bottom, transparent, black 14px, black calc(100% - 14px), transparent);
+      mask-image: linear-gradient(to bottom, transparent, black 14px, black calc(100% - 14px), transparent);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      transition-duration: 0.001ms !important;
+      animation-duration: 0.001ms !important;
+    }
+  }
+</style>
+
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 42 42" aria-hidden="true">
+        <circle cx="21" cy="21" r="19" fill="var(--gold)" stroke="var(--ink)" stroke-width="1.5" opacity="0.92"/>
+        <text x="21" y="27" text-anchor="middle" font-family="Fraunces, serif" font-weight="700" font-size="17" fill="var(--gold-ink)">B</text>
+      </svg>
+      <div>
+        <span class="brand-eyebrow">PARTY BINGO · 01–75</span>
+        <h1 class="brand-title">Bingo Night</h1>
+      </div>
+    </div>
+    <nav class="tabs" id="tabs" data-active="participant" aria-label="表示切替">
+      <button class="tab-btn" role="tab" aria-selected="true" data-tab="participant" id="tab-btn-participant">参加者</button>
+      <button class="tab-btn" role="tab" aria-selected="false" data-tab="organizer" id="tab-btn-organizer">主催者</button>
+      <span class="tab-indicator" aria-hidden="true"></span>
+    </nav>
+  </header>
+
+  <main>
+    <section id="panel-participant" class="panel" role="tabpanel" aria-labelledby="tab-btn-participant">
+      <div class="participant-layout">
+        <div class="ticket">
+          <div class="ticket-head">
+            <h2 class="ticket-title">Bingo Card</h2>
+            <span class="ticket-id" id="card-id">No. 000</span>
+          </div>
+          <p class="ticket-sub">出た番号にタップしてチェックを入れよう</p>
+          <div class="perforation" aria-hidden="true"></div>
+          <div class="card-grid" id="card-grid" role="group" aria-label="ビンゴカード"></div>
+          <p class="ribbon" id="ribbon">BINGO!</p>
+          <div class="ticket-actions">
+            <button class="btn btn-ghost" id="btn-randomize">新しいカードを作る</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="panel-organizer" class="panel" role="tabpanel" aria-labelledby="tab-btn-organizer" hidden>
+      <div class="organizer-grid">
+        <div class="draw-console">
+          <button class="btn btn-ghost" id="btn-shuffle">シャッフルして開始</button>
+          <div class="ball-stage">
+            <div class="ball" id="ball">
+              <span class="ball-label">最新の番号</span>
+              <span class="ball-number" id="current-number">--</span>
+            </div>
+          </div>
+          <button class="btn btn-primary" id="btn-draw">番号を引く</button>
+          <p class="remaining" id="remaining-text">残り 75 / 75</p>
+          <div class="history" id="history-strip"></div>
+        </div>
+        <div class="board-wrap">
+          <h2 class="board-title">コントロールボード</h2>
+          <div class="board-scroll">
+            <div class="board" id="control-board"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- Storage helpers (per-viewer convenience only) ----------
+  function loadJSON(key) {
+    try {
+      var raw = window.localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+  function saveJSON(key, value) {
+    try {
+      window.localStorage.setItem(key, JSON.stringify(value));
+    } catch (e) {
+      // Storage unavailable (private window, blocked, etc.) - fail silently.
+    }
+  }
+
+  var PARTICIPANT_KEY = "bingo-night:participant-card";
+  var ORGANIZER_KEY = "bingo-night:organizer-state";
+  var FREE_INDEX = 12; // center cell of a 5x5 grid
+  var NUMBER_MAX = 75; // classic 75-ball bingo range (1-75)
+
+  // ---------- Shared utility ----------
+  function shuffledRange(min, max) {
+    var arr = [];
+    for (var i = min; i <= max; i++) arr.push(i);
+    for (var j = arr.length - 1; j > 0; j--) {
+      var k = Math.floor(Math.random() * (j + 1));
+      var tmp = arr[j]; arr[j] = arr[k]; arr[k] = tmp;
+    }
+    return arr;
+  }
+  function pad2(n) { return n < 10 ? "0" + n : String(n); }
+
+  // =========================================================
+  // Tabs
+  // =========================================================
+  var tabsEl = document.getElementById("tabs");
+  var tabButtons = tabsEl.querySelectorAll(".tab-btn");
+  var panels = {
+    participant: document.getElementById("panel-participant"),
+    organizer: document.getElementById("panel-organizer")
+  };
+
+  function activateTab(name) {
+    tabsEl.setAttribute("data-active", name);
+    tabButtons.forEach(function (btn) {
+      var active = btn.getAttribute("data-tab") === name;
+      btn.setAttribute("aria-selected", active ? "true" : "false");
+    });
+    Object.keys(panels).forEach(function (key) {
+      panels[key].hidden = key !== name;
+    });
+  }
+  tabButtons.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      activateTab(btn.getAttribute("data-tab"));
+    });
+  });
+
+  // =========================================================
+  // Participant card
+  // =========================================================
+  var cardGridEl = document.getElementById("card-grid");
+  var cardIdEl = document.getElementById("card-id");
+  var ribbonEl = document.getElementById("ribbon");
+  var btnRandomize = document.getElementById("btn-randomize");
+
+  var FREE_STAR_SVG =
+    '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
+    '<path d="M12 2.5l2.7 6.14 6.68.6-5.06 4.45 1.52 6.56L12 16.9l-5.84 3.35 1.52-6.56L2.62 9.24l6.68-.6z"/>' +
+    "</svg>";
+
+  var LINES = (function () {
+    var lines = [];
+    for (var r = 0; r < 5; r++) {
+      var row = []; for (var c = 0; c < 5; c++) row.push(r * 5 + c);
+      lines.push(row);
+    }
+    for (var c2 = 0; c2 < 5; c2++) {
+      var col = []; for (var r2 = 0; r2 < 5; r2++) col.push(r2 * 5 + c2);
+      lines.push(col);
+    }
+    lines.push([0, 6, 12, 18, 24]);
+    lines.push([4, 8, 12, 16, 20]);
+    return lines;
+  })();
+
+  function generateCard() {
+    var picks = shuffledRange(1, NUMBER_MAX).slice(0, 24);
+    var cells = [];
+    var p = 0;
+    for (var i = 0; i < 25; i++) {
+      if (i === FREE_INDEX) {
+        cells.push({ free: true, marked: true });
+      } else {
+        cells.push({ free: false, value: picks[p++], marked: false });
+      }
+    }
+    return { id: Math.floor(100 + Math.random() * 900), cells: cells };
+  }
+
+  var participantState = loadJSON(PARTICIPANT_KEY) || generateCard();
+
+  function renderParticipant() {
+    cardIdEl.textContent = "No. " + participantState.id;
+    cardGridEl.innerHTML = "";
+
+    var winningCells = {};
+    LINES.forEach(function (line) {
+      var complete = line.every(function (idx) { return participantState.cells[idx].marked; });
+      if (complete) line.forEach(function (idx) { winningCells[idx] = true; });
+    });
+
+    participantState.cells.forEach(function (cell, idx) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "cell" + (cell.free ? " is-free" : "") +
+        (cell.marked ? " is-marked" : "") +
+        (winningCells[idx] ? " is-winning" : "");
+      if (cell.free) {
+        btn.innerHTML = FREE_STAR_SVG + "<span>FREE</span>";
+        btn.disabled = true;
+      } else {
+        btn.textContent = pad2(cell.value);
+        btn.setAttribute("aria-pressed", cell.marked ? "true" : "false");
+        btn.addEventListener("click", function () {
+          cell.marked = !cell.marked;
+          saveJSON(PARTICIPANT_KEY, participantState);
+          renderParticipant();
+        });
+      }
+      cardGridEl.appendChild(btn);
+    });
+
+    var hasBingo = Object.keys(winningCells).length > 0;
+    ribbonEl.classList.toggle("is-visible", hasBingo);
+  }
+
+  btnRandomize.addEventListener("click", function () {
+    participantState = generateCard();
+    saveJSON(PARTICIPANT_KEY, participantState);
+    renderParticipant();
+  });
+
+  renderParticipant();
+
+  // =========================================================
+  // Organizer board
+  // =========================================================
+  var ballEl = document.getElementById("ball");
+  var currentNumberEl = document.getElementById("current-number");
+  var remainingTextEl = document.getElementById("remaining-text");
+  var historyStripEl = document.getElementById("history-strip");
+  var controlBoardEl = document.getElementById("control-board");
+  var btnDraw = document.getElementById("btn-draw");
+  var btnShuffle = document.getElementById("btn-shuffle");
+
+  function freshOrganizerState() {
+    return { pool: shuffledRange(1, NUMBER_MAX), drawn: [] };
+  }
+
+  var organizerState = loadJSON(ORGANIZER_KEY) || freshOrganizerState();
+
+  // Build the 1-99 control board once; only classes are toggled afterwards.
+  var boardCellEls = {};
+  (function buildBoard() {
+    for (var n = 1; n <= NUMBER_MAX; n++) {
+      var cell = document.createElement("div");
+      cell.className = "board-cell";
+      cell.textContent = pad2(n);
+      controlBoardEl.appendChild(cell);
+      boardCellEls[n] = cell;
+    }
+  })();
+
+  function renderOrganizer(justDrawnNumber) {
+    var totalDrawn = organizerState.drawn.length;
+    var remaining = organizerState.pool.length;
+    remainingTextEl.textContent = remaining === 0
+      ? "全ての番号が出ました（" + totalDrawn + " / " + NUMBER_MAX + "）"
+      : "残り " + remaining + " / " + NUMBER_MAX;
+    btnDraw.disabled = remaining === 0;
+
+    var latest = organizerState.drawn[totalDrawn - 1];
+    currentNumberEl.textContent = latest !== undefined ? pad2(latest) : "--";
+
+    if (totalDrawn === 0) {
+      historyStripEl.innerHTML = '<p class="history-empty">まだ番号は出ていません</p>';
+    } else {
+      historyStripEl.innerHTML = "";
+      organizerState.drawn.forEach(function (num, i) {
+        var chip = document.createElement("span");
+        chip.className = "history-chip" + (i === totalDrawn - 1 ? " is-latest" : "");
+        chip.textContent = pad2(num);
+        historyStripEl.appendChild(chip);
+      });
+      historyStripEl.scrollLeft = historyStripEl.scrollWidth;
+    }
+
+    Object.keys(boardCellEls).forEach(function (key) {
+      var isDrawn = organizerState.drawn.indexOf(Number(key)) !== -1;
+      boardCellEls[key].classList.toggle("is-drawn", isDrawn);
+      boardCellEls[key].classList.toggle("just-drawn", Number(key) === justDrawnNumber);
+    });
+
+    // Bring the newest number into view inside the board's own scroll panel,
+    // since the full 1-75 grid is usually taller than the visible area.
+    if (justDrawnNumber && boardCellEls[justDrawnNumber]) {
+      boardCellEls[justDrawnNumber].scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  }
+
+  btnDraw.addEventListener("click", function () {
+    if (organizerState.pool.length === 0) return;
+    var number = organizerState.pool.pop();
+    organizerState.drawn.push(number);
+    saveJSON(ORGANIZER_KEY, organizerState);
+    renderOrganizer(number);
+    ballEl.classList.add("just-drawn");
+    setTimeout(function () { ballEl.classList.remove("just-drawn"); }, 260);
+  });
+
+  btnShuffle.addEventListener("click", function () {
+    organizerState = freshOrganizerState();
+    saveJSON(ORGANIZER_KEY, organizerState);
+    renderOrganizer();
+  });
+
+  renderOrganizer();
+})();
+</script>
