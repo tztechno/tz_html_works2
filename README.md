@@ -48,5 +48,5 @@ https://tztechno.github.io/tz_html_works2/17_classify/classification_quiz_app.ht
 
 https://tztechno.github.io/tz_html_works2/21_html_viewer/html-viewer.html
 
-
+https://tztechno.github.io/tz_html_works2/25_slot/ironwood_sevens_ja.html
 
