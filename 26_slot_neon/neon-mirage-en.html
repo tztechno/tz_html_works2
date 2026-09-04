@@ -1,0 +1,1141 @@
+<title>Neon Mirage (English)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Monoton&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     NEON MIRAGE — a single fixed visual world: a strip-lit LED video
+     slot cabinet glowing in a dark casino hall. Deliberately
+     single-theme (a neon arcade screen) — colors are painted
+     explicitly so the cabinet reads the same on either host ground.
+  ----------------------------------------------------------------*/
+  :root{
+    --void-950:#0a0618;
+    --panel-900:#140b2e;
+    --panel-800:#1b0f3d;
+    --panel-700:#241452;
+    --glass-900:#0c0620;
+    --pink-500:#ff2d95;
+    --pink-300:#ff7ec2;
+    --cyan-400:#2de2ff;
+    --cyan-200:#9df3ff;
+    --violet-400:#b46bff;
+    --gold-400:#ffcb3d;
+    --mint-400:#33ffb0;
+    --ink-100:#f2ecff;
+    --ink-300:#c9bde6;
+    --font-display:'Monoton', cursive;
+    --font-body:'Rajdhani', 'Segoe UI', sans-serif;
+    --font-mono:'Share Tech Mono', 'Courier New', monospace;
+    --cell:96px;
+    color-scheme: dark;
+  }
+
+  *{ box-sizing:border-box; }
+  *:focus-visible{ outline:3px solid var(--cyan-400); outline-offset:2px; }
+
+  html,body{ margin:0; }
+
+  body{
+    background:
+      radial-gradient(ellipse 900px 560px at 50% 20%, rgba(180,107,255,0.16), transparent 62%),
+      radial-gradient(ellipse 700px 500px at 85% 80%, rgba(45,226,255,0.08), transparent 60%),
+      repeating-linear-gradient(180deg, rgba(255,255,255,0.015) 0 1px, transparent 1px 3px),
+      var(--void-950);
+    color:var(--ink-100);
+    font-family:var(--font-body);
+    min-height:100vh;
+    padding:48px 20px 40px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:22px;
+    overflow-x:hidden;
+  }
+
+  @media (max-width: 480px){
+    body{ padding:28px 12px 32px; gap:16px; }
+  }
+
+  .hall-caption{
+    text-align:center;
+    max-width:54ch;
+  }
+  .hall-caption .eyebrow{
+    font-family:var(--font-mono);
+    font-size:0.72rem;
+    letter-spacing:0.26em;
+    text-transform:uppercase;
+    color:var(--cyan-200);
+    opacity:0.8;
+  }
+  .hall-caption h1{
+    font-family:var(--font-body);
+    font-weight:700;
+    font-size:clamp(1.6rem, 4vw, 2.2rem);
+    letter-spacing:0.02em;
+    color:var(--ink-100);
+    margin:0.3em 0 0.15em;
+    text-wrap:balance;
+  }
+  .hall-caption p{
+    margin:0;
+    color:var(--ink-300);
+    font-size:0.95rem;
+    line-height:1.5;
+  }
+
+  /* ---------------- layout ---------------- */
+  .stage{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    align-items:flex-start;
+    gap:32px;
+    max-width:980px;
+    width:100%;
+  }
+
+  /* ---------------- tab switch (phone only) ---------------- */
+  .tab-bar{
+    display:none;
+    width:min(94vw, 600px);
+    gap:4px;
+    background:var(--glass-900);
+    border-radius:10px;
+    padding:4px;
+    box-shadow:inset 0 2px 5px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(45,226,255,0.15);
+  }
+  .tab-btn{
+    flex:1;
+    padding:10px 0;
+    border:none;
+    border-radius:7px;
+    background:transparent;
+    color:var(--ink-300);
+    font-family:var(--font-body);
+    font-weight:600;
+    font-size:0.8rem;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    cursor:pointer;
+    min-height:44px;
+  }
+  .tab-btn.is-active{
+    background:linear-gradient(90deg, var(--pink-500), var(--violet-400));
+    color:var(--ink-100);
+    box-shadow:0 0 14px rgba(255,45,149,0.5);
+  }
+
+  @media (max-width: 780px){
+    .tab-bar{ display:flex; }
+    .stage{ gap:0; }
+    .paytable{ width:min(94vw, 600px); }
+    .cabinet.is-inactive, .paytable.is-inactive{ display:none; }
+  }
+
+  /* =============================== CABINET =============================== */
+  .cabinet{
+    position:relative;
+    width:min(94vw, 600px);
+    background:
+      linear-gradient(180deg, var(--panel-700), var(--panel-900) 55%, var(--void-950) 100%);
+    border-radius:16px;
+    padding:20px 20px 24px;
+    box-shadow:
+      0 30px 70px -24px rgba(0,0,0,0.8),
+      0 0 0 1px rgba(180,107,255,0.25),
+      inset 0 0 0 1px rgba(255,255,255,0.04);
+  }
+
+  /* --- marquee --- */
+  .marquee{
+    text-align:center;
+  }
+  .marquee-text{
+    font-family:var(--font-display);
+    font-size:clamp(1.6rem, 7vw, 2.4rem);
+    letter-spacing:0.05em;
+    color:var(--pink-300);
+    text-shadow:
+      0 0 6px var(--pink-500),
+      0 0 18px var(--pink-500),
+      0 0 42px rgba(255,45,149,0.55);
+  }
+  @media (prefers-reduced-motion: no-preference){
+    .marquee-text{ animation: neonFlicker 2.4s ease-in-out 1; }
+  }
+  @keyframes neonFlicker{
+    0%, 18%, 22%, 54%, 58%, 100% {
+      opacity:1;
+      text-shadow:
+        0 0 6px var(--pink-500),
+        0 0 18px var(--pink-500),
+        0 0 42px rgba(255,45,149,0.55);
+    }
+    19%, 21%, 55%, 57% { opacity:0.35; text-shadow:none; }
+  }
+  .lines-badge{
+    display:block;
+    width:fit-content;
+    margin:8px auto 0;
+    padding:4px 14px;
+    border-radius:999px;
+    background:rgba(45,226,255,0.08);
+    box-shadow:inset 0 0 0 1px rgba(45,226,255,0.4);
+    font-family:var(--font-mono);
+    font-size:0.68rem;
+    letter-spacing:0.14em;
+    color:var(--cyan-200);
+    text-transform:uppercase;
+  }
+
+  /* --- glass / reel window --- */
+  .glass{
+    position:relative;
+    margin-top:14px;
+    background:linear-gradient(180deg, var(--glass-900), #050310);
+    border-radius:8px;
+    padding:3px;
+    box-shadow:
+      inset 0 0 0 1px rgba(45,226,255,0.3),
+      0 0 24px rgba(45,226,255,0.12),
+      inset 0 10px 26px rgba(0,0,0,0.6);
+  }
+  .reels{
+    display:grid;
+    grid-template-columns:repeat(5, 1fr);
+    height:calc(var(--cell) * 3);
+    border-radius:5px;
+    overflow:hidden;
+    background:#070312;
+  }
+  .reel{
+    position:relative;
+    overflow:hidden;
+    border-right:1px solid rgba(45,226,255,0.18);
+    background:linear-gradient(180deg, rgba(0,0,0,0.5), transparent 20%, transparent 80%, rgba(0,0,0,0.55));
+  }
+  .reel:last-child{ border-right:none; }
+  .strip{
+    position:absolute;
+    inset:0 0 auto 0;
+    will-change:transform;
+  }
+  .strip.spinning{ filter:blur(1.6px); }
+  @media (prefers-reduced-motion: reduce){
+    .strip.spinning{ filter:none; }
+  }
+  .cell{
+    position:relative;
+    height:var(--cell);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .cell svg{
+    width:52px; height:52px; display:block;
+    filter:drop-shadow(0 0 5px rgba(255,255,255,0.25));
+  }
+  .cell.hit{
+    background:radial-gradient(circle, rgba(255,203,61,0.28), transparent 70%);
+  }
+  .cell.hit::after{
+    content:'';
+    position:absolute; inset:3px;
+    border-radius:6px;
+    box-shadow:inset 0 0 0 2px var(--gold-400), 0 0 14px rgba(255,203,61,0.6);
+  }
+
+  /* --- result strip --- */
+  .result-strip{
+    margin-top:10px;
+    min-height:34px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    text-align:center;
+    background:var(--glass-900);
+    border-radius:8px;
+    padding:8px 14px;
+    box-shadow:inset 0 0 0 1px rgba(180,107,255,0.25);
+    transition:background 0.25s ease, box-shadow 0.25s ease;
+  }
+  .result-amount{
+    display:none;
+    font-family:var(--font-mono);
+    font-size:1.15rem;
+    color:var(--void-950);
+  }
+  .result-text{
+    font-family:var(--font-body);
+    font-weight:600;
+    font-size:0.82rem;
+    letter-spacing:0.03em;
+    color:var(--ink-300);
+  }
+  .result-strip.win{
+    background:linear-gradient(90deg, var(--gold-400), var(--mint-400));
+    box-shadow:0 0 20px rgba(255,203,61,0.45), inset 0 0 0 1px rgba(255,255,255,0.4);
+  }
+  .result-strip.win .result-amount{ display:block; }
+  .result-strip.win .result-text{ color:var(--void-950); }
+  .result-strip.lose .result-text{ color:var(--pink-300); }
+
+  /* --- brass^H^H^H control deck --- */
+  .plate{
+    position:relative;
+    margin-top:16px;
+    background:linear-gradient(180deg, var(--panel-700), var(--panel-800));
+    border-radius:10px;
+    padding:14px;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,0.06);
+  }
+  .readouts{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-bottom:12px;
+  }
+  .readout{
+    background:var(--glass-900);
+    border-radius:6px;
+    padding:8px 10px;
+    box-shadow:inset 0 2px 5px rgba(0,0,0,0.7), inset 0 0 0 1px rgba(45,226,255,0.15);
+  }
+  .readout .label{
+    font-family:var(--font-mono);
+    font-size:0.6rem;
+    letter-spacing:0.16em;
+    text-transform:uppercase;
+    color:var(--cyan-200);
+    opacity:0.85;
+  }
+  .readout .value{
+    font-family:var(--font-mono);
+    font-size:1.35rem;
+    color:var(--gold-400);
+    font-variant-numeric:tabular-nums;
+    text-shadow:0 0 8px rgba(255,203,61,0.4);
+  }
+
+  .controls{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  .controls-row{
+    display:flex;
+    align-items:stretch;
+    justify-content:space-between;
+    gap:8px;
+  }
+  .bet-stepper-group{
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .stepper-label{
+    font-family:var(--font-mono);
+    font-size:0.6rem;
+    letter-spacing:0.1em;
+    color:var(--ink-300);
+    text-transform:uppercase;
+  }
+  .bet-stepper{
+    display:flex;
+    align-items:center;
+    gap:0;
+    background:var(--glass-900);
+    border-radius:8px;
+    box-shadow:inset 0 2px 4px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(45,226,255,0.15);
+    overflow:hidden;
+  }
+  .bet-stepper button{
+    width:36px; height:36px;
+    border:none;
+    background:transparent;
+    color:var(--cyan-200);
+    font-family:var(--font-mono);
+    font-size:1.1rem;
+    cursor:pointer;
+  }
+  .bet-stepper button:active{ transform:translateY(1px); }
+  .bet-stepper button:disabled{ opacity:0.35; cursor:not-allowed; }
+  .stepper-value{
+    display:inline-block;
+    min-width:26px;
+    text-align:center;
+    font-family:var(--font-mono);
+    font-size:1rem;
+    color:var(--ink-100);
+  }
+
+  .bet-actions{ display:flex; gap:6px; }
+
+  .btn-spin{
+    width:100%;
+    border:none;
+    border-radius:999px;
+    padding:14px 0;
+    background:linear-gradient(90deg, var(--pink-500), var(--violet-400), var(--cyan-400));
+    color:var(--void-950);
+    font-family:var(--font-body);
+    font-weight:700;
+    font-size:1.15rem;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    cursor:pointer;
+    box-shadow:0 0 22px rgba(255,45,149,0.45), 0 0 22px rgba(45,226,255,0.25), inset 0 1px 0 rgba(255,255,255,0.5);
+  }
+  .btn-spin:hover:not(:disabled){ filter:brightness(1.08); }
+  .btn-spin:active:not(:disabled){ transform:translateY(1px); }
+  .btn-spin:disabled{ opacity:0.5; cursor:not-allowed; box-shadow:none; }
+
+  .btn-max{
+    border:1px solid rgba(45,226,255,0.3);
+    border-radius:8px;
+    padding:0 12px;
+    min-height:36px;
+    background:var(--glass-900);
+    color:var(--ink-100);
+    font-family:var(--font-mono);
+    font-size:0.68rem;
+    letter-spacing:0.05em;
+    cursor:pointer;
+  }
+  .btn-max:disabled{ opacity:0.35; cursor:not-allowed; }
+
+  .plate-foot{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-top:10px;
+    font-family:var(--font-mono);
+    font-size:0.6rem;
+    color:var(--ink-300);
+    opacity:0.8;
+  }
+  .mute-btn{
+    border:none;
+    background:none;
+    color:var(--ink-300);
+    font-family:var(--font-mono);
+    font-size:0.62rem;
+    cursor:pointer;
+    text-decoration:underline;
+    padding:0;
+  }
+
+  .flash-msg{
+    position:absolute;
+    left:50%; bottom:-6px;
+    transform:translate(-50%, 100%);
+    font-family:var(--font-mono);
+    font-size:0.7rem;
+    color:var(--pink-300);
+    background:var(--glass-900);
+    padding:5px 10px;
+    border-radius:5px;
+    box-shadow:inset 0 0 0 1px rgba(255,45,149,0.35);
+    opacity:0;
+    transition:opacity 0.2s ease;
+    white-space:nowrap;
+  }
+  .flash-msg.show{ opacity:1; }
+
+  .cab-tag{
+    text-align:center;
+    margin-top:14px;
+    font-family:var(--font-mono);
+    font-size:0.58rem;
+    letter-spacing:0.14em;
+    color:var(--violet-400);
+    opacity:0.6;
+    text-transform:uppercase;
+  }
+
+  /* =============================== PAYTABLE =============================== */
+  .paytable{
+    width:min(94vw, 340px);
+    background:linear-gradient(180deg, var(--panel-700), var(--panel-900));
+    border-radius:14px;
+    padding:16px;
+    box-shadow:0 20px 40px -18px rgba(0,0,0,0.7), inset 0 0 0 1px rgba(255,255,255,0.05);
+    align-self:flex-start;
+  }
+  .paytable h2{
+    margin:0 0 2px;
+    font-family:var(--font-body);
+    font-weight:700;
+    font-size:1.1rem;
+    color:var(--ink-100);
+    text-align:center;
+    letter-spacing:0.03em;
+  }
+  .paytable .sub{
+    text-align:center;
+    font-family:var(--font-mono);
+    font-size:0.58rem;
+    letter-spacing:0.08em;
+    color:var(--cyan-200);
+    opacity:0.75;
+    margin-bottom:10px;
+    text-transform:uppercase;
+  }
+  .pay-rows{
+    background:rgba(0,0,0,0.2);
+    border-radius:8px;
+    padding:4px 10px;
+  }
+  .pay-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:6px 0;
+    border-bottom:1px solid rgba(255,255,255,0.07);
+  }
+  .pay-row:last-child{ border-bottom:none; }
+  .pay-row svg{ width:28px; height:28px; flex:none; filter:drop-shadow(0 0 4px rgba(255,255,255,0.2)); }
+  .pay-row .name{
+    flex:1;
+    font-size:0.8rem;
+    color:var(--ink-100);
+  }
+  .pay-row .mult{
+    font-family:var(--font-mono);
+    font-size:0.72rem;
+    color:var(--gold-400);
+    text-align:right;
+    white-space:nowrap;
+  }
+  .wild-callout{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-top:10px;
+    padding:8px 10px;
+    border-radius:8px;
+    background:rgba(180,107,255,0.12);
+    box-shadow:inset 0 0 0 1px rgba(180,107,255,0.35);
+  }
+  .wild-callout svg{ width:28px; height:28px; flex:none; }
+  .wild-callout p{
+    margin:0;
+    font-size:0.76rem;
+    line-height:1.4;
+    color:var(--ink-100);
+  }
+  .lines-section{ margin-top:12px; }
+  .lines-section .sub{ margin-bottom:6px; }
+  .lines-grid{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:6px;
+  }
+  .line-card{
+    background:rgba(0,0,0,0.25);
+    border-radius:6px;
+    padding:4px;
+    text-align:center;
+  }
+  .line-card svg{ width:100%; height:auto; display:block; }
+  .line-card .line-no{
+    display:block;
+    font-family:var(--font-mono);
+    font-size:0.56rem;
+    color:var(--ink-300);
+    margin-top:2px;
+  }
+  .amusement{
+    margin-top:10px;
+    text-align:center;
+    font-family:var(--font-mono);
+    font-size:0.54rem;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:var(--ink-300);
+    opacity:0.65;
+  }
+
+  .sr-only{
+    position:absolute; width:1px; height:1px;
+    padding:0; margin:-1px; overflow:hidden;
+    clip:rect(0,0,0,0); white-space:nowrap; border:0;
+  }
+
+  /* ---------------- compact mode: short viewports (e.g. itch.io embeds) ---------------- */
+  @media (max-height: 860px){
+    :root{ --cell: 66px; }
+    body{ padding:10px 12px 14px; gap:10px; }
+    .hall-caption{ max-width:100%; }
+    .hall-caption .eyebrow{ font-size:0.56rem; letter-spacing:0.12em; }
+    .hall-caption h1{ font-size:1.25rem; margin:0.2em 0 0.1em; }
+    .hall-caption p{ font-size:0.76rem; line-height:1.4; }
+    .tab-bar{ padding:3px; }
+    .tab-btn{ padding:7px 0; min-height:38px; font-size:0.68rem; }
+    .cabinet{ padding:12px 12px 14px; }
+    .marquee-text{ font-size:1.3rem; }
+    .lines-badge{ margin-top:5px; padding:3px 10px; font-size:0.6rem; }
+    .glass{ margin-top:8px; }
+    .cell svg{ width:34px; height:34px; }
+    .result-strip{ margin-top:6px; min-height:26px; padding:6px 12px; }
+    .result-text{ font-size:0.68rem; }
+    .plate{ margin-top:10px; padding:10px; }
+    .readouts{ gap:8px; margin-bottom:8px; }
+    .readout{ padding:5px 8px; }
+    .readout .value{ font-size:1.05rem; }
+    .controls{ gap:6px; }
+    .bet-stepper button{ width:30px; height:30px; }
+    .btn-spin{ padding:10px 0; font-size:1rem; }
+    .btn-max{ min-height:30px; padding:0 10px; }
+    .plate-foot{ margin-top:6px; }
+    .cab-tag{ display:none; }
+  }
+</style>
+
+<div class="hall-caption">
+  <div class="eyebrow">Velvet Strip Casino — for amusement only</div>
+  <h1>Neon Mirage</h1>
+  <p>A 5-reel, 9-payline video slot. Press SPIN and chase the wilds.</p>
+</div>
+
+<div class="tab-bar" role="tablist" aria-label="View switch">
+  <button type="button" class="tab-btn is-active" id="tabBtnMachine" role="tab" aria-selected="true" aria-controls="panelMachine">Machine</button>
+  <button type="button" class="tab-btn" id="tabBtnPaytable" role="tab" aria-selected="false" aria-controls="panelPaytable">Pay Table</button>
+</div>
+
+<div class="stage">
+  <div class="cabinet" id="panelMachine" role="tabpanel" aria-labelledby="tabBtnMachine">
+    <div class="marquee">
+      <div class="marquee-text">NEON MIRAGE</div>
+      <div class="lines-badge">9 Lines</div>
+    </div>
+
+    <div class="glass" id="glass">
+      <div class="reels" id="reels"></div>
+    </div>
+
+    <div class="result-strip" id="resultStrip">
+      <span class="result-amount" id="resultAmount"></span>
+      <span class="result-text" id="resultText">Press SPIN to start</span>
+    </div>
+
+    <div class="plate">
+      <div class="readouts">
+        <div class="readout">
+          <div class="label">Credits</div>
+          <div class="value" id="creditsValue">0</div>
+        </div>
+        <div class="readout">
+          <div class="label">Bet (total)</div>
+          <div class="value" id="betValue">0</div>
+        </div>
+      </div>
+      <div class="controls">
+        <div class="controls-row">
+          <div class="bet-stepper-group">
+            <span class="stepper-label">Line bet</span>
+            <div class="bet-stepper">
+              <button type="button" id="betDown" aria-label="Decrease line bet">−</button>
+              <span class="stepper-value" id="perLineValue">0</span>
+              <button type="button" id="betUp" aria-label="Increase line bet">+</button>
+            </div>
+          </div>
+          <div class="bet-actions">
+            <button type="button" class="btn-max" id="maxBtn">MAX</button>
+            <button type="button" class="btn-max" id="refillBtn" hidden>REFILL</button>
+          </div>
+        </div>
+        <button type="button" class="btn-spin" id="spinBtn">Spin</button>
+      </div>
+      <div class="plate-foot">
+        <span>Space / Enter to SPIN</span>
+        <button type="button" class="mute-btn" id="muteBtn">sound: on</button>
+      </div>
+      <div class="flash-msg" id="flashMsg"></div>
+    </div>
+
+    <div class="cab-tag">Cabinet VM-09 · RNG Certified</div>
+  </div>
+
+  <aside class="paytable is-inactive" id="panelPaytable" role="tabpanel" aria-labelledby="tabBtnPaytable">
+    <h2>Pay Table</h2>
+    <div class="sub">3 / 4 / 5 of a kind, left to right</div>
+    <div class="pay-rows" id="payRows"></div>
+    <div class="wild-callout" id="wildCallout"></div>
+    <div class="lines-section">
+      <div class="sub">Paylines</div>
+      <div class="lines-grid" id="linesGrid"></div>
+    </div>
+    <p class="amusement">No real money value · for amusement only</p>
+  </aside>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------------------------------------------------------------
+  // Symbols. Weights sum to 100 (percent chance per reel cell).
+  // pay maps run-length (3/4/5) to a multiplier applied per line bet.
+  // wild has no pay of its own — it substitutes for any paying symbol.
+  // ---------------------------------------------------------------
+  var SYMBOLS = [
+    { id:'cherry',    label:'Cherry',   weight:28, pay:{3:2,  4:5,   5:15},  svg: iconCherry() },
+    { id:'lemon',     label:'Lemon',     weight:22, pay:{3:3,  4:8,   5:20},  svg: iconLemon() },
+    { id:'bell',      label:'Bell',       weight:16, pay:{3:5,  4:12,  5:30},  svg: iconBell() },
+    { id:'horseshoe', label:'Horseshoe', weight:12, pay:{3:8,  4:20,  5:50},  svg: iconHorseshoe() },
+    { id:'diamond',   label:'Diamond',     weight:10, pay:{3:12, 4:30,  5:80},  svg: iconDiamond() },
+    { id:'bar',       label:'Bar',       weight:6,  pay:{3:20, 4:50,  5:150}, svg: iconBar() },
+    { id:'seven',     label:'Seven',     weight:3,  pay:{3:40, 4:100, 5:400}, svg: iconSeven() },
+    { id:'wild',      label:'Wild',   weight:3,  pay:null,               svg: iconWild() }
+  ];
+  var TOTAL_WEIGHT = SYMBOLS.reduce(function(sum, s){ return sum + s.weight; }, 0);
+  var PAYING_SYMBOLS = SYMBOLS.filter(function(s){ return s.id !== 'wild'; });
+
+  // ---- SVG icon builders — flat neon shapes matching the palette ----
+  function iconCherry(){
+    return '<svg viewBox="0 0 64 64"><path d="M30 38c5-11 13-18 22-20" stroke="#2de2ff" stroke-width="3.2" fill="none" stroke-linecap="round"/>' +
+      '<path d="M38 32c-4-10-1-19 7-25" stroke="#2de2ff" stroke-width="3.2" fill="none" stroke-linecap="round"/>' +
+      '<ellipse cx="44" cy="9" rx="7" ry="4.5" fill="#33ffb0" transform="rotate(-25 44 9)"/>' +
+      '<circle cx="25" cy="46" r="12" fill="#ff2d95"/><circle cx="43" cy="43" r="12" fill="#ff7ec2"/></svg>';
+  }
+  function iconLemon(){
+    return '<svg viewBox="0 0 64 64"><ellipse cx="32" cy="33" rx="21" ry="15" fill="#ffcb3d" transform="rotate(-22 32 33)"/>' +
+      '<path d="M13 23c-3-3-3-3-6-2" stroke="#ffcb3d" stroke-width="3" fill="none" stroke-linecap="round"/>' +
+      '<path d="M51 42c3 3 3 3 6 2" stroke="#ffcb3d" stroke-width="3" fill="none" stroke-linecap="round"/></svg>';
+  }
+  function iconBell(){
+    return '<svg viewBox="0 0 64 64"><path fill="#2de2ff" stroke="#9df3ff" stroke-width="1.2" ' +
+      'd="M32 9c-3 0-5 2-5 5v2c-7 2-12 9-12 18v8l-5 6h44l-5-6v-8c0-9-5-16-12-18v-2c0-3-2-5-5-5z"/>' +
+      '<circle cx="32" cy="54" r="5" fill="#ffcb3d"/></svg>';
+  }
+  function iconHorseshoe(){
+    return '<svg viewBox="0 0 64 64"><path d="M16 44V30a16 16 0 0 1 32 0v14" fill="none" stroke="#b46bff" stroke-width="10" stroke-linecap="round"/></svg>';
+  }
+  function iconDiamond(){
+    return '<svg viewBox="0 0 64 64"><polygon points="32,8 50,26 32,58 14,26" fill="#f2ecff" stroke="#2de2ff" stroke-width="2"/>' +
+      '<line x1="14" y1="26" x2="50" y2="26" stroke="#2de2ff" stroke-width="1.5"/>' +
+      '<line x1="32" y1="8" x2="24" y2="26" stroke="#9df3ff" stroke-width="1"/>' +
+      '<line x1="32" y1="8" x2="40" y2="26" stroke="#9df3ff" stroke-width="1"/></svg>';
+  }
+  function iconBar(){
+    return '<svg viewBox="0 0 64 64"><rect x="4" y="24" width="56" height="18" rx="3" fill="#0a0618" stroke="#ffcb3d" stroke-width="2.5"/>' +
+      '<text x="32" y="37" text-anchor="middle" font-family="Rajdhani, sans-serif" font-weight="700" font-size="14" fill="#ffcb3d">BAR</text></svg>';
+  }
+  function iconSeven(){
+    return '<svg viewBox="0 0 64 64"><defs><linearGradient id="g7" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0" stop-color="#ff2d95"/><stop offset="1" stop-color="#ffcb3d"/></linearGradient></defs>' +
+      '<text x="32" y="49" text-anchor="middle" font-family="Monoton, cursive" font-size="36" fill="url(#g7)">7</text></svg>';
+  }
+  function iconWild(){
+    return '<svg viewBox="0 0 64 64"><defs><linearGradient id="gwild" x1="0" y1="0" x2="1" y2="1">' +
+      '<stop offset="0" stop-color="#ff2d95"/><stop offset="1" stop-color="#2de2ff"/></linearGradient></defs>' +
+      '<path d="M32 4 L38 26 L60 32 L38 38 L32 60 L26 38 L4 32 L26 26 Z" fill="url(#gwild)"/></svg>';
+  }
+
+  function weightedPick(){
+    var r = Math.random() * TOTAL_WEIGHT;
+    for (var i = 0; i < SYMBOLS.length; i++){
+      r -= SYMBOLS[i].weight;
+      if (r <= 0) return SYMBOLS[i];
+    }
+    return SYMBOLS[SYMBOLS.length - 1];
+  }
+  function symbolById(id){
+    for (var i = 0; i < SYMBOLS.length; i++){ if (SYMBOLS[i].id === id) return SYMBOLS[i]; }
+    return SYMBOLS[0];
+  }
+
+  // ---------------------------------------------------------------
+  // Paylines — row index (0=top,1=mid,2=bottom) per reel, left to right.
+  // A generated dot-diagram is drawn for each in the pay table.
+  // ---------------------------------------------------------------
+  var PAYLINES = [
+    [1,1,1,1,1],
+    [0,0,0,0,0],
+    [2,2,2,2,2],
+    [0,1,2,1,0],
+    [2,1,0,1,2],
+    [1,0,0,0,1],
+    [1,2,2,2,1],
+    [0,1,1,1,0],
+    [2,1,1,1,2]
+  ];
+  var LINE_COUNT = PAYLINES.length;
+
+  function paylineDiagram(pattern){
+    var xs = [10,30,50,70,90], ys = [10,30,50];
+    var pts = pattern.map(function(row, i){ return xs[i] + ',' + ys[row]; }).join(' ');
+    var dots = '';
+    for (var c = 0; c < 5; c++){
+      for (var r = 0; r < 3; r++){
+        var active = pattern[c] === r;
+        dots += '<circle cx="' + xs[c] + '" cy="' + ys[r] + '" r="' + (active ? 4 : 2.4) + '" fill="' +
+          (active ? '#2de2ff' : 'rgba(242,236,255,0.22)') + '"/>';
+      }
+    }
+    return '<svg viewBox="0 0 100 60"><polyline points="' + pts + '" fill="none" stroke="#ff2d95" stroke-width="2.2" stroke-linejoin="round"/>' + dots + '</svg>';
+  }
+
+  // ---------------------------------------------------------------
+  // Persistence (per-viewer convenience only — never load-bearing)
+  // ---------------------------------------------------------------
+  var STORE_KEY = 'neon-mirage:v1';
+  function loadState(){
+    try {
+      var raw = localStorage.getItem(STORE_KEY);
+      if (!raw) return null;
+      var parsed = JSON.parse(raw);
+      if (typeof parsed.credits === 'number' && typeof parsed.betPerLine === 'number') return parsed;
+    } catch (e) { /* storage unavailable — fall through to defaults */ }
+    return null;
+  }
+  function saveState(){
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify({ credits: credits, betPerLine: betPerLine, muted: muted }));
+    } catch (e) { /* ignore — this is a convenience only */ }
+  }
+
+  var BET_STEP = 1, BET_MIN = 1, BET_MAX = 20;
+  var saved = loadState();
+  var credits = saved ? saved.credits : 500;
+  var betPerLine = saved ? saved.betPerLine : 2;
+  var muted = saved ? !!saved.muted : false;
+  var spinning = false;
+  var reelGrid = [[], [], [], [], []]; // reelGrid[reelIndex] = [row0,row1,row2] symbol ids
+  var landedCells = [[], [], [], [], []]; // matching DOM cell elements for highlighting
+
+  // ---------------------------------------------------------------
+  // Reel construction
+  // ---------------------------------------------------------------
+  function getCellSize(){
+    var v = getComputedStyle(document.documentElement).getPropertyValue('--cell');
+    var n = parseFloat(v);
+    return isFinite(n) && n > 0 ? n : 96;
+  }
+  var BAND_LEN = 22; // total cells rendered per spin, last 3 = landing column
+  var reelsEl = document.getElementById('reels');
+  var strips = [];
+
+  for (var r = 0; r < 5; r++){
+    var reelDiv = document.createElement('div');
+    reelDiv.className = 'reel';
+    reelDiv.dataset.reel = String(r);
+    var stripDiv = document.createElement('div');
+    stripDiv.className = 'strip';
+    reelDiv.appendChild(stripDiv);
+    reelsEl.appendChild(reelDiv);
+    strips.push(stripDiv);
+  }
+
+  function cellHTML(sym){
+    return '<div class="cell">' + sym.svg + '<span class="sr-only">' + sym.label + '</span></div>';
+  }
+
+  function renderStrip(stripEl, ids, translate, withTransition, duration){
+    var html = '';
+    for (var i = 0; i < ids.length; i++){ html += cellHTML(symbolById(ids[i])); }
+    stripEl.innerHTML = html;
+    stripEl.style.transition = withTransition ? ('transform ' + duration + 'ms cubic-bezier(0.13,0.85,0.22,1)') : 'none';
+    stripEl.style.transform = 'translateY(' + translate + 'px)';
+    return stripEl.children; // live HTMLCollection of the rendered .cell elements
+  }
+
+  // ---------------------------------------------------------------
+  // Win evaluation
+  // ---------------------------------------------------------------
+  function lineRun(syms){
+    var baseId = null;
+    for (var i = 0; i < syms.length; i++){ if (syms[i] !== 'wild'){ baseId = syms[i]; break; } }
+    if (baseId === null) baseId = 'seven'; // an all-wild line pays as the top symbol
+    var count = 0;
+    for (var i = 0; i < syms.length; i++){
+      if (syms[i] === baseId || syms[i] === 'wild') count++;
+      else break;
+    }
+    if (count >= 3) return { id: baseId, count: count };
+    return null;
+  }
+
+  function evaluateGrid(grid){
+    var winners = [];
+    var total = 0;
+    PAYLINES.forEach(function(pattern, idx){
+      var syms = pattern.map(function(row, reelIdx){ return grid[reelIdx][row]; });
+      var res = lineRun(syms);
+      if (res){
+        var payout = symbolById(res.id).pay[res.count] * betPerLine;
+        total += payout;
+        winners.push({ line: idx, pattern: pattern, id: res.id, count: res.count, payout: payout });
+      }
+    });
+    return { total: total, winners: winners };
+  }
+
+  // seed a resting (non-winning) grid at load
+  function initialGrid(){
+    var grid, tries = 0;
+    do {
+      grid = [];
+      for (var i = 0; i < 5; i++) grid.push([weightedPick().id, weightedPick().id, weightedPick().id]);
+      tries++;
+    } while (evaluateGrid(grid).total > 0 && tries < 40);
+    return grid;
+  }
+
+  (function seedReels(){
+    var grid = initialGrid();
+    for (var i = 0; i < 5; i++){
+      reelGrid[i] = grid[i];
+      var els = renderStrip(strips[i], grid[i], 0, false, 0);
+      landedCells[i] = [els[0], els[1], els[2]];
+    }
+  })();
+
+  // ---------------------------------------------------------------
+  // Sound
+  // ---------------------------------------------------------------
+  var audioCtx = null;
+  function ctx(){
+    if (!audioCtx){
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) audioCtx = new AC();
+    }
+    return audioCtx;
+  }
+  function beep(freq, dur, type, gainPeak){
+    if (muted) return;
+    var c = ctx();
+    if (!c) return;
+    var osc = c.createOscillator();
+    var gain = c.createGain();
+    osc.type = type || 'square';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0, c.currentTime);
+    gain.gain.linearRampToValueAtTime(gainPeak || 0.08, c.currentTime + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + dur);
+    osc.connect(gain).connect(c.destination);
+    osc.start();
+    osc.stop(c.currentTime + dur + 0.02);
+  }
+  function tickSound(){ beep(420, 0.05, 'square', 0.05); }
+  function winSound(big){
+    var notes = big ? [523, 659, 784, 1047, 1319] : [523, 659, 784];
+    notes.forEach(function(f, i){
+      setTimeout(function(){ beep(f, 0.16, 'triangle', 0.07); }, i * 80);
+    });
+  }
+  function loseSound(){ beep(140, 0.12, 'sawtooth', 0.04); }
+
+  // ---------------------------------------------------------------
+  // UI wiring
+  // ---------------------------------------------------------------
+  var creditsValueEl = document.getElementById('creditsValue');
+  var betValueEl = document.getElementById('betValue');
+  var perLineValueEl = document.getElementById('perLineValue');
+  var spinBtn = document.getElementById('spinBtn');
+  var maxBtn = document.getElementById('maxBtn');
+  var refillBtn = document.getElementById('refillBtn');
+  var betDown = document.getElementById('betDown');
+  var betUp = document.getElementById('betUp');
+  var muteBtn = document.getElementById('muteBtn');
+  var glassEl = document.getElementById('glass');
+  var resultStrip = document.getElementById('resultStrip');
+  var resultAmount = document.getElementById('resultAmount');
+  var resultText = document.getElementById('resultText');
+  var flashMsg = document.getElementById('flashMsg');
+  var payRows = document.getElementById('payRows');
+  var wildCallout = document.getElementById('wildCallout');
+  var linesGrid = document.getElementById('linesGrid');
+  var tabBtnMachine = document.getElementById('tabBtnMachine');
+  var tabBtnPaytable = document.getElementById('tabBtnPaytable');
+  var panelMachine = document.getElementById('panelMachine');
+  var panelPaytable = document.getElementById('panelPaytable');
+
+  PAYING_SYMBOLS.forEach(function(s){
+    var row = document.createElement('div');
+    row.className = 'pay-row';
+    row.innerHTML = s.svg + '<span class="name">' + s.label + '</span>' +
+      '<span class="mult">×' + s.pay[3] + ' / ×' + s.pay[4] + ' / ×' + s.pay[5] + '</span>';
+    payRows.appendChild(row);
+  });
+
+  var wildSym = symbolById('wild');
+  wildCallout.innerHTML = wildSym.svg + '<p><strong>WILD</strong> substitutes for any symbol. It counts toward a win as part of a run starting from the leftmost reel.</p>';
+
+  PAYLINES.forEach(function(pattern, idx){
+    var card = document.createElement('div');
+    card.className = 'line-card';
+    card.innerHTML = paylineDiagram(pattern) + '<span class="line-no">L' + (idx + 1) + '</span>';
+    linesGrid.appendChild(card);
+  });
+
+  function totalBet(){ return betPerLine * LINE_COUNT; }
+
+  function refreshReadouts(){
+    creditsValueEl.textContent = credits;
+    betValueEl.textContent = totalBet();
+    perLineValueEl.textContent = betPerLine;
+    var canBet = credits >= totalBet();
+    spinBtn.disabled = spinning || !canBet;
+    maxBtn.disabled = spinning || credits < BET_MIN * LINE_COUNT;
+    betDown.disabled = spinning || betPerLine <= BET_MIN;
+    betUp.disabled = spinning || betPerLine >= BET_MAX || (betPerLine + BET_STEP) * LINE_COUNT > Math.max(credits, BET_MIN * LINE_COUNT);
+    refillBtn.hidden = credits >= BET_MIN * LINE_COUNT;
+  }
+
+  function flash(text){
+    flashMsg.textContent = text;
+    flashMsg.classList.add('show');
+    setTimeout(function(){ flashMsg.classList.remove('show'); }, 1400);
+  }
+
+  function setMuteLabel(){ muteBtn.textContent = 'sound: ' + (muted ? 'off' : 'on'); }
+  setMuteLabel();
+  muteBtn.addEventListener('click', function(){
+    muted = !muted;
+    setMuteLabel();
+    saveState();
+  });
+
+  betDown.addEventListener('click', function(){
+    if (spinning) return;
+    betPerLine = Math.max(BET_MIN, betPerLine - BET_STEP);
+    saveState();
+    refreshReadouts();
+  });
+  betUp.addEventListener('click', function(){
+    if (spinning) return;
+    var next = Math.min(BET_MAX, betPerLine + BET_STEP);
+    if (next * LINE_COUNT > Math.max(credits, BET_MIN * LINE_COUNT)) return;
+    betPerLine = next;
+    saveState();
+    refreshReadouts();
+  });
+  maxBtn.addEventListener('click', function(){
+    if (spinning) return;
+    var maxAffordable = Math.floor(Math.min(BET_MAX * LINE_COUNT, Math.max(credits, BET_MIN * LINE_COUNT)) / LINE_COUNT);
+    betPerLine = Math.max(BET_MIN, Math.min(BET_MAX, maxAffordable));
+    saveState();
+    refreshReadouts();
+  });
+  refillBtn.addEventListener('click', function(){
+    credits = 500;
+    saveState();
+    refreshReadouts();
+    flash('Refilled 500 credits');
+  });
+
+  var REDUCE_MOTION = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var REEL_DURATIONS = REDUCE_MOTION ? [120, 140, 160, 180, 200] : [640, 780, 920, 1060, 1200];
+
+  function clearHits(){
+    landedCells.forEach(function(col){ col.forEach(function(el){ if (el) el.classList.remove('hit'); }); });
+  }
+
+  function spin(){
+    if (spinning) return;
+    var bet = totalBet();
+    if (credits < bet){
+      flash('Not enough credits');
+      return;
+    }
+    spinning = true;
+    credits -= bet;
+    refreshReadouts();
+    resultStrip.classList.remove('win', 'lose');
+    resultText.textContent = 'Spinning…';
+    clearHits();
+
+    var CELL = getCellSize();
+    var stopped = 0;
+    for (var r = 0; r < 5; r++){
+      (function(r){
+        var top = weightedPick().id, mid = weightedPick().id, bottom = weightedPick().id;
+        var filler = [];
+        for (var i = 0; i < BAND_LEN - 3; i++) filler.push(weightedPick().id);
+        var band = filler.concat([top, mid, bottom]);
+        var strip = strips[r];
+
+        renderStrip(strip, band, -CELL, false, 0);
+        strip.offsetHeight; // force reflow so the transition below is picked up
+        strip.classList.add('spinning');
+
+        var duration = REEL_DURATIONS[r];
+        var target = -((BAND_LEN - 3) * CELL);
+        requestAnimationFrame(function(){
+          strip.style.transition = 'transform ' + duration + 'ms cubic-bezier(0.13,0.85,0.22,1)';
+          strip.style.transform = 'translateY(' + target + 'px)';
+        });
+
+        setTimeout(function(){
+          strip.classList.remove('spinning');
+          reelGrid[r] = [top, mid, bottom];
+          var els = strip.children;
+          var n = els.length;
+          landedCells[r] = [els[n - 3], els[n - 2], els[n - 1]];
+          tickSound();
+          stopped++;
+          if (stopped === 5) settle();
+        }, duration + 40);
+      })(r);
+    }
+  }
+
+  function settle(){
+    var result = evaluateGrid(reelGrid);
+    if (result.total > 0){
+      credits += result.total;
+      resultAmount.textContent = '+' + result.total;
+      resultText.textContent = result.winners.length + ' winning line' + (result.winners.length === 1 ? '' : 's');
+      resultStrip.classList.add('win');
+      winSound(result.winners.some(function(w){ return w.id === 'seven' || w.id === 'bar'; }));
+      result.winners.forEach(function(w){
+        for (var i = 0; i < w.count; i++){
+          var row = w.pattern[i];
+          var el = landedCells[i][row];
+          if (el) el.classList.add('hit');
+        }
+      });
+    } else {
+      resultText.textContent = 'No win — try again';
+      resultStrip.classList.add('lose');
+      loseSound();
+    }
+    spinning = false;
+    if (credits < BET_MIN * LINE_COUNT){
+      flash('Out of credits — tap REFILL to top up');
+    }
+    saveState();
+    refreshReadouts();
+  }
+
+  spinBtn.addEventListener('click', spin);
+  document.addEventListener('keydown', function(e){
+    if ((e.code === 'Space' || e.key === 'Enter') && document.activeElement !== muteBtn){
+      e.preventDefault();
+      if (!spinning) spin();
+    }
+  });
+
+  // ---------------------------------------------------------------
+  // Phone-width tab switch — on wider screens both panels show at
+  // once and this class has no effect (see the media query above).
+  // ---------------------------------------------------------------
+  function showTab(name){
+    var machineActive = name === 'machine';
+    panelMachine.classList.toggle('is-inactive', !machineActive);
+    panelPaytable.classList.toggle('is-inactive', machineActive);
+    tabBtnMachine.classList.toggle('is-active', machineActive);
+    tabBtnPaytable.classList.toggle('is-active', !machineActive);
+    tabBtnMachine.setAttribute('aria-selected', String(machineActive));
+    tabBtnPaytable.setAttribute('aria-selected', String(!machineActive));
+  }
+  tabBtnMachine.addEventListener('click', function(){ showTab('machine'); });
+  tabBtnPaytable.addEventListener('click', function(){ showTab('paytable'); });
+
+  refreshReadouts();
+})();
+</script>
