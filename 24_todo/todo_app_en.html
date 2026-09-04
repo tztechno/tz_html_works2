@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TODO List App (CSV DB)</title>
+<style>
+  :root{
+    --bg:#f6f7f9;
+    --panel:#ffffff;
+    --border:#e2e5ea;
+    --text:#1f2430;
+    --muted:#6b7280;
+    --accent:#3b6fe0;
+    --accent-dark:#2c56b8;
+    --done:#1f9d55;
+    --open:#d64545;
+    --doing:#c98a1d;
+    --hover:#f0f3f9;
+    --radius:10px;
+    font-size:15px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#15171c;
+      --panel:#1e2129;
+      --border:#2c303a;
+      --text:#e7e9ee;
+      --muted:#9aa1ad;
+      --accent:#5b8bf0;
+      --accent-dark:#3f6bd0;
+      --done:#3ecb7a;
+      --open:#f0665f;
+      --doing:#e0a83e;
+      --hover:#262a34;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    padding:24px;
+  }
+  h1{ font-size:1.4rem; margin:0 0 4px; }
+  .sub{ color:var(--muted); font-size:0.85rem; margin-bottom:20px; }
+  .layout{
+    display:grid;
+    grid-template-columns: 1fr;
+    gap:18px;
+    max-width:1180px;
+    margin:0 auto;
+  }
+  .row{
+    display:grid;
+    grid-template-columns: 2fr 1fr;
+    gap:18px;
+    align-items:start;
+  }
+  @media (max-width: 900px){ .row{grid-template-columns:1fr;} }
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:18px 20px;
+  }
+  .panel h2{ font-size:1rem; margin:0 0 14px; }
+  .toolbar{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
+  button{
+    font:inherit;
+    cursor:pointer;
+    border:1px solid var(--border);
+    background:var(--panel);
+    color:var(--text);
+    padding:8px 14px;
+    border-radius:8px;
+    transition:background .15s, border-color .15s;
+  }
+  button:hover{ background:var(--hover); }
+  button.primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  button.primary:hover{ background:var(--accent-dark); }
+  button.danger{ color:var(--open); }
+  input[type=file]{ display:none; }
+  .filters{
+    display:grid;
+    grid-template-columns: repeat(6, minmax(0,1fr));
+    gap:10px;
+    margin-bottom:14px;
+  }
+  @media (max-width: 900px){ .filters{grid-template-columns: repeat(2, minmax(0,1fr));} }
+  label{ display:block; font-size:0.72rem; color:var(--muted); margin-bottom:4px; }
+  input, select{
+    font:inherit;
+    width:100%;
+    padding:7px 9px;
+    border:1px solid var(--border);
+    border-radius:7px;
+    background:var(--bg);
+    color:var(--text);
+  }
+  table{ width:100%; border-collapse:collapse; font-size:0.85rem; }
+  th, td{
+    text-align:left;
+    padding:8px 9px;
+    border-bottom:1px solid var(--border);
+    white-space:nowrap;
+  }
+  th{
+    cursor:pointer;
+    color:var(--muted);
+    font-weight:600;
+    user-select:none;
+    position:sticky;
+    top:0;
+    background:var(--panel);
+  }
+  th.sorted::after{ content:" " attr(data-dir); font-size:0.7em; }
+  td.memo, th.memo-col{ white-space:normal; max-width:220px; }
+  tbody tr:hover{ background:var(--hover); }
+  .amt-done{ color:var(--done); font-weight:600; }
+  .amt-open{ color:var(--open); font-weight:600; }
+  .due-overdue{ color:var(--open); font-weight:700; }
+  .pri-high{ color:var(--open); font-weight:700; }
+  .pri-medium{ color:var(--text); }
+  .pri-low{ color:var(--muted); }
+  .table-wrap{
+    max-height:480px;
+    overflow:auto;
+    border:1px solid var(--border);
+    border-radius:8px;
+  }
+  .row-actions button{ padding:3px 7px; font-size:0.76rem; margin-right:4px; }
+  .summary-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:10px;
+    margin-bottom:16px;
+  }
+  .summary-card{
+    background:var(--bg);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:10px 12px;
+  }
+  .summary-card .label{ font-size:0.72rem; color:var(--muted); }
+  .summary-card .value{ font-size:1.15rem; font-weight:700; margin-top:2px; }
+  .chart-title{ font-size:0.82rem; color:var(--muted); margin:14px 0 6px; }
+  svg text{ font-size:10px; fill:var(--muted); }
+  .modal-backdrop{
+    position:fixed; inset:0; background:rgba(0,0,0,.4);
+    display:flex; align-items:center; justify-content:center;
+    z-index:50;
+  }
+  .modal{
+    background:var(--panel);
+    border-radius:var(--radius);
+    padding:22px 24px;
+    width:360px;
+    max-width:92vw;
+    border:1px solid var(--border);
+  }
+  .modal h3{ margin-top:0; }
+  .field{ margin-bottom:12px; }
+  .modal-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:18px; }
+  .hidden{ display:none !important; }
+  .status{ font-size:0.78rem; color:var(--muted); margin-top:8px; min-height:1.1em; }
+  .badge{
+    display:inline-block;
+    padding:2px 7px;
+    border-radius:999px;
+    font-size:0.72rem;
+    font-weight:600;
+  }
+  .badge-done{ background:rgba(31,157,85,.15); color:var(--done); }
+  .badge-open{ background:rgba(214,69,69,.15); color:var(--open); }
+  .badge-doing{ background:rgba(201,138,29,.18); color:var(--doing); }
+</style>
+</head>
+<body>
+
+<h1>TODO List App</h1>
+<div class="sub">A browser-only app that uses a CSV file as its database. Starting with sample data.</div>
+
+<div class="layout">
+
+  <div class="panel">
+    <h2>Tasks</h2>
+
+    <div class="toolbar">
+      <button class="primary" id="btnAdd">+ Add Task</button>
+      <button id="btnImport">Open CSV</button>
+      <button id="btnExport">Save as CSV</button>
+      <button id="btnSaveOverwrite" class="hidden">Overwrite Save</button>
+      <button id="btnReset">Reset to Sample Data</button>
+      <input type="file" id="fileInput" accept=".csv,text/csv">
+    </div>
+    <div class="status" id="status"></div>
+
+    <div class="filters">
+      <div>
+        <label>Status</label>
+        <select id="fStatus">
+          <option value="">All</option>
+          <option value="todo">Not Started</option>
+          <option value="doing">In Progress</option>
+          <option value="done">Done</option>
+        </select>
+      </div>
+      <div>
+        <label>Category</label>
+        <select id="fCategory"><option value="">All</option></select>
+      </div>
+      <div>
+        <label>Priority</label>
+        <select id="fPriority">
+          <option value="">All</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+      </div>
+      <div>
+        <label>Due From</label>
+        <input type="date" id="fFrom">
+      </div>
+      <div>
+        <label>Due To</label>
+        <input type="date" id="fTo">
+      </div>
+      <div>
+        <label>Search</label>
+        <input type="text" id="fSearch" placeholder="Task or memo">
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th data-key="date">Due</th>
+            <th data-key="status">Status</th>
+            <th data-key="priority">Priority</th>
+            <th data-key="category">Category</th>
+            <th data-key="title">Task</th>
+            <th class="memo-col" data-key="memo">Memo</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="panel">
+      <h2>Summary</h2>
+      <div class="summary-grid">
+        <div class="summary-card">
+          <div class="label">Tasks (shown)</div>
+          <div class="value" id="sumTotal">0</div>
+        </div>
+        <div class="summary-card">
+          <div class="label">Done</div>
+          <div class="value amt-done" id="sumDone">0</div>
+        </div>
+        <div class="summary-card">
+          <div class="label">Overdue</div>
+          <div class="value amt-open" id="sumOverdue">0</div>
+        </div>
+      </div>
+
+      <div class="chart-title">Open Tasks by Category (visible range)</div>
+      <svg id="chartCategory" width="100%" height="200" viewBox="0 0 520 200" preserveAspectRatio="xMinYMin meet"></svg>
+
+      <div class="chart-title">Monthly Done vs. Open (by due date)</div>
+      <svg id="chartMonthly" width="100%" height="200" viewBox="0 0 520 200" preserveAspectRatio="xMinYMin meet"></svg>
+    </div>
+  </div>
+
+</div>
+
+<!-- Add / edit modal -->
+<div class="modal-backdrop hidden" id="modalBackdrop">
+  <div class="modal">
+    <h3 id="modalTitle">Add Task</h3>
+    <div class="field">
+      <label>Task</label>
+      <input type="text" id="mTitle" placeholder="e.g. Prepare the report">
+    </div>
+    <div class="field">
+      <label>Due Date (optional)</label>
+      <input type="date" id="mDate">
+    </div>
+    <div class="field">
+      <label>Status</label>
+      <select id="mStatus">
+        <option value="todo">Not Started</option>
+        <option value="doing">In Progress</option>
+        <option value="done">Done</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Priority</label>
+      <select id="mPriority">
+        <option value="high">High</option>
+        <option value="medium" selected>Medium</option>
+        <option value="low">Low</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Category</label>
+      <select id="mCategory"></select>
+    </div>
+    <div class="field">
+      <label>Memo</label>
+      <input type="text" id="mMemo" placeholder="Optional">
+    </div>
+    <div class="modal-actions">
+      <button id="mCancel">Cancel</button>
+      <button class="primary" id="mSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---------------------------------------------------------------------
+// TODO list app backed by CSV as its "database".
+// All data lives in memory as an array of records; CSV import/export
+// and localStorage are the only persistence mechanisms (no server).
+// ---------------------------------------------------------------------
+
+const CSV_HEADER = ["date", "status", "priority", "category", "title", "memo"];
+const STORAGE_KEY = "todo_csv_records_v1_en";
+
+const CATEGORIES = ["Work", "Personal", "Study", "Health", "Shopping", "Other"];
+
+const STATUS_LABEL = { todo: "Not Started", doing: "In Progress", done: "Done" };
+const STATUS_RANK = { todo: 1, doing: 2, done: 3 };
+const PRIORITY_LABEL = { high: "High", medium: "Medium", low: "Low" };
+const PRIORITY_RANK = { high: 3, medium: 2, low: 1 };
+
+// Sample dataset shown on first launch (also restored via "Reset to Sample Data").
+function buildSampleRecords() {
+  const rows = [
+    ["2026-08-25", "done", "low", "Personal", "Switch over seasonal clothes", ""],
+    ["2026-08-28", "done", "medium", "Work", "Submit monthly report", "Last month's"],
+    ["2026-08-30", "todo", "high", "Work", "File expense report", "Overdue -- needs attention"],
+    ["2026-09-01", "done", "high", "Work", "Send quote to client", ""],
+    ["2026-09-02", "todo", "medium", "Shopping", "Go to the post office", "Mail documents"],
+    ["2026-09-02", "doing", "high", "Work", "Prepare presentation slides", "For Wednesday's meeting"],
+    ["2026-09-03", "todo", "low", "Shopping", "Buy laundry detergent", ""],
+    ["2026-09-03", "done", "medium", "Health", "Book a physical checkup", ""],
+    ["2026-09-04", "doing", "medium", "Study", "Take online course", "Up to chapter 3"],
+    ["2026-09-05", "todo", "high", "Work", "Review contract", "Waiting on legal"],
+    ["2026-09-06", "todo", "low", "Personal", "Call family", ""],
+    ["2026-09-07", "doing", "medium", "Study", "Study for certification exam", "First pass on practice tests"],
+    ["2026-09-08", "todo", "medium", "Work", "Prepare weekly meeting", ""],
+    ["2026-09-10", "todo", "low", "Shopping", "Pick a birthday gift", "Friend's birthday"],
+    ["2026-09-12", "todo", "medium", "Health", "Dental checkup", ""],
+    ["2026-09-15", "todo", "high", "Work", "Draft quarterly plan", ""],
+    ["2026-09-18", "todo", "low", "Study", "Organize reading notes", ""],
+    ["2026-09-20", "todo", "medium", "Personal", "Clean up the room", ""],
+    ["2026-09-25", "todo", "low", "Other", "Plan year-end trip", ""]
+  ];
+  return rows.map((r, i) => ({
+    id: "s" + i,
+    date: r[0], status: r[1], priority: r[2], category: r[3], title: r[4], memo: r[5]
+  }));
+}
+
+let records = [];
+let sortKey = "date";
+let sortDir = "asc";
+
+// ------------------------- CSV parsing / serialization -------------------------
+
+// Minimal RFC4180-style CSV parser (handles quoted fields with commas/quotes).
+function parseCSV(text) {
+  const rows = [];
+  let row = [];
+  let field = "";
+  let inQuotes = false;
+  text = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++; }
+        else { inQuotes = false; }
+      } else {
+        field += c;
+      }
+    } else {
+      if (c === '"') inQuotes = true;
+      else if (c === ',') { row.push(field); field = ""; }
+      else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ""; }
+      else field += c;
+    }
+  }
+  if (field.length > 0 || row.length > 0) { row.push(field); rows.push(row); }
+  return rows.filter(r => !(r.length === 1 && r[0] === ""));
+}
+
+function csvEscape(value) {
+  const s = String(value ?? "");
+  if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
+function recordsToCSV(list) {
+  const lines = [CSV_HEADER.join(",")];
+  for (const r of list) {
+    lines.push([r.date, r.status, r.priority, r.category, r.title, r.memo].map(csvEscape).join(","));
+  }
+  return lines.join("\n");
+}
+
+function csvToRecords(text) {
+  const rows = parseCSV(text);
+  if (rows.length === 0) return [];
+  const header = rows[0].map(h => h.trim().toLowerCase());
+  const idx = {
+    date: header.indexOf("date"),
+    status: header.indexOf("status"),
+    priority: header.indexOf("priority"),
+    category: header.indexOf("category"),
+    title: header.indexOf("title"),
+    memo: header.indexOf("memo")
+  };
+  const out = [];
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    if (r.every(c => c === "")) continue;
+    const status = (r[idx.status] || "todo").trim();
+    const priority = (r[idx.priority] || "medium").trim();
+    out.push({
+      id: "r" + Date.now() + "_" + i,
+      date: r[idx.date] || "",
+      status: STATUS_LABEL[status] ? status : "todo",
+      priority: PRIORITY_LABEL[priority] ? priority : "medium",
+      category: r[idx.category] || "Other",
+      title: r[idx.title] || "",
+      memo: r[idx.memo] || ""
+    });
+  }
+  return out;
+}
+
+// ------------------------- Persistence -------------------------
+
+function saveToLocalStorage() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+  } catch (e) {
+    // Storage can be unavailable (private browsing, quota) -- fail silently.
+  }
+}
+
+function loadFromLocalStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (Array.isArray(data)) return data;
+  } catch (e) {}
+  return null;
+}
+
+function setStatus(msg) {
+  document.getElementById("status").textContent = msg;
+}
+
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+// ------------------------- Rendering -------------------------
+
+function refreshCategoryFilterOptions() {
+  const sel = document.getElementById("fCategory");
+  const current = sel.value;
+  sel.innerHTML = '<option value="">All</option>' + CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join("");
+  sel.value = current;
+}
+
+function populateModalCategories() {
+  document.getElementById("mCategory").innerHTML = CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join("");
+}
+
+function getFiltered() {
+  const status = document.getElementById("fStatus").value;
+  const cat = document.getElementById("fCategory").value;
+  const pri = document.getElementById("fPriority").value;
+  const from = document.getElementById("fFrom").value;
+  const to = document.getElementById("fTo").value;
+  const q = document.getElementById("fSearch").value.trim().toLowerCase();
+
+  let list = records.filter(r => {
+    if (status && r.status !== status) return false;
+    if (cat && r.category !== cat) return false;
+    if (pri && r.priority !== pri) return false;
+    if (from && r.date && r.date < from) return false;
+    if (to && r.date && r.date > to) return false;
+    if (q && !((r.title || "") + " " + (r.memo || "")).toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  list.sort((a, b) => {
+    let va = a[sortKey], vb = b[sortKey];
+    if (sortKey === "priority") { va = PRIORITY_RANK[va] || 0; vb = PRIORITY_RANK[vb] || 0; }
+    else if (sortKey === "status") { va = STATUS_RANK[va] || 0; vb = STATUS_RANK[vb] || 0; }
+    if (va < vb) return sortDir === "asc" ? -1 : 1;
+    if (va > vb) return sortDir === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  return list;
+}
+
+function render() {
+  const list = getFiltered();
+  const today = todayStr();
+  const tbody = document.getElementById("tbody");
+  tbody.innerHTML = list.map(r => {
+    const overdue = r.date && r.date < today && r.status !== "done";
+    const badgeClass = r.status === "done" ? "badge-done" : r.status === "doing" ? "badge-doing" : "badge-open";
+    return `
+    <tr data-id="${r.id}">
+      <td class="${overdue ? 'due-overdue' : ''}">${r.date || "-"}</td>
+      <td><span class="badge ${badgeClass}">${STATUS_LABEL[r.status]}</span></td>
+      <td class="pri-${r.priority}">${PRIORITY_LABEL[r.priority]}</td>
+      <td>${r.category}</td>
+      <td>${escapeHtml(r.title || "")}</td>
+      <td class="memo">${escapeHtml(r.memo || "")}</td>
+      <td class="row-actions">
+        <button data-action="toggle">${r.status === 'done' ? 'Reopen' : 'Mark Done'}</button>
+        <button data-action="edit">Edit</button>
+        <button data-action="delete" class="danger">Delete</button>
+      </td>
+    </tr>
+  `;
+  }).join("") || `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px;">No matching tasks</td></tr>`;
+
+  document.querySelectorAll("th[data-key]").forEach(th => {
+    th.classList.toggle("sorted", th.dataset.key === sortKey);
+    th.dataset.dir = sortDir === "asc" ? "▲" : "▼";
+  });
+
+  renderSummary(list);
+  renderCategoryChart(list);
+  renderMonthlyChart(records); // Monthly trend always shows all records, not filtered by date range.
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function renderSummary(list) {
+  const today = todayStr();
+  const done = list.filter(r => r.status === "done").length;
+  const overdue = list.filter(r => r.date && r.date < today && r.status !== "done").length;
+  document.getElementById("sumTotal").textContent = list.length;
+  document.getElementById("sumDone").textContent = done;
+  document.getElementById("sumOverdue").textContent = overdue;
+}
+
+// ------------------------- Charts (plain inline SVG, no dependencies) -------------------------
+
+function renderCategoryChart(list) {
+  const svg = document.getElementById("chartCategory");
+  const totals = {};
+  list.filter(r => r.status !== "done").forEach(r => {
+    totals[r.category] = (totals[r.category] || 0) + 1;
+  });
+  const entries = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+  const max = Math.max(1, ...entries.map(e => e[1]));
+  const barH = 22, gap = 8, left = 90, top = 10, width = 520;
+  const height = Math.max(200, entries.length * (barH + gap) + top);
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.setAttribute("height", height);
+
+  let svgContent = "";
+  entries.forEach(([cat, count], i) => {
+    const y = top + i * (barH + gap);
+    const w = (count / max) * (width - left - 70);
+    svgContent += `
+      <text x="${left - 8}" y="${y + barH / 2 + 4}" text-anchor="end">${cat}</text>
+      <rect x="${left}" y="${y}" width="${Math.max(2, w)}" height="${barH}" rx="4" fill="var(--accent, #3b6fe0)"></rect>
+      <text x="${left + w + 8}" y="${y + barH / 2 + 4}">${count}</text>
+    `;
+  });
+  svg.innerHTML = svgContent || `<text x="20" y="30">No open tasks</text>`;
+}
+
+function renderMonthlyChart(list) {
+  const svg = document.getElementById("chartMonthly");
+  const byMonth = {};
+  list.forEach(r => {
+    const m = (r.date || "").slice(0, 7); // YYYY-MM
+    if (!m) return;
+    byMonth[m] = byMonth[m] || { done: 0, open: 0 };
+    byMonth[m][r.status === "done" ? "done" : "open"] += 1;
+  });
+  const months = Object.keys(byMonth).sort();
+  const width = 520, height = 200, left = 30, bottom = 24, top = 14;
+  const max = Math.max(1, ...months.map(m => Math.max(byMonth[m].done, byMonth[m].open)));
+  const chartW = width - left - 10;
+  const chartH = height - bottom - top;
+  const colW = months.length ? chartW / months.length : chartW;
+
+  let svgContent = `<line x1="${left}" y1="${top}" x2="${left}" y2="${top + chartH}" stroke="var(--border,#ccc)"></line>
+    <line x1="${left}" y1="${top + chartH}" x2="${width - 10}" y2="${top + chartH}" stroke="var(--border,#ccc)"></line>`;
+
+  months.forEach((m, i) => {
+    const x = left + i * colW;
+    const doneH = (byMonth[m].done / max) * chartH;
+    const openH = (byMonth[m].open / max) * chartH;
+    const bw = Math.max(6, colW * 0.32);
+    svgContent += `
+      <rect x="${x + colW * 0.12}" y="${top + chartH - doneH}" width="${bw}" height="${doneH}" fill="var(--done,#1f9d55)"></rect>
+      <rect x="${x + colW * 0.52}" y="${top + chartH - openH}" width="${bw}" height="${openH}" fill="var(--open,#d64545)"></rect>
+      <text x="${x + colW / 2}" y="${top + chartH + 16}" text-anchor="middle">${m.slice(5)}</text>
+    `;
+  });
+
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.innerHTML = svgContent || `<text x="20" y="30">No data</text>`;
+}
+
+// ------------------------- Modal (add / edit) -------------------------
+
+let editingId = null;
+
+function openModal(record) {
+  editingId = record ? record.id : null;
+  document.getElementById("modalTitle").textContent = record ? "Edit Task" : "Add Task";
+  populateModalCategories();
+  document.getElementById("mTitle").value = record ? record.title : "";
+  document.getElementById("mDate").value = record ? record.date : "";
+  document.getElementById("mStatus").value = record ? record.status : "todo";
+  document.getElementById("mPriority").value = record ? record.priority : "medium";
+  document.getElementById("mCategory").value = record ? record.category : CATEGORIES[0];
+  document.getElementById("mMemo").value = record ? record.memo : "";
+  document.getElementById("modalBackdrop").classList.remove("hidden");
+}
+
+function closeModal() {
+  document.getElementById("modalBackdrop").classList.add("hidden");
+  editingId = null;
+}
+
+document.getElementById("mSave").addEventListener("click", () => {
+  const title = document.getElementById("mTitle").value.trim();
+  const date = document.getElementById("mDate").value;
+  const status = document.getElementById("mStatus").value;
+  const priority = document.getElementById("mPriority").value;
+  const category = document.getElementById("mCategory").value;
+  const memo = document.getElementById("mMemo").value;
+
+  if (!title) {
+    setStatus("Please enter a task title.");
+    return;
+  }
+
+  if (editingId) {
+    const r = records.find(r => r.id === editingId);
+    Object.assign(r, { title, date, status, priority, category, memo });
+    setStatus("Task updated.");
+  } else {
+    records.push({ id: "n" + Date.now(), title, date, status, priority, category, memo });
+    setStatus("Task added.");
+  }
+  saveToLocalStorage();
+  closeModal();
+  render();
+});
+
+document.getElementById("mCancel").addEventListener("click", closeModal);
+document.getElementById("modalBackdrop").addEventListener("click", e => {
+  if (e.target.id === "modalBackdrop") closeModal();
+});
+
+// ------------------------- Table interactions -------------------------
+
+document.getElementById("tbody").addEventListener("click", e => {
+  const btn = e.target.closest("button");
+  if (!btn) return;
+  const tr = e.target.closest("tr");
+  const id = tr.dataset.id;
+  const record = records.find(r => r.id === id);
+  if (btn.dataset.action === "edit") {
+    openModal(record);
+  } else if (btn.dataset.action === "toggle") {
+    record.status = record.status === "done" ? "todo" : "done";
+    saveToLocalStorage();
+    render();
+    setStatus(record.status === "done" ? "Task marked done." : "Task reopened.");
+  } else if (btn.dataset.action === "delete") {
+    if (confirm("Delete this task?")) {
+      records = records.filter(r => r.id !== id);
+      saveToLocalStorage();
+      render();
+      setStatus("Task deleted.");
+    }
+  }
+});
+
+document.querySelectorAll("th[data-key]").forEach(th => {
+  th.addEventListener("click", () => {
+    const key = th.dataset.key;
+    if (sortKey === key) sortDir = sortDir === "asc" ? "desc" : "asc";
+    else { sortKey = key; sortDir = "asc"; }
+    render();
+  });
+});
+
+["fStatus", "fCategory", "fPriority", "fFrom", "fTo", "fSearch"].forEach(id => {
+  document.getElementById(id).addEventListener("input", render);
+});
+
+document.getElementById("btnAdd").addEventListener("click", () => openModal(null));
+
+// ------------------------- CSV import / export -------------------------
+
+const fileInput = document.getElementById("fileInput");
+const btnImport = document.getElementById("btnImport");
+
+// Default import path: hidden <input type=file> + FileReader.
+// This is overridden below when the File System Access API is available.
+function fallbackImportHandler() { fileInput.click(); }
+btnImport.addEventListener("click", fallbackImportHandler);
+
+fileInput.addEventListener("change", () => {
+  const file = fileInput.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const imported = csvToRecords(reader.result);
+      records = imported;
+      saveToLocalStorage();
+      render();
+      setStatus(`Loaded ${file.name} (${imported.length} records).`);
+    } catch (err) {
+      setStatus("Failed to load CSV: " + err.message);
+    }
+  };
+  reader.readAsText(file, "utf-8");
+  fileInput.value = "";
+});
+
+function downloadCSV() {
+  const csv = "﻿" + recordsToCSV(records); // BOM for Excel compatibility
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "todo_" + new Date().toISOString().slice(0, 10) + ".csv";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  setStatus("Saved as CSV file.");
+}
+
+document.getElementById("btnExport").addEventListener("click", downloadCSV);
+
+document.getElementById("btnReset").addEventListener("click", () => {
+  if (confirm("Discard current data and reset to sample data?")) {
+    records = buildSampleRecords();
+    saveToLocalStorage();
+    render();
+    setStatus("Reset to sample data.");
+  }
+});
+
+// Optional: File System Access API lets Chromium browsers overwrite the
+// same local CSV file directly, without a separate download step.
+let fileHandle = null;
+if ("showOpenFilePicker" in window) {
+  const btnOverwrite = document.getElementById("btnSaveOverwrite");
+  btnOverwrite.classList.remove("hidden");
+  btnOverwrite.textContent = "Overwrite Original File";
+  btnOverwrite.disabled = true;
+
+  // Swap the import button over to the native picker so we can retain a
+  // handle for later overwrites (the hidden <input type=file> can't do that).
+  btnImport.removeEventListener("click", fallbackImportHandler);
+  btnImport.addEventListener("click", async () => {
+    try {
+      const [handle] = await window.showOpenFilePicker({
+        types: [{ description: "CSV", accept: { "text/csv": [".csv"] } }]
+      });
+      fileHandle = handle;
+      const file = await handle.getFile();
+      const text = await file.text();
+      records = csvToRecords(text);
+      saveToLocalStorage();
+      render();
+      btnOverwrite.disabled = false;
+      setStatus(`Loaded ${file.name} (${records.length} records).`);
+    } catch (err) {
+      // User cancelled the picker, or the API failed -- no action needed.
+    }
+  });
+
+  btnOverwrite.addEventListener("click", async () => {
+    if (!fileHandle) return;
+    try {
+      const writable = await fileHandle.createWritable();
+      await writable.write("﻿" + recordsToCSV(records));
+      await writable.close();
+      setStatus("Overwrote the original CSV file.");
+    } catch (err) {
+      setStatus("Failed to overwrite save: " + err.message);
+    }
+  });
+}
+
+// ------------------------- Init -------------------------
+
+function init() {
+  const saved = loadFromLocalStorage();
+  records = saved && saved.length ? saved : buildSampleRecords();
+  refreshCategoryFilterOptions();
+  populateModalCategories();
+  render();
+  setStatus(saved && saved.length ? "Restored previous data." : "Started with sample data.");
+}
+
+init();
+</script>
+</body>
+</html>
