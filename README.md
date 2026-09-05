@@ -50,3 +50,5 @@ https://tztechno.github.io/tz_html_works2/21_html_viewer/html-viewer.html
 
 https://tztechno.github.io/tz_html_works2/25_slot/ironwood_sevens_ja.html
 
+https://tztechno.github.io/tz_html_works2/29_fx_viewer
+
