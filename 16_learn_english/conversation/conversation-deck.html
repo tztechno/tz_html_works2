@@ -1,0 +1,1450 @@
+<title>Conversation Deck</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Karla:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+  :root{
+    --bg: #eef2f0;
+    --surface: #ffffff;
+    --surface-2: #e4e9e6;
+    --ink: #1a2420;
+    --ink-soft: #57645d;
+    --ink-faint: #8b978f;
+    --accent: #2f6f5e;
+    --accent-ink: #17352b;
+    --accent-soft: #dcece5;
+    --line: #d3dbd6;
+    --shadow: 0 1px 2px rgba(20,30,25,.04), 0 8px 24px -12px rgba(20,30,25,.18);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg: #101513;
+      --surface: #1a221e;
+      --surface-2: #212b26;
+      --ink: #e9efec;
+      --ink-soft: #a3b0a9;
+      --ink-faint: #6d7972;
+      --accent: #63c0a3;
+      --accent-ink: #d9f2e8;
+      --accent-soft: #203630;
+      --line: #2c3733;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 32px -14px rgba(0,0,0,.55);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg: #101513;
+    --surface: #1a221e;
+    --surface-2: #212b26;
+    --ink: #e9efec;
+    --ink-soft: #a3b0a9;
+    --ink-faint: #6d7972;
+    --accent: #63c0a3;
+    --accent-ink: #d9f2e8;
+    --accent-soft: #203630;
+    --line: #2c3733;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 32px -14px rgba(0,0,0,.55);
+  }
+
+  *{ box-sizing: border-box; }
+  body{
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Karla', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection{ background: var(--accent-soft); color: var(--accent-ink); }
+
+  .wrap{
+    max-width: 760px;
+    margin: 0 auto;
+    padding: clamp(24px, 5vw, 56px) 20px 64px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  header.top{
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .eyebrow{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  h1{
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 600;
+    font-size: clamp(28px, 4.5vw, 38px);
+    line-height: 1.08;
+    margin: 0;
+    text-wrap: balance;
+    letter-spacing: -0.01em;
+  }
+  .sub{
+    color: var(--ink-soft);
+    font-size: 15px;
+    line-height: 1.55;
+    max-width: 58ch;
+  }
+
+  /* card */
+  .card{
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    box-shadow: var(--shadow);
+    padding: clamp(22px, 4vw, 36px);
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    position: relative;
+    overflow: hidden;
+  }
+  .card::before{
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 4px;
+    background: var(--card-accent, var(--accent));
+    transition: background .3s ease;
+  }
+  .card-head{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .badge{
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px 6px 10px;
+    border-radius: 999px;
+    background: var(--badge-bg, var(--accent-soft));
+    color: var(--badge-ink, var(--accent-ink));
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  .badge svg{ width: 14px; height: 14px; display:block; }
+  .card-index{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--ink-faint);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .question{
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 600;
+    font-size: clamp(21px, 3.4vw, 27px);
+    line-height: 1.32;
+    text-wrap: balance;
+    min-height: 2.6em;
+  }
+
+  textarea{
+    width: 100%;
+    min-height: 96px;
+    resize: vertical;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-family: 'Karla', sans-serif;
+    font-size: 15px;
+    color: var(--ink);
+    line-height: 1.5;
+  }
+  textarea::placeholder{ color: var(--ink-faint); }
+  textarea:focus, button:focus-visible, .icon-btn:focus-visible{
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .tips{
+    background: var(--surface-2);
+    border-radius: 12px;
+    padding: 16px 18px;
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .tips.open{ display: flex; }
+  .tips.empty{ display: none !important; }
+  .tips-label{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .tips ul{
+    margin: 0;
+    padding-left: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .tips li{
+    font-size: 14.5px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+  }
+  .tips li em{ color: var(--ink); font-style: normal; font-weight: 600; }
+
+  .actions{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .actions-left{ display: flex; gap: 10px; }
+
+  button{
+    font-family: 'Karla', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    border-radius: 10px;
+    padding: 11px 18px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: transform .12s ease, background .15s ease, border-color .15s ease;
+  }
+  button:active{ transform: translateY(1px); }
+  button:disabled{ opacity: .45; cursor: default; }
+
+  .btn-ghost{
+    background: transparent;
+    border-color: var(--line);
+    color: var(--ink-soft);
+  }
+  .btn-ghost:hover{ border-color: var(--ink-faint); color: var(--ink); }
+
+  .btn-primary{
+    background: var(--accent);
+    color: var(--surface);
+  }
+  .btn-primary:hover{ filter: brightness(1.06); }
+
+  /* domain legend */
+  .legend{
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 8px 14px;
+  }
+  .legend-item{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+  .legend-swatch{
+    width: 9px; height: 9px; border-radius: 999px;
+    background: var(--sw-color);
+    flex-shrink: 0;
+  }
+  .legend-count{
+    margin-left: auto;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--ink-faint);
+    font-variant-numeric: tabular-nums;
+  }
+
+  footer.foot{
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    border-top: 1px solid var(--line);
+    padding-top: 20px;
+  }
+  .foot-label{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .foot-note{
+    font-size: 12.5px;
+    color: var(--ink-faint);
+    line-height: 1.5;
+  }
+  .foot-note code{
+    font-family: 'IBM Plex Mono', monospace;
+    background: var(--surface-2);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+
+  .done-banner{
+    display: none;
+    align-items: center;
+    gap: 10px;
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 14px;
+  }
+  .done-banner.show{ display: flex; }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ transition: none !important; }
+  }
+
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">Spoken English &middot; Practice Deck</div>
+    <h1>Conversation Deck</h1>
+    <p class="sub" id="subtitle">Questions across everyday topics, dealt out in random order. Read the question, think or type your answer, then peek at the phrase bank if you get stuck.</p>
+  </header>
+
+  <main class="card">
+    <div class="card-head">
+      <span class="badge" id="badge">
+        <svg id="badgeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></svg>
+        <span id="badgeLabel">&hellip;</span>
+      </span>
+      <span class="card-index" id="cardIndex"></span>
+    </div>
+
+    <div class="question" id="question">Loading&hellip;</div>
+
+    <textarea id="answer" placeholder="Type your answer here, or just think it through out loud&hellip;"></textarea>
+
+    <div class="tips" id="tips">
+      <span class="tips-label">Phrase bank</span>
+      <ul id="tipsList"></ul>
+    </div>
+
+    <div class="actions">
+      <div class="actions-left">
+        <button class="btn-ghost" id="tipsBtn" type="button" aria-expanded="false">Show phrase bank</button>
+        <button class="btn-ghost" id="shuffleBtn" type="button">Reshuffle deck</button>
+      </div>
+      <button class="btn-primary" id="nextBtn" type="button">Next question &rarr;</button>
+    </div>
+  </main>
+
+  <div class="done-banner" id="doneBanner">You've been through the whole deck &mdash; it just reshuffled for another round.</div>
+
+  <footer class="foot">
+    <span class="foot-label" id="topicsLabel">The topics</span>
+    <div class="legend" id="legend"></div>
+    <p class="foot-note">Questions live in <code>questions.csv</code>, next to this file. Add rows there, then run <code>python3 regenerate.py</code> to sync this page &mdash; no server or internet connection needed to use the deck itself.</p>
+  </footer>
+</div>
+
+<script>
+/* BEGIN:GENERATED_DATA */
+var GENERATED_ROWS = [
+  {
+    "domain": "Travel",
+    "hue": 165,
+    "icon": "M3 11l18-7-7 18-2-8-9-3z",
+    "q": "What's the most memorable trip you've ever taken, and why?",
+    "tips": [
+      "Set the scene: \"A few years ago, I went to&hellip;\"",
+      "Explain the reason it stuck with you: \"What made it memorable was&hellip;\""
+    ]
+  },
+  {
+    "domain": "Travel",
+    "hue": 165,
+    "icon": "M3 11l18-7-7 18-2-8-9-3z",
+    "q": "Do you prefer traveling alone or with other people? Why?",
+    "tips": [
+      "Compare both: \"On one hand&hellip; on the other hand&hellip;\"",
+      "Give your real preference: \"Personally, I'd rather&hellip; because&hellip;\""
+    ]
+  },
+  {
+    "domain": "Travel",
+    "hue": 165,
+    "icon": "M3 11l18-7-7 18-2-8-9-3z",
+    "q": "What's a place you'd love to visit someday, and what draws you to it?",
+    "tips": [
+      "Use future hopes: \"I've always wanted to&hellip;\"",
+      "Name the pull: \"What draws me to it is&hellip;\""
+    ]
+  },
+  {
+    "domain": "Travel",
+    "hue": 165,
+    "icon": "M3 11l18-7-7 18-2-8-9-3z",
+    "q": "How do you usually plan a trip — do you like a strict itinerary or a flexible one?",
+    "tips": [
+      "Describe your style: \"I tend to&hellip;\"",
+      "Contrast with the alternative: \"Unlike a fixed schedule, I prefer&hellip;\""
+    ]
+  },
+  {
+    "domain": "Travel",
+    "hue": 165,
+    "icon": "M3 11l18-7-7 18-2-8-9-3z",
+    "q": "What's the biggest challenge you've faced while traveling, and how did you handle it?",
+    "tips": [
+      "Narrate in the past: \"At one point, I ran into&hellip;\"",
+      "Wrap up with the outcome: \"In the end, I managed to&hellip;\""
+    ]
+  },
+  {
+    "domain": "Hobbies & Free Time",
+    "hue": 201,
+    "icon": "M12 3v3m0 12v3M4.2 4.2l2.1 2.1m11.4 11.4l2.1 2.1M3 12h3m12 0h3M4.2 19.8l2.1-2.1m11.4-11.4l2.1-2.1",
+    "q": "What do you like to do in your free time, and how did you get into it?",
+    "tips": [
+      "Introduce the hobby: \"In my spare time, I usually&hellip;\"",
+      "Trace the origin: \"I actually got into it when&hellip;\""
+    ]
+  },
+  {
+    "domain": "Hobbies & Free Time",
+    "hue": 201,
+    "icon": "M12 3v3m0 12v3M4.2 4.2l2.1 2.1m11.4 11.4l2.1 2.1M3 12h3m12 0h3M4.2 19.8l2.1-2.1m11.4-11.4l2.1-2.1",
+    "q": "Is there a hobby you used to enjoy but don't do anymore? What happened?",
+    "tips": [
+      "Mark the change: \"I used to&hellip;, but&hellip;\"",
+      "Give the reason: \"I gradually stopped because&hellip;\""
+    ]
+  },
+  {
+    "domain": "Hobbies & Free Time",
+    "hue": 201,
+    "icon": "M12 3v3m0 12v3M4.2 4.2l2.1 2.1m11.4 11.4l2.1 2.1M3 12h3m12 0h3M4.2 19.8l2.1-2.1m11.4-11.4l2.1-2.1",
+    "q": "If you could learn any new skill or hobby, what would it be?",
+    "tips": [
+      "Use a hypothetical: \"If I had the time, I'd love to&hellip;\"",
+      "Add your motivation: \"What appeals to me is&hellip;\""
+    ]
+  },
+  {
+    "domain": "Hobbies & Free Time",
+    "hue": 201,
+    "icon": "M12 3v3m0 12v3M4.2 4.2l2.1 2.1m11.4 11.4l2.1 2.1M3 12h3m12 0h3M4.2 19.8l2.1-2.1m11.4-11.4l2.1-2.1",
+    "q": "How do you balance hobbies with work or study?",
+    "tips": [
+      "Talk about routine: \"I try to set aside time for&hellip;\"",
+      "Be honest about difficulty: \"Honestly, it's hard to&hellip;\""
+    ]
+  },
+  {
+    "domain": "Hobbies & Free Time",
+    "hue": 201,
+    "icon": "M12 3v3m0 12v3M4.2 4.2l2.1 2.1m11.4 11.4l2.1 2.1M3 12h3m12 0h3M4.2 19.8l2.1-2.1m11.4-11.4l2.1-2.1",
+    "q": "Do you prefer hobbies you do alone or with other people?",
+    "tips": [
+      "State your leaning: \"I lean more toward&hellip;\"",
+      "Explain why: \"That's mainly because&hellip;\""
+    ]
+  },
+  {
+    "domain": "Work & Career",
+    "hue": 237,
+    "icon": "M4 7h16v12H4z M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2 M4 12h16",
+    "q": "Can you describe a typical day at your job?",
+    "tips": [
+      "Walk through it in order: \"My day usually starts with&hellip;, then&hellip;\""
+    ]
+  },
+  {
+    "domain": "Work & Career",
+    "hue": 237,
+    "icon": "M4 7h16v12H4z M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2 M4 12h16",
+    "q": "What's the most rewarding part of your work?",
+    "tips": [
+      "Name what satisfies you: \"What I find most rewarding is&hellip;\"",
+      "Give a concrete example: \"For instance, recently&hellip;\""
+    ]
+  },
+  {
+    "domain": "Work & Career",
+    "hue": 237,
+    "icon": "M4 7h16v12H4z M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2 M4 12h16",
+    "q": "Describe a challenge you faced at work and how you solved it.",
+    "tips": [
+      "Use a mini story arc: \"situation &rarr; problem &rarr; what I did &rarr; result\""
+    ]
+  },
+  {
+    "domain": "Work & Career",
+    "hue": 237,
+    "icon": "M4 7h16v12H4z M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2 M4 12h16",
+    "q": "Where do you see your career heading in the next few years?",
+    "tips": [
+      "Talk about direction, not certainty: \"I'm hoping to move toward&hellip;\""
+    ]
+  },
+  {
+    "domain": "Work & Career",
+    "hue": 237,
+    "icon": "M4 7h16v12H4z M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2 M4 12h16",
+    "q": "What's one skill you'd like to improve for your job?",
+    "tips": [
+      "Be specific: \"One thing I'd like to get better at is&hellip;\"",
+      "Add a plan: \"I've started to&hellip;\""
+    ]
+  },
+  {
+    "domain": "Food & Cooking",
+    "hue": 273,
+    "icon": "M6 3v7a3 3 0 006 0V3M6 3v18M18 3c-2 0-3 2-3 5s1 4 3 4v6",
+    "q": "What's your favorite dish, and why do you love it?",
+    "tips": [
+      "Describe taste and texture: \"It's got this&hellip; flavor/texture&hellip;\"",
+      "Add a personal angle: \"It reminds me of&hellip;\""
+    ]
+  },
+  {
+    "domain": "Food & Cooking",
+    "hue": 273,
+    "icon": "M6 3v7a3 3 0 006 0V3M6 3v18M18 3c-2 0-3 2-3 5s1 4 3 4v6",
+    "q": "Do you enjoy cooking? What's something you like to make?",
+    "tips": [
+      "Give your comfort level: \"I'm not a great cook, but I can manage&hellip;\""
+    ]
+  },
+  {
+    "domain": "Food & Cooking",
+    "hue": 273,
+    "icon": "M6 3v7a3 3 0 006 0V3M6 3v18M18 3c-2 0-3 2-3 5s1 4 3 4v6",
+    "q": "Describe a memorable meal you've had — what made it special?",
+    "tips": [
+      "Set time and place: \"I remember once, at&hellip;\"",
+      "Name what made it stand out: \"What made it special was&hellip;\""
+    ]
+  },
+  {
+    "domain": "Food & Cooking",
+    "hue": 273,
+    "icon": "M6 3v7a3 3 0 006 0V3M6 3v18M18 3c-2 0-3 2-3 5s1 4 3 4v6",
+    "q": "How has your diet or eating habits changed over the years?",
+    "tips": [
+      "Compare past and present: \"I used to eat a lot of&hellip;, but now&hellip;\""
+    ]
+  },
+  {
+    "domain": "Food & Cooking",
+    "hue": 273,
+    "icon": "M6 3v7a3 3 0 006 0V3M6 3v18M18 3c-2 0-3 2-3 5s1 4 3 4v6",
+    "q": "What's a food from another culture you'd like to try?",
+    "tips": [
+      "Express curiosity: \"I've always been curious about&hellip;\"",
+      "Say why: \"I've heard it's&hellip;\""
+    ]
+  },
+  {
+    "domain": "Technology",
+    "hue": 309,
+    "icon": "M4 5h16v11H4z M9 20h6 M12 16v4",
+    "q": "How has technology changed the way you work or study?",
+    "tips": [
+      "Contrast before/after: \"Before, I had to&hellip;; now I can just&hellip;\""
+    ]
+  },
+  {
+    "domain": "Technology",
+    "hue": 309,
+    "icon": "M4 5h16v11H4z M9 20h6 M12 16v4",
+    "q": "What's an app or gadget you couldn't live without?",
+    "tips": [
+      "Name it and justify: \"I rely on&hellip; because it lets me&hellip;\""
+    ]
+  },
+  {
+    "domain": "Technology",
+    "hue": 309,
+    "icon": "M4 5h16v11H4z M9 20h6 M12 16v4",
+    "q": "Do you think people rely too much on technology? Why or why not?",
+    "tips": [
+      "State a position, then support it: \"I'd say&hellip;, mainly because&hellip;\"",
+      "Acknowledge the other side: \"That said&hellip;\""
+    ]
+  },
+  {
+    "domain": "Technology",
+    "hue": 309,
+    "icon": "M4 5h16v11H4z M9 20h6 M12 16v4",
+    "q": "What's a piece of technology you find confusing or frustrating?",
+    "tips": [
+      "Give a specific example: \"Every time I try to&hellip;, it&hellip;\""
+    ]
+  },
+  {
+    "domain": "Technology",
+    "hue": 309,
+    "icon": "M4 5h16v11H4z M9 20h6 M12 16v4",
+    "q": "How do you think AI will change everyday life in the next decade?",
+    "tips": [
+      "Speculate with hedging language: \"It's likely that&hellip;\", \"I'd guess&hellip;\""
+    ]
+  },
+  {
+    "domain": "Family & Relationships",
+    "hue": 345,
+    "icon": "M9 12a3 3 0 100-6 3 3 0 000 6zM17 12a2.6 2.6 0 100-5.2 2.6 2.6 0 000 5.2zM3 20c0-3 3-5 6-5s6 2 6 5M15 20c.3-2.3 2-4 4.5-4.3",
+    "q": "How would you describe your relationship with your family?",
+    "tips": [
+      "Use general descriptors: \"We're pretty close/independent&hellip;\"",
+      "Give a small example: \"For example, we often&hellip;\""
+    ]
+  },
+  {
+    "domain": "Family & Relationships",
+    "hue": 345,
+    "icon": "M9 12a3 3 0 100-6 3 3 0 000 6zM17 12a2.6 2.6 0 100-5.2 2.6 2.6 0 000 5.2zM3 20c0-3 3-5 6-5s6 2 6 5M15 20c.3-2.3 2-4 4.5-4.3",
+    "q": "What's a tradition your family has that you enjoy?",
+    "tips": [
+      "Describe it briefly: \"Every year, we&hellip;\"",
+      "Say why you like it: \"I look forward to it because&hellip;\""
+    ]
+  },
+  {
+    "domain": "Family & Relationships",
+    "hue": 345,
+    "icon": "M9 12a3 3 0 100-6 3 3 0 000 6zM17 12a2.6 2.6 0 100-5.2 2.6 2.6 0 000 5.2zM3 20c0-3 3-5 6-5s6 2 6 5M15 20c.3-2.3 2-4 4.5-4.3",
+    "q": "Who has had the biggest influence on your life, and how?",
+    "tips": [
+      "Name the person and the effect: \"&hellip; really shaped the way I&hellip;\""
+    ]
+  },
+  {
+    "domain": "Family & Relationships",
+    "hue": 345,
+    "icon": "M9 12a3 3 0 100-6 3 3 0 000 6zM17 12a2.6 2.6 0 100-5.2 2.6 2.6 0 000 5.2zM3 20c0-3 3-5 6-5s6 2 6 5M15 20c.3-2.3 2-4 4.5-4.3",
+    "q": "How do you like to stay in touch with friends who live far away?",
+    "tips": [
+      "List habits: \"We usually&hellip; every so often\""
+    ]
+  },
+  {
+    "domain": "Family & Relationships",
+    "hue": 345,
+    "icon": "M9 12a3 3 0 100-6 3 3 0 000 6zM17 12a2.6 2.6 0 100-5.2 2.6 2.6 0 000 5.2zM3 20c0-3 3-5 6-5s6 2 6 5M15 20c.3-2.3 2-4 4.5-4.3",
+    "q": "What does being a good friend mean to you?",
+    "tips": [
+      "Define with qualities: \"To me, it means being&hellip;\""
+    ]
+  },
+  {
+    "domain": "Health & Fitness",
+    "hue": 21,
+    "icon": "M12 21s-7-4.5-9.5-9A5 5 0 0112 6.5 5 5 0 0121.5 12c-2.5 4.5-9.5 9-9.5 9z",
+    "q": "What do you do to stay healthy or active?",
+    "tips": [
+      "List routine activities: \"I try to&hellip; a few times a week\""
+    ]
+  },
+  {
+    "domain": "Health & Fitness",
+    "hue": 21,
+    "icon": "M12 21s-7-4.5-9.5-9A5 5 0 0112 6.5 5 5 0 0121.5 12c-2.5 4.5-9.5 9-9.5 9z",
+    "q": "How has your approach to fitness changed as you've gotten older?",
+    "tips": [
+      "Compare stages: \"When I was younger, I&hellip;; these days&hellip;\""
+    ]
+  },
+  {
+    "domain": "Health & Fitness",
+    "hue": 21,
+    "icon": "M12 21s-7-4.5-9.5-9A5 5 0 0112 6.5 5 5 0 0121.5 12c-2.5 4.5-9.5 9-9.5 9z",
+    "q": "What's a health habit you'd like to build or improve?",
+    "tips": [
+      "Name a goal: \"I'd like to get into the habit of&hellip;\""
+    ]
+  },
+  {
+    "domain": "Health & Fitness",
+    "hue": 21,
+    "icon": "M12 21s-7-4.5-9.5-9A5 5 0 0112 6.5 5 5 0 0121.5 12c-2.5 4.5-9.5 9-9.5 9z",
+    "q": "How do you deal with stress?",
+    "tips": [
+      "Describe coping methods: \"When I'm stressed, I usually&hellip;\""
+    ]
+  },
+  {
+    "domain": "Health & Fitness",
+    "hue": 21,
+    "icon": "M12 21s-7-4.5-9.5-9A5 5 0 0112 6.5 5 5 0 0121.5 12c-2.5 4.5-9.5 9-9.5 9z",
+    "q": "Describe a time you pushed yourself physically — what was it like?",
+    "tips": [
+      "Narrate with feeling words: \"It was tough, but&hellip;\""
+    ]
+  },
+  {
+    "domain": "Culture & Entertainment",
+    "hue": 57,
+    "icon": "M4 4h16v12H4z M8 20h8 M9 8l6 3-6 3V8z",
+    "q": "What kind of movies or shows do you enjoy watching?",
+    "tips": [
+      "Name genres and a favorite: \"I'm into&hellip;, especially&hellip;\""
+    ]
+  },
+  {
+    "domain": "Culture & Entertainment",
+    "hue": 57,
+    "icon": "M4 4h16v12H4z M8 20h8 M9 8l6 3-6 3V8z",
+    "q": "Is there a book that changed how you think about something?",
+    "tips": [
+      "Say what it shifted: \"It made me realize&hellip;\""
+    ]
+  },
+  {
+    "domain": "Culture & Entertainment",
+    "hue": 57,
+    "icon": "M4 4h16v12H4z M8 20h8 M9 8l6 3-6 3V8z",
+    "q": "What's a cultural tradition from your country you find meaningful?",
+    "tips": [
+      "Explain the custom simply: \"It's when people&hellip;\"",
+      "Say why it matters: \"It's meaningful because&hellip;\""
+    ]
+  },
+  {
+    "domain": "Culture & Entertainment",
+    "hue": 57,
+    "icon": "M4 4h16v12H4z M8 20h8 M9 8l6 3-6 3V8z",
+    "q": "Do you prefer live performances or watching things at home? Why?",
+    "tips": [
+      "Weigh both sides: \"Live shows have&hellip;, but at home&hellip;\""
+    ]
+  },
+  {
+    "domain": "Culture & Entertainment",
+    "hue": 57,
+    "icon": "M4 4h16v12H4z M8 20h8 M9 8l6 3-6 3V8z",
+    "q": "What's a piece of music that means a lot to you?",
+    "tips": [
+      "Connect it to a memory: \"It reminds me of&hellip;\""
+    ]
+  },
+  {
+    "domain": "Shopping & Money",
+    "hue": 93,
+    "icon": "M6 8h12l-1 12H7L6 8zM9 8V6a3 3 0 016 0v2",
+    "q": "Are you more of a spontaneous shopper or a careful planner when it comes to spending?",
+    "tips": [
+      "Pick a side and back it up: \"I'd say I'm more of a&hellip;\""
+    ]
+  },
+  {
+    "domain": "Shopping & Money",
+    "hue": 93,
+    "icon": "M6 8h12l-1 12H7L6 8zM9 8V6a3 3 0 016 0v2",
+    "q": "What's something you saved up for and were happy you bought?",
+    "tips": [
+      "Narrate briefly: \"I saved up for&hellip;, and it was worth it because&hellip;\""
+    ]
+  },
+  {
+    "domain": "Shopping & Money",
+    "hue": 93,
+    "icon": "M6 8h12l-1 12H7L6 8zM9 8V6a3 3 0 016 0v2",
+    "q": "How do you decide whether something is worth buying?",
+    "tips": [
+      "Describe your criteria: \"I usually ask myself&hellip;\""
+    ]
+  },
+  {
+    "domain": "Shopping & Money",
+    "hue": 93,
+    "icon": "M6 8h12l-1 12H7L6 8zM9 8V6a3 3 0 016 0v2",
+    "q": "Do you prefer shopping in stores or online? Why?",
+    "tips": [
+      "Compare convenience vs. experience: \"Online is&hellip;, but in person&hellip;\""
+    ]
+  },
+  {
+    "domain": "Shopping & Money",
+    "hue": 93,
+    "icon": "M6 8h12l-1 12H7L6 8zM9 8V6a3 3 0 016 0v2",
+    "q": "What's a piece of financial advice you'd give your younger self?",
+    "tips": [
+      "Use reflective language: \"Looking back, I'd tell myself to&hellip;\""
+    ]
+  },
+  {
+    "domain": "Future Plans & Goals",
+    "hue": 129,
+    "icon": "M13 2 4 14h6l-1 8 9-12h-6l1-8z",
+    "q": "What's a goal you're currently working toward?",
+    "tips": [
+      "State it plainly: \"Right now, I'm working on&hellip;\""
+    ]
+  },
+  {
+    "domain": "Future Plans & Goals",
+    "hue": 129,
+    "icon": "M13 2 4 14h6l-1 8 9-12h-6l1-8z",
+    "q": "Where do you hope to be in five years?",
+    "tips": [
+      "Hedge with hope, not certainty: \"Ideally, I'd like to be&hellip;\""
+    ]
+  },
+  {
+    "domain": "Future Plans & Goals",
+    "hue": 129,
+    "icon": "M13 2 4 14h6l-1 8 9-12h-6l1-8z",
+    "q": "What's something new you'd like to try this year?",
+    "tips": [
+      "Name it with intent: \"I've been meaning to try&hellip;\""
+    ]
+  },
+  {
+    "domain": "Future Plans & Goals",
+    "hue": 129,
+    "icon": "M13 2 4 14h6l-1 8 9-12h-6l1-8z",
+    "q": "How do you usually stay motivated when working toward a goal?",
+    "tips": [
+      "List strategies: \"What helps me is&hellip;\""
+    ]
+  },
+  {
+    "domain": "Future Plans & Goals",
+    "hue": 129,
+    "icon": "M13 2 4 14h6l-1 8 9-12h-6l1-8z",
+    "q": "If you could change one thing about your daily routine, what would it be?",
+    "tips": [
+      "Use conditional form: \"If I could, I'd&hellip;\""
+    ]
+  },
+  {
+    "domain": "Education & Learning",
+    "hue": 183,
+    "icon": "M4 5a2 2 0 012-2h5v16H6a2 2 0 00-2 2V5z M20 5a2 2 0 00-2-2h-5v16h5a2 2 0 012 2V5z",
+    "q": "What's something you learned recently that surprised you?",
+    "tips": [
+      "Introduce it casually: \"Actually, just the other day I found out that&hellip;\"",
+      "Say why it surprised you: \"What surprised me was&hellip;\""
+    ]
+  },
+  {
+    "domain": "Education & Learning",
+    "hue": 183,
+    "icon": "M4 5a2 2 0 012-2h5v16H6a2 2 0 00-2 2V5z M20 5a2 2 0 00-2-2h-5v16h5a2 2 0 012 2V5z",
+    "q": "Do you prefer learning by reading, watching, or doing? Why?",
+    "tips": [
+      "State your style: \"I learn best by&hellip;\"",
+      "Give a reason: \"That's because&hellip;\""
+    ]
+  },
+  {
+    "domain": "Education & Learning",
+    "hue": 183,
+    "icon": "M4 5a2 2 0 012-2h5v16H6a2 2 0 00-2 2V5z M20 5a2 2 0 00-2-2h-5v16h5a2 2 0 012 2V5z",
+    "q": "What subject did you struggle with most in school, and how did you get through it?",
+    "tips": [
+      "Name the struggle: \"I always found &hellip; really difficult\"",
+      "Explain how you managed: \"What got me through it was&hellip;\""
+    ]
+  },
+  {
+    "domain": "Education & Learning",
+    "hue": 183,
+    "icon": "M4 5a2 2 0 012-2h5v16H6a2 2 0 00-2 2V5z M20 5a2 2 0 00-2-2h-5v16h5a2 2 0 012 2V5z",
+    "q": "If you went back to school today, what would you want to study?",
+    "tips": [
+      "Use hypothetical: \"If I went back, I'd probably study&hellip;\""
+    ]
+  },
+  {
+    "domain": "Education & Learning",
+    "hue": 183,
+    "icon": "M4 5a2 2 0 012-2h5v16H6a2 2 0 00-2 2V5z M20 5a2 2 0 00-2-2h-5v16h5a2 2 0 012 2V5z",
+    "q": "Who was a teacher or mentor who made a real difference for you?",
+    "tips": [
+      "Describe the impact: \"&hellip; really changed the way I&hellip;\""
+    ]
+  },
+  {
+    "domain": "Weather & Seasons",
+    "hue": 219,
+    "icon": "M7 17a4 4 0 010-8 5 5 0 019.6-1.5A3.5 3.5 0 0117 17H7z",
+    "q": "What's your favorite season, and what do you like about it?",
+    "tips": [
+      "Name it and explain: \"I'd have to say &hellip;, because&hellip;\""
+    ]
+  },
+  {
+    "domain": "Weather & Seasons",
+    "hue": 219,
+    "icon": "M7 17a4 4 0 010-8 5 5 0 019.6-1.5A3.5 3.5 0 0117 17H7z",
+    "q": "How does the weather affect your mood or plans?",
+    "tips": [
+      "Give examples: \"When it's &hellip;, I tend to&hellip;\""
+    ]
+  },
+  {
+    "domain": "Weather & Seasons",
+    "hue": 219,
+    "icon": "M7 17a4 4 0 010-8 5 5 0 019.6-1.5A3.5 3.5 0 0117 17H7z",
+    "q": "Describe the most extreme weather you've ever experienced.",
+    "tips": [
+      "Narrate the event: \"I remember once, the weather was so &hellip; that&hellip;\""
+    ]
+  },
+  {
+    "domain": "Weather & Seasons",
+    "hue": 219,
+    "icon": "M7 17a4 4 0 010-8 5 5 0 019.6-1.5A3.5 3.5 0 0117 17H7z",
+    "q": "Do you prefer hot climates or cold climates? Why?",
+    "tips": [
+      "Compare and justify: \"I prefer &hellip; over &hellip; because&hellip;\""
+    ]
+  },
+  {
+    "domain": "Weather & Seasons",
+    "hue": 219,
+    "icon": "M7 17a4 4 0 010-8 5 5 0 019.6-1.5A3.5 3.5 0 0117 17H7z",
+    "q": "How is the weather where you live different from other places you've been?",
+    "tips": [
+      "Contrast places: \"Compared to &hellip;, here it's&hellip;\""
+    ]
+  },
+  {
+    "domain": "Sports",
+    "hue": 255,
+    "icon": "M12 3a9 9 0 100 18 9 9 0 000-18zM3 12h18M12 3c2.5 2.5 2.5 13.5 0 18M12 3c-2.5 2.5-2.5 13.5 0 18",
+    "q": "Do you play or follow any sports? How did that start?",
+    "tips": [
+      "Explain the origin: \"I got into it when&hellip;\""
+    ]
+  },
+  {
+    "domain": "Sports",
+    "hue": 255,
+    "icon": "M12 3a9 9 0 100 18 9 9 0 000-18zM3 12h18M12 3c2.5 2.5 2.5 13.5 0 18M12 3c-2.5 2.5-2.5 13.5 0 18",
+    "q": "What's a sporting event you'll never forget watching or attending?",
+    "tips": [
+      "Set the scene: \"I still remember watching&hellip;\""
+    ]
+  },
+  {
+    "domain": "Sports",
+    "hue": 255,
+    "icon": "M12 3a9 9 0 100 18 9 9 0 000-18zM3 12h18M12 3c2.5 2.5 2.5 13.5 0 18M12 3c-2.5 2.5-2.5 13.5 0 18",
+    "q": "Do you prefer playing sports or watching them? Why?",
+    "tips": [
+      "State a clear preference: \"I'd much rather &hellip; than&hellip;\""
+    ]
+  },
+  {
+    "domain": "Sports",
+    "hue": 255,
+    "icon": "M12 3a9 9 0 100 18 9 9 0 000-18zM3 12h18M12 3c2.5 2.5 2.5 13.5 0 18M12 3c-2.5 2.5-2.5 13.5 0 18",
+    "q": "What's a sport you've never tried but would like to?",
+    "tips": [
+      "Express curiosity: \"I've always wanted to try&hellip;\""
+    ]
+  },
+  {
+    "domain": "Sports",
+    "hue": 255,
+    "icon": "M12 3a9 9 0 100 18 9 9 0 000-18zM3 12h18M12 3c2.5 2.5 2.5 13.5 0 18M12 3c-2.5 2.5-2.5 13.5 0 18",
+    "q": "How important is exercise or sport in your daily life?",
+    "tips": [
+      "Describe frequency: \"I try to &hellip; a few times a week\""
+    ]
+  },
+  {
+    "domain": "Environment & Nature",
+    "hue": 291,
+    "icon": "M4 20c8 0 14-6 14-14V4h-2C8 4 4 12 4 20z M4 20c4-4 8-8 14-14",
+    "q": "How do you feel when you spend time in nature?",
+    "tips": [
+      "Describe feelings: \"Being in nature makes me feel&hellip;\""
+    ]
+  },
+  {
+    "domain": "Environment & Nature",
+    "hue": 291,
+    "icon": "M4 20c8 0 14-6 14-14V4h-2C8 4 4 12 4 20z M4 20c4-4 8-8 14-14",
+    "q": "What's an environmental issue you care about, and why?",
+    "tips": [
+      "Name the issue and reason: \"I really care about &hellip; because&hellip;\""
+    ]
+  },
+  {
+    "domain": "Environment & Nature",
+    "hue": 291,
+    "icon": "M4 20c8 0 14-6 14-14V4h-2C8 4 4 12 4 20z M4 20c4-4 8-8 14-14",
+    "q": "Do you do anything in your daily life to reduce your environmental impact?",
+    "tips": [
+      "List small habits: \"I try to &hellip; whenever I can\""
+    ]
+  },
+  {
+    "domain": "Environment & Nature",
+    "hue": 291,
+    "icon": "M4 20c8 0 14-6 14-14V4h-2C8 4 4 12 4 20z M4 20c4-4 8-8 14-14",
+    "q": "Describe the most beautiful natural place you've ever seen.",
+    "tips": [
+      "Set the scene: \"The most beautiful place I've seen was&hellip;\""
+    ]
+  },
+  {
+    "domain": "Environment & Nature",
+    "hue": 291,
+    "icon": "M4 20c8 0 14-6 14-14V4h-2C8 4 4 12 4 20z M4 20c4-4 8-8 14-14",
+    "q": "How has the environment around you changed over the years?",
+    "tips": [
+      "Compare over time: \"It used to be &hellip;, but now&hellip;\""
+    ]
+  },
+  {
+    "domain": "Home & Neighborhood",
+    "hue": 327,
+    "icon": "M4 11l8-7 8 7 M6 10v9h12v-9",
+    "q": "Can you describe the neighborhood where you live?",
+    "tips": [
+      "Describe the area: \"It's a &hellip; kind of neighborhood\""
+    ]
+  },
+  {
+    "domain": "Home & Neighborhood",
+    "hue": 327,
+    "icon": "M4 11l8-7 8 7 M6 10v9h12v-9",
+    "q": "What do you like most about your home?",
+    "tips": [
+      "Name a favorite feature: \"What I like most is&hellip;\""
+    ]
+  },
+  {
+    "domain": "Home & Neighborhood",
+    "hue": 327,
+    "icon": "M4 11l8-7 8 7 M6 10v9h12v-9",
+    "q": "Would you rather live in a big city, a small town, or the countryside? Why?",
+    "tips": [
+      "Weigh the options: \"I'd probably choose &hellip; because&hellip;\""
+    ]
+  },
+  {
+    "domain": "Home & Neighborhood",
+    "hue": 327,
+    "icon": "M4 11l8-7 8 7 M6 10v9h12v-9",
+    "q": "What's something you'd change about where you live if you could?",
+    "tips": [
+      "Use conditional: \"If I could, I'd change&hellip;\""
+    ]
+  },
+  {
+    "domain": "Home & Neighborhood",
+    "hue": 327,
+    "icon": "M4 11l8-7 8 7 M6 10v9h12v-9",
+    "q": "What makes a place feel like \"home\" to you?",
+    "tips": [
+      "Define abstractly: \"To me, home is about&hellip;\""
+    ]
+  },
+  {
+    "domain": "Pets & Animals",
+    "hue": 3,
+    "icon": "M7 10a1.6 1.6 0 100-3.2A1.6 1.6 0 007 10zM12 8a1.6 1.6 0 100-3.2A1.6 1.6 0 0012 8zM17 10a1.6 1.6 0 100-3.2A1.6 1.6 0 0017 10zM12 20c-3 0-5-1.7-5-3.6 0-2 1.8-3.4 5-3.4s5 1.4 5 3.4c0 1.9-2 3.6-5 3.6z",
+    "q": "Do you have any pets, or have you had one in the past? Tell me about them.",
+    "tips": [
+      "Introduce them: \"I have/had a &hellip; named&hellip;\""
+    ]
+  },
+  {
+    "domain": "Pets & Animals",
+    "hue": 3,
+    "icon": "M7 10a1.6 1.6 0 100-3.2A1.6 1.6 0 007 10zM12 8a1.6 1.6 0 100-3.2A1.6 1.6 0 0012 8zM17 10a1.6 1.6 0 100-3.2A1.6 1.6 0 0017 10zM12 20c-3 0-5-1.7-5-3.6 0-2 1.8-3.4 5-3.4s5 1.4 5 3.4c0 1.9-2 3.6-5 3.6z",
+    "q": "What's your favorite animal, and why?",
+    "tips": [
+      "Name it and explain: \"I'd say &hellip;, mainly because&hellip;\""
+    ]
+  },
+  {
+    "domain": "Pets & Animals",
+    "hue": 3,
+    "icon": "M7 10a1.6 1.6 0 100-3.2A1.6 1.6 0 007 10zM12 8a1.6 1.6 0 100-3.2A1.6 1.6 0 0012 8zM17 10a1.6 1.6 0 100-3.2A1.6 1.6 0 0017 10zM12 20c-3 0-5-1.7-5-3.6 0-2 1.8-3.4 5-3.4s5 1.4 5 3.4c0 1.9-2 3.6-5 3.6z",
+    "q": "Are you a \"dog person\" or a \"cat person,\" or neither? Why?",
+    "tips": [
+      "Pick a side lightly: \"I'm definitely more of a &hellip; person\""
+    ]
+  },
+  {
+    "domain": "Pets & Animals",
+    "hue": 3,
+    "icon": "M7 10a1.6 1.6 0 100-3.2A1.6 1.6 0 007 10zM12 8a1.6 1.6 0 100-3.2A1.6 1.6 0 0012 8zM17 10a1.6 1.6 0 100-3.2A1.6 1.6 0 0017 10zM12 20c-3 0-5-1.7-5-3.6 0-2 1.8-3.4 5-3.4s5 1.4 5 3.4c0 1.9-2 3.6-5 3.6z",
+    "q": "Describe a memorable experience you've had with an animal.",
+    "tips": [
+      "Narrate briefly: \"One time, a/an &hellip; &hellip;\""
+    ]
+  },
+  {
+    "domain": "Pets & Animals",
+    "hue": 3,
+    "icon": "M7 10a1.6 1.6 0 100-3.2A1.6 1.6 0 007 10zM12 8a1.6 1.6 0 100-3.2A1.6 1.6 0 0012 8zM17 10a1.6 1.6 0 100-3.2A1.6 1.6 0 0017 10zM12 20c-3 0-5-1.7-5-3.6 0-2 1.8-3.4 5-3.4s5 1.4 5 3.4c0 1.9-2 3.6-5 3.6z",
+    "q": "How do you think having a pet changes someone's daily life?",
+    "tips": [
+      "Generalize with hedge: \"I think it probably &hellip;\""
+    ]
+  },
+  {
+    "domain": "Social Media & Communication",
+    "hue": 39,
+    "icon": "M4 5h11v7H9l-3 3v-3H4z M14 9h6v6h-3v3l-3-3h0",
+    "q": "How do you usually communicate with friends and family — calls, texts, social media?",
+    "tips": [
+      "List channels: \"Mostly through &hellip;, sometimes&hellip;\""
+    ]
+  },
+  {
+    "domain": "Social Media & Communication",
+    "hue": 39,
+    "icon": "M4 5h11v7H9l-3 3v-3H4z M14 9h6v6h-3v3l-3-3h0",
+    "q": "What's your opinion on social media — mostly positive or mostly negative?",
+    "tips": [
+      "Give a balanced view: \"I'd say it's a mix, but overall&hellip;\""
+    ]
+  },
+  {
+    "domain": "Social Media & Communication",
+    "hue": 39,
+    "icon": "M4 5h11v7H9l-3 3v-3H4z M14 9h6v6h-3v3l-3-3h0",
+    "q": "Have you ever taken a break from social media? What was that like?",
+    "tips": [
+      "Narrate the experience: \"I once took a break, and it was&hellip;\""
+    ]
+  },
+  {
+    "domain": "Social Media & Communication",
+    "hue": 39,
+    "icon": "M4 5h11v7H9l-3 3v-3H4z M14 9h6v6h-3v3l-3-3h0",
+    "q": "What kind of content do you enjoy sharing or posting, if any?",
+    "tips": [
+      "Describe habits: \"I mostly post/share&hellip;\""
+    ]
+  },
+  {
+    "domain": "Social Media & Communication",
+    "hue": 39,
+    "icon": "M4 5h11v7H9l-3 3v-3H4z M14 9h6v6h-3v3l-3-3h0",
+    "q": "How has the way people communicate changed since you were a child?",
+    "tips": [
+      "Compare generations: \"Back then, people used to &hellip;; now&hellip;\""
+    ]
+  },
+  {
+    "domain": "Dreams & Imagination",
+    "hue": 75,
+    "icon": "M15 4a5 5 0 00-4.9 6.1A4 4 0 1011 18h5a4 4 0 000-8h-.1A5 5 0 0015 4z M18 3l.6 1.6L20 5l-1.4.6L18 7l-.6-1.4L16 5l1.4-.6L18 3z",
+    "q": "If you could have any superpower, what would it be and why?",
+    "tips": [
+      "Pick and justify: \"I'd choose &hellip; because&hellip;\""
+    ]
+  },
+  {
+    "domain": "Dreams & Imagination",
+    "hue": 75,
+    "icon": "M15 4a5 5 0 00-4.9 6.1A4 4 0 1011 18h5a4 4 0 000-8h-.1A5 5 0 0015 4z M18 3l.6 1.6L20 5l-1.4.6L18 7l-.6-1.4L16 5l1.4-.6L18 3z",
+    "q": "What's a dream (while sleeping) that you still remember clearly?",
+    "tips": [
+      "Narrate a dream: \"I once dreamed that&hellip;\""
+    ]
+  },
+  {
+    "domain": "Dreams & Imagination",
+    "hue": 75,
+    "icon": "M15 4a5 5 0 00-4.9 6.1A4 4 0 1011 18h5a4 4 0 000-8h-.1A5 5 0 0015 4z M18 3l.6 1.6L20 5l-1.4.6L18 7l-.6-1.4L16 5l1.4-.6L18 3z",
+    "q": "If money weren't an issue, what would you spend your time doing?",
+    "tips": [
+      "Use hypothetical: \"If money weren't an issue, I'd &hellip;\""
+    ]
+  },
+  {
+    "domain": "Dreams & Imagination",
+    "hue": 75,
+    "icon": "M15 4a5 5 0 00-4.9 6.1A4 4 0 1011 18h5a4 4 0 000-8h-.1A5 5 0 0015 4z M18 3l.6 1.6L20 5l-1.4.6L18 7l-.6-1.4L16 5l1.4-.6L18 3z",
+    "q": "What's something you daydream about often?",
+    "tips": [
+      "Describe recurring thoughts: \"I often catch myself thinking about&hellip;\""
+    ]
+  },
+  {
+    "domain": "Dreams & Imagination",
+    "hue": 75,
+    "icon": "M15 4a5 5 0 00-4.9 6.1A4 4 0 1011 18h5a4 4 0 000-8h-.1A5 5 0 0015 4z M18 3l.6 1.6L20 5l-1.4.6L18 7l-.6-1.4L16 5l1.4-.6L18 3z",
+    "q": "If you could travel to any time period, past or future, when would you go?",
+    "tips": [
+      "Name era and reason: \"I'd go to &hellip;, just to see&hellip;\""
+    ]
+  },
+  {
+    "domain": "News & Current Events",
+    "hue": 111,
+    "icon": "M4 4h13v14a2 2 0 002 2H6a2 2 0 01-2-2V4z M8 8h6M8 11h6M8 14h4 M19 8v10a2 2 0 002-2V6h-2",
+    "q": "How do you usually get your news — TV, apps, social media, word of mouth?",
+    "tips": [
+      "List sources: \"Mainly through &hellip;\""
+    ]
+  },
+  {
+    "domain": "News & Current Events",
+    "hue": 111,
+    "icon": "M4 4h13v14a2 2 0 002 2H6a2 2 0 01-2-2V4z M8 8h6M8 11h6M8 14h4 M19 8v10a2 2 0 002-2V6h-2",
+    "q": "What's a recent news story that caught your attention?",
+    "tips": [
+      "Summarize and react: \"There was a story about &hellip;, and it &hellip;\""
+    ]
+  },
+  {
+    "domain": "News & Current Events",
+    "hue": 111,
+    "icon": "M4 4h13v14a2 2 0 002 2H6a2 2 0 01-2-2V4z M8 8h6M8 11h6M8 14h4 M19 8v10a2 2 0 002-2V6h-2",
+    "q": "Do you think it's important to follow the news closely? Why or why not?",
+    "tips": [
+      "Give an opinion with reason: \"I think it's important because&hellip;\""
+    ]
+  },
+  {
+    "domain": "News & Current Events",
+    "hue": 111,
+    "icon": "M4 4h13v14a2 2 0 002 2H6a2 2 0 01-2-2V4z M8 8h6M8 11h6M8 14h4 M19 8v10a2 2 0 002-2V6h-2",
+    "q": "How do you tell whether a piece of news is reliable?",
+    "tips": [
+      "Describe your method: \"I usually check whether&hellip;\""
+    ]
+  },
+  {
+    "domain": "News & Current Events",
+    "hue": 111,
+    "icon": "M4 4h13v14a2 2 0 002 2H6a2 2 0 01-2-2V4z M8 8h6M8 11h6M8 14h4 M19 8v10a2 2 0 002-2V6h-2",
+    "q": "Is there a topic in the news you find yourself avoiding? Why?",
+    "tips": [
+      "Be honest: \"Honestly, I tend to avoid &hellip; because&hellip;\""
+    ]
+  },
+  {
+    "domain": "Personality & Self-reflection",
+    "hue": 147,
+    "icon": "M12 12a4 4 0 100-8 4 4 0 000 8zM5 21c0-4 3-6 7-6s7 2 7 6",
+    "q": "How would your friends describe your personality?",
+    "tips": [
+      "Use others' perspective: \"They'd probably say I'm&hellip;\""
+    ]
+  },
+  {
+    "domain": "Personality & Self-reflection",
+    "hue": 147,
+    "icon": "M12 12a4 4 0 100-8 4 4 0 000 8zM5 21c0-4 3-6 7-6s7 2 7 6",
+    "q": "What's something about yourself you've changed as you've gotten older?",
+    "tips": [
+      "Compare past/present: \"I used to be &hellip;, but now I'm&hellip;\""
+    ]
+  },
+  {
+    "domain": "Personality & Self-reflection",
+    "hue": 147,
+    "icon": "M12 12a4 4 0 100-8 4 4 0 000 8zM5 21c0-4 3-6 7-6s7 2 7 6",
+    "q": "Are you more of an introvert or an extrovert? How does that show up in daily life?",
+    "tips": [
+      "State and explain: \"I'm definitely more of an &hellip;, because&hellip;\""
+    ]
+  },
+  {
+    "domain": "Personality & Self-reflection",
+    "hue": 147,
+    "icon": "M12 12a4 4 0 100-8 4 4 0 000 8zM5 21c0-4 3-6 7-6s7 2 7 6",
+    "q": "What's a value or principle that's really important to you?",
+    "tips": [
+      "Name a value: \"&hellip; really matters to me\""
+    ]
+  },
+  {
+    "domain": "Personality & Self-reflection",
+    "hue": 147,
+    "icon": "M12 12a4 4 0 100-8 4 4 0 000 8zM5 21c0-4 3-6 7-6s7 2 7 6",
+    "q": "What's something you're proud of that most people don't know about?",
+    "tips": [
+      "Reveal something: \"Something people might not know is&hellip;\""
+    ]
+  }
+];
+/* END:GENERATED_DATA */
+</script>
+
+<script>
+(function(){
+  "use strict";
+
+  var ROWS = (typeof GENERATED_ROWS !== "undefined" && GENERATED_ROWS.length) ? GENERATED_ROWS : [
+    { domain: "Sample Topic", hue: 165, icon: "M3 11l18-7-7 18-2-8-9-3z",
+      q: "questions.csv couldn't be synced in — run regenerate.py to load the real deck.", tips: [] }
+  ];
+
+  // Group rows by domain, preserving first-seen order, so new domains
+  // added to the CSV slot in naturally without touching this code.
+  var topicOrder = [];
+  var topicMap = {};
+  ROWS.forEach(function(row){
+    if (!topicMap[row.domain]){
+      topicMap[row.domain] = { name: row.domain, hue: row.hue, icon: row.icon, rows: [] };
+      topicOrder.push(row.domain);
+    }
+    topicMap[row.domain].rows.push(row);
+  });
+  var TOPICS = topicOrder.map(function(name){ return topicMap[name]; });
+
+  // Flatten into a single deck; each card remembers its position
+  // within its own topic ("Question N of <topic size>").
+  var deck = [];
+  TOPICS.forEach(function(topic){
+    topic.rows.forEach(function(row, qi){
+      deck.push({
+        topicIndex: topicOrder.indexOf(topic.name),
+        topicName: topic.name,
+        hue: topic.hue,
+        icon: topic.icon,
+        qNumber: qi + 1,
+        qTotal: topic.rows.length,
+        q: row.q,
+        tips: row.tips || []
+      });
+    });
+  });
+
+  document.getElementById("subtitle").textContent =
+    deck.length + " questions across " + TOPICS.length + " everyday topics, dealt out in random order. " +
+    "Read the question, think or type your answer, then peek at the phrase bank if you get stuck.";
+  document.getElementById("topicsLabel").textContent = "The " + TOPICS.length + " topics";
+
+  function hueColor(hue, sat, light){ return "hsl(" + hue + ", " + sat + "%, " + light + "%)"; }
+  function isDark(){
+    var stamp = document.documentElement.getAttribute("data-theme");
+    if (stamp === "dark") return true;
+    if (stamp === "light") return false;
+    return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  }
+
+  function shuffledOrder(){
+    var order = deck.map(function(_, i){ return i; });
+    for (var i = order.length - 1; i > 0; i--){
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = order[i]; order[i] = order[j]; order[j] = tmp;
+    }
+    // Light pass to reduce back-to-back repeats of the same topic.
+    for (var k = 1; k < order.length; k++){
+      if (deck[order[k]].topicIndex === deck[order[k-1]].topicIndex){
+        for (var m = k + 1; m < order.length; m++){
+          if (deck[order[m]].topicIndex !== deck[order[k-1]].topicIndex){
+            var t = order[k]; order[k] = order[m]; order[m] = t;
+            break;
+          }
+        }
+      }
+    }
+    return order;
+  }
+
+  var order = shuffledOrder();
+  var pos = 0;
+
+  var badgeEl = document.getElementById("badge");
+  var badgeIconEl = document.getElementById("badgeIcon");
+  var badgeLabelEl = document.getElementById("badgeLabel");
+  var cardIndexEl = document.getElementById("cardIndex");
+  var questionEl = document.getElementById("question");
+  var answerEl = document.getElementById("answer");
+  var tipsEl = document.getElementById("tips");
+  var tipsListEl = document.getElementById("tipsList");
+  var tipsBtn = document.getElementById("tipsBtn");
+  var nextBtn = document.getElementById("nextBtn");
+  var shuffleBtn = document.getElementById("shuffleBtn");
+  var doneBanner = document.getElementById("doneBanner");
+  var legendEl = document.getElementById("legend");
+  var cardEl = document.querySelector(".card");
+
+  function buildLegend(){
+    legendEl.innerHTML = "";
+    TOPICS.forEach(function(topic){
+      var row = document.createElement("div");
+      row.className = "legend-item";
+      var sw = document.createElement("span");
+      sw.className = "legend-swatch";
+      sw.style.setProperty("--sw-color", hueColor(topic.hue, 45, isDark() ? 62 : 42));
+      var label = document.createElement("span");
+      label.textContent = topic.name;
+      var count = document.createElement("span");
+      count.className = "legend-count";
+      count.textContent = topic.rows.length;
+      row.appendChild(sw); row.appendChild(label); row.appendChild(count);
+      legendEl.appendChild(row);
+    });
+  }
+  buildLegend();
+
+  function render(){
+    var idx = order[pos];
+    var card = deck[idx];
+    var dark = isDark();
+    var accentColor = hueColor(card.hue, dark ? 55 : 45, dark ? 62 : 40);
+    var badgeBg = hueColor(card.hue, dark ? 35 : 55, dark ? 22 : 92);
+    var badgeInk = hueColor(card.hue, dark ? 45 : 45, dark ? 82 : 26);
+
+    cardEl.style.setProperty("--card-accent", accentColor);
+    badgeEl.style.setProperty("--badge-bg", badgeBg);
+    badgeEl.style.setProperty("--badge-ink", badgeInk);
+    badgeIconEl.innerHTML = '<path d="' + card.icon + '"/>';
+    badgeLabelEl.textContent = card.topicName;
+    cardIndexEl.textContent = "Question " + card.qNumber + " of " + card.qTotal + " in this topic";
+    questionEl.textContent = card.q;
+    answerEl.value = "";
+
+    tipsListEl.innerHTML = "";
+    card.tips.forEach(function(t){
+      var li = document.createElement("li");
+      li.innerHTML = t;
+      tipsListEl.appendChild(li);
+    });
+    var hasTips = card.tips.length > 0;
+    tipsBtn.disabled = !hasTips;
+    tipsBtn.textContent = hasTips ? "Show phrase bank" : "No phrase bank for this one";
+    tipsEl.classList.remove("open");
+    tipsEl.classList.toggle("empty", !hasTips);
+    tipsBtn.setAttribute("aria-expanded", "false");
+  }
+
+  render();
+
+  tipsBtn.addEventListener("click", function(){
+    if (tipsBtn.disabled) return;
+    var open = tipsEl.classList.toggle("open");
+    tipsBtn.setAttribute("aria-expanded", open ? "true" : "false");
+    tipsBtn.textContent = open ? "Hide phrase bank" : "Show phrase bank";
+  });
+
+  nextBtn.addEventListener("click", function(){
+    pos++;
+    if (pos >= order.length){
+      order = shuffledOrder();
+      pos = 0;
+      doneBanner.classList.add("show");
+      setTimeout(function(){ doneBanner.classList.remove("show"); }, 4000);
+    }
+    render();
+  });
+
+  shuffleBtn.addEventListener("click", function(){
+    order = shuffledOrder();
+    pos = 0;
+    render();
+  });
+
+  window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function(){
+    buildLegend();
+    render();
+  });
+})();
+</script>
