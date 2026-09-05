@@ -82,13 +82,6 @@
     text-wrap: balance;
     letter-spacing: -0.01em;
   }
-  .sub{
-    color: var(--ink-soft);
-    font-size: 15px;
-    line-height: 1.55;
-    max-width: 58ch;
-  }
-
   /* card */
   .card{
     background: var(--surface);
@@ -307,7 +300,6 @@
   <header class="top">
     <div class="eyebrow">Spoken English &middot; Practice Deck</div>
     <h1>Conversation Deck</h1>
-    <p class="sub" id="subtitle">Questions across everyday topics, dealt out in random order. Read the question, think or type your answer, then peek at the phrase bank if you get stuck.</p>
   </header>
 
   <main class="card">
@@ -1315,9 +1307,6 @@ var GENERATED_ROWS = [
     });
   });
 
-  document.getElementById("subtitle").textContent =
-    deck.length + " questions across " + TOPICS.length + " everyday topics, dealt out in random order. " +
-    "Read the question, think or type your answer, then peek at the phrase bank if you get stuck.";
   document.getElementById("topicsLabel").textContent = "The " + TOPICS.length + " topics";
 
   function hueColor(hue, sat, light){ return "hsl(" + hue + ", " + sat + "%, " + light + "%)"; }
