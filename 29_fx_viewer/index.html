@@ -169,7 +169,13 @@
 // (Taiwan is not an ECB reference currency).
 // ---------------------------------------------------------------------------
 
-const API_BASE = "https://api.frankfurter.app";
+// NOTE: api.frankfurter.app now 302-redirects to api.frankfurter.dev/v1/.
+// A cross-origin redirect during a fetch() in "cors" mode needs proper CORS
+// headers on the redirect hop itself, not just the final response - when
+// that's missing the browser fails the whole request with a bare "Failed to
+// fetch" and no further detail. Pointing straight at the new host/path
+// avoids the redirect entirely.
+const API_BASE = "https://api.frankfurter.dev/v1";
 
 // Same JPY-cross list as the notebook/Python version. "quote" is always JPY;
 // "base" is the other currency. JPY=X itself means USD/JPY.
@@ -410,7 +416,19 @@ async function fetchData() {
 
     showInfo("データ元: Frankfurter API (ECB日次公表レート) — yfinance/Yahoo Financeとは値がわずかに異なります。営業日のみのデータです。");
   } catch (e) {
-    showError("通信エラー: " + e.message + " （オフライン、またはブラウザがこのAPIへの接続をブロックしている可能性があります）");
+    // "Failed to fetch" is a generic browser error covering several distinct
+    // causes (offline, DNS failure, CORS rejection, blocked by an extension
+    // or corporate proxy) that JS cannot distinguish on its own. Surface the
+    // exact URL plus a plain link so the user can test reachability directly
+    // in a new tab, which bypasses fetch()/CORS entirely and narrows down
+    // whether this is a network-level block or something fetch-specific.
+    showError(
+      "通信エラー: " + e.message +
+      "<br>試したURL: <code>" + url + "</code>" +
+      "<br><a href=\"" + url + "\" target=\"_blank\" rel=\"noopener\" style=\"color:inherit;text-decoration:underline;\">↳ このURLを新しいタブで直接開いて確認する</a>" +
+      "<br>新しいタブでも開けない場合はネットワーク（オフライン/社内プロキシ/ファイアウォール）側の問題、" +
+      "新しいタブでは開けるのにここでエラーになる場合はブラウザ拡張機能（広告/トラッキングブロッカー等）がこのページのfetch通信をブロックしている可能性があります。"
+    );
   } finally {
     fetchBtn.disabled = false;
     fetchBtn.textContent = "最新データを取得";
