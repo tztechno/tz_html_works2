@@ -1,0 +1,1294 @@
+<title>Cutting Room</title>
+<style>
+  :root {
+    --bg: #f6f3ee;
+    --surface: #fffdfa;
+    --surface-2: #efeae1;
+    --border: #ddd6c7;
+    --text: #211f26;
+    --text-dim: #6b6660;
+    --accent: #b35a1c;
+    --accent-strong: #963f0e;
+    --accent-ink: #fffdfa;
+    --accent-2: #276b66;
+    --danger: #a83a30;
+    --danger-ink: #fffdfa;
+    --shadow-sm: 0 1px 2px rgba(33, 31, 38, 0.07);
+    --shadow-md: 0 6px 20px rgba(33, 31, 38, 0.10);
+    --radius-sm: 6px;
+    --radius-md: 12px;
+    --font-display: "Sora", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --font-body: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #17151b;
+      --surface: #211f27;
+      --surface-2: #2b2831;
+      --border: #3b3742;
+      --text: #ece8e2;
+      --text-dim: #a29d9c;
+      --accent: #e58a44;
+      --accent-strong: #f4a15f;
+      --accent-ink: #17151b;
+      --accent-2: #55c2b8;
+      --danger: #e37066;
+      --danger-ink: #17151b;
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+      --shadow-md: 0 10px 28px rgba(0, 0, 0, 0.45);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #17151b;
+    --surface: #211f27;
+    --surface-2: #2b2831;
+    --border: #3b3742;
+    --text: #ece8e2;
+    --text-dim: #a29d9c;
+    --accent: #e58a44;
+    --accent-strong: #f4a15f;
+    --accent-ink: #17151b;
+    --accent-2: #55c2b8;
+    --danger: #e37066;
+    --danger-ink: #17151b;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+    --shadow-md: 0 10px 28px rgba(0, 0, 0, 0.45);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2 { font-family: var(--font-display); margin: 0; text-wrap: balance; }
+  .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  button { font: inherit; color: inherit; }
+  a { color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- layout ---------- */
+  .app {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "header header"
+      "bin monitor"
+      "timeline timeline";
+    height: 100vh;
+    gap: 1px;
+    background: var(--border);
+  }
+  .topbar {
+    grid-area: header;
+    background: var(--surface);
+    padding: 18px 24px;
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand-mark path, .brand-mark circle { fill: var(--accent); }
+  .brand-mark rect { stroke: var(--accent); }
+  .topbar h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+  .tagline { margin: 0; color: var(--text-dim); font-size: 13px; max-width: 46ch; }
+
+  .panel {
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+  }
+  .bin { grid-area: bin; overflow-y: auto; }
+  .monitor { grid-area: monitor; overflow-y: auto; }
+  .timeline { grid-area: timeline; }
+
+  .panel-head {
+    padding: 16px 20px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    position: sticky;
+    top: 0;
+    background: var(--surface);
+    z-index: 2;
+  }
+  .panel-head h2 {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+  }
+
+  /* ---------- buttons ---------- */
+  .add-btn, .primary-btn, .ghost-btn, .mini-btn, .text-btn {
+    cursor: pointer;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    transition: background-color 120ms ease, border-color 120ms ease, transform 80ms ease, opacity 120ms ease;
+  }
+  .add-btn:active, .primary-btn:active, .ghost-btn:active, .mini-btn:active { transform: translateY(1px); }
+
+  .add-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    font-size: 12.5px;
+    font-weight: 600;
+    background: var(--surface-2);
+    border-color: var(--border);
+    color: var(--text);
+  }
+  .add-btn:hover { background: var(--border); }
+
+  .primary-btn {
+    padding: 11px 18px;
+    font-size: 13.5px;
+    font-weight: 600;
+    background: var(--surface-2);
+    border-color: var(--border);
+    color: var(--text);
+  }
+  .primary-btn:hover:not(:disabled) { background: var(--border); }
+  .primary-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .primary-btn--accent {
+    background: var(--accent);
+    color: var(--accent-ink);
+    border-color: var(--accent);
+  }
+  .primary-btn--accent:hover:not(:disabled) { background: var(--accent-strong); border-color: var(--accent-strong); }
+
+  .ghost-btn {
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    background: transparent;
+    border-color: var(--border);
+    color: var(--text);
+  }
+  .ghost-btn:hover { background: var(--surface-2); }
+
+  .mini-btn {
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    background: transparent;
+    border-color: var(--border);
+    color: var(--text-dim);
+  }
+  .mini-btn:hover { color: var(--text); background: var(--surface-2); }
+
+  .text-btn {
+    padding: 4px 8px;
+    font-size: 11.5px;
+    font-weight: 600;
+    background: none;
+    color: var(--text-dim);
+  }
+  .text-btn:hover { color: var(--text); background: var(--surface-2); }
+  .text-btn--danger:hover { color: var(--danger); }
+
+  /* ---------- media bin ---------- */
+  .dropzone {
+    margin: 0 20px 14px;
+    padding: 16px;
+    border: 1.5px dashed var(--border);
+    border-radius: var(--radius-md);
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 12.5px;
+    cursor: pointer;
+    transition: border-color 120ms ease, color 120ms ease, background-color 120ms ease;
+  }
+  .dropzone:hover, .dropzone.drag-over { border-color: var(--accent); color: var(--text); background: var(--surface-2); }
+  .dropzone .link-text { color: var(--accent); font-weight: 600; text-decoration: underline; }
+
+  .clip-list { list-style: none; margin: 0; padding: 0 12px 16px; display: flex; flex-direction: column; gap: 6px; }
+  .bin-empty { margin: 0 20px 16px; color: var(--text-dim); font-size: 12.5px; }
+
+  .clip-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+    border-radius: var(--radius-sm);
+    border: 1px solid transparent;
+    border-left: 3px solid hsl(var(--src-hue, 30), 55%, 48%);
+    cursor: pointer;
+    background: var(--surface);
+  }
+  .clip-card:hover { background: var(--surface-2); }
+  .clip-card.is-active { background: var(--surface-2); border-color: var(--border); }
+
+  .clip-thumb {
+    width: 56px;
+    height: 36px;
+    flex: none;
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--surface-2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .clip-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .clip-thumb-fallback { width: 100%; height: 100%; background: linear-gradient(135deg, var(--surface-2), var(--border)); }
+
+  .clip-info { flex: 1; min-width: 0; }
+  .clip-name { margin: 0; font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .clip-meta { margin: 2px 0 0; font-size: 11px; color: var(--text-dim); }
+  .clip-actions { display: flex; flex-direction: column; gap: 2px; flex: none; }
+  .clip-order { display: flex; gap: 2px; }
+  .order-btn {
+    flex: 1;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-dim);
+    font-size: 9px;
+    line-height: 1;
+    padding: 3px 6px;
+    cursor: pointer;
+  }
+  .order-btn:hover:not(:disabled) { color: var(--text); background: var(--border); }
+  .order-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* ---------- monitor ---------- */
+  .monitor-source { font-size: 12px; color: var(--text-dim); font-weight: 500; }
+
+  .stage-wrap {
+    position: relative;
+    flex: none;
+    margin: 0 20px;
+    height: min(46vh, 440px);
+    background: #0c0b0e;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .stage-video { width: 100%; height: 100%; object-fit: contain; background: #0c0b0e; }
+  .stage-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    text-align: center;
+    color: #b8b3ae;
+    font-size: 13px;
+    max-width: 32ch;
+    margin: 0 auto;
+  }
+  .stage-empty[hidden] { display: none; }
+
+  .transport {
+    margin: 14px 20px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .transport #playBtn { min-width: 66px; padding: 7px 14px; font-size: 12.5px; font-weight: 600; }
+  .time-readout { font-size: 12.5px; color: var(--text-dim); }
+  .time-sep { color: var(--border); }
+  .hint { margin: 8px 20px 0; font-size: 11.5px; color: var(--text-dim); }
+
+  .cut-editor { margin: 18px 20px 0; }
+  .cut-ruler {
+    position: relative;
+    height: 22px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 6px 6px 0 0;
+    border-bottom: none;
+    cursor: crosshair;
+  }
+  .cut-ruler-hint {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10.5px;
+    color: var(--text-dim);
+    pointer-events: none;
+    letter-spacing: 0.02em;
+  }
+  .cut-mark {
+    position: absolute;
+    top: -1px; bottom: 0;
+    width: 3px;
+    margin-left: -1.5px;
+    background: var(--danger);
+    box-shadow: 0 0 0 1px var(--surface);
+    pointer-events: none;
+  }
+  .cut-mark::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid var(--danger);
+  }
+  .cut-mark.is-pending {
+    background: var(--accent);
+    box-shadow: 0 0 0 1px var(--surface);
+    animation: pending-pulse 1s ease-in-out infinite;
+  }
+  .cut-mark.is-pending::before { border-top-color: var(--accent); }
+  @keyframes pending-pulse {
+    0%, 100% { opacity: 0.55; }
+    50% { opacity: 1; }
+  }
+  .cut-playhead {
+    position: absolute;
+    top: -3px; bottom: -3px;
+    width: 2px;
+    background: var(--text);
+    opacity: 0.6;
+    pointer-events: none;
+    left: 0;
+  }
+
+  .cut-confirm {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+    border: 1px solid var(--accent);
+    border-top: none;
+    padding: 8px 12px;
+    font-size: 12px;
+    color: var(--text);
+  }
+  .cut-confirm[hidden] { display: none; }
+  .mini-btn--accent {
+    background: var(--accent);
+    color: var(--accent-ink);
+    border-color: var(--accent);
+    font-weight: 700;
+  }
+  .mini-btn--accent:hover { background: var(--accent-strong); border-color: var(--accent-strong); color: var(--accent-ink); }
+
+  .piece-row {
+    position: relative;
+    display: flex;
+    gap: 3px;
+    height: 44px;
+    padding: 3px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 0 0 6px 6px;
+    overflow: hidden;
+  }
+  .piece {
+    flex: 1 1 0%;
+    min-width: 22px;
+    border: none;
+    border-radius: 3px;
+    background: color-mix(in srgb, var(--accent) 32%, var(--surface-2));
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-variant-numeric: tabular-nums;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 2px;
+    overflow: hidden;
+  }
+  .piece:nth-child(even) { filter: brightness(0.9); }
+  .piece:hover { filter: brightness(1.1); }
+  .piece.is-discarded {
+    background: repeating-linear-gradient(
+      -45deg,
+      var(--surface-2),
+      var(--surface-2) 6px,
+      var(--border) 6px,
+      var(--border) 12px
+    );
+    filter: none;
+    color: var(--text-dim);
+  }
+  .piece-label { white-space: nowrap; }
+  .piece-row-hint { margin: 6px 0 0; font-size: 11px; color: var(--text-dim); text-align: center; }
+
+  @keyframes cut-flash {
+    0% { box-shadow: 0 0 0 3px var(--danger); }
+    100% { box-shadow: 0 0 0 0px transparent; }
+  }
+  .piece-row.just-cut { animation: cut-flash 450ms ease-out; }
+
+  .cut-readouts {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .cut-readouts .mono { color: var(--text); font-weight: 600; }
+  .cut-readouts .mini-btn { margin-left: auto; }
+
+  /* ---------- combine / export ---------- */
+  .timeline .panel-head { position: static; }
+  .timeline-total { font-size: 12px; color: var(--text-dim); }
+  .timeline-total .mono { color: var(--text); font-weight: 600; }
+  .timeline-empty { margin: 0 20px 14px; color: var(--text-dim); font-size: 12.5px; }
+  .timeline-empty[hidden] { display: none; }
+
+  .export-row {
+    margin: 4px 20px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .export-progress { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 200px; }
+  .export-progress[hidden] { display: none; }
+  .progress-track { flex: 1; height: 6px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
+  .progress-fill { height: 100%; width: 0%; background: var(--accent); transition: width 150ms ease; }
+  #progressLabel { font-size: 11.5px; color: var(--text-dim); white-space: nowrap; }
+
+  .export-result { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .export-result[hidden] { display: none; }
+  #resultInfo { font-size: 12.5px; color: var(--text-dim); }
+
+  .result-preview { display: block; margin: 0 20px 20px; max-width: 480px; width: 100%; border-radius: var(--radius-md); background: #0c0b0e; }
+  .result-preview[hidden] { display: none; }
+
+  .is-exporting .bin, .is-exporting .cut-ruler, .is-exporting .cut-confirm, .is-exporting .piece-row, .is-exporting .transport {
+    pointer-events: none; opacity: 0.55;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+  }
+
+  @media (max-width: 860px) {
+    .app {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto auto auto auto;
+      grid-template-areas:
+        "header"
+        "monitor"
+        "timeline"
+        "bin";
+      height: auto;
+      min-height: 100vh;
+    }
+    .bin, .monitor { max-height: none; overflow: visible; }
+  }
+</style>
+
+<div class="app" id="app">
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand-mark" width="26" height="26" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+        <rect x="1.5" y="1.5" width="25" height="25" rx="5" stroke-width="2"/>
+        <circle cx="6" cy="6" r="1.3"/>
+        <circle cx="22" cy="6" r="1.3"/>
+        <circle cx="6" cy="22" r="1.3"/>
+        <circle cx="22" cy="22" r="1.3"/>
+        <path d="M10 9 L20 14 L10 19 Z"/>
+      </svg>
+      <h1>Cutting Room</h1>
+    </div>
+    <p class="tagline">Cut out the parts you don't want, reorder your clips, and combine what's left into one file — all inside this tab.</p>
+  </header>
+
+  <section class="panel bin" aria-label="Media bin">
+    <div class="panel-head">
+      <h2>Media Bin</h2>
+      <label class="add-btn" for="fileInput">+ Add clips</label>
+    </div>
+    <input type="file" id="fileInput" accept="video/*" multiple hidden>
+    <div class="dropzone" id="dropzone">
+      <p style="margin:0">Drop video files here, or <span class="link-text">browse</span></p>
+    </div>
+    <p class="bin-empty" id="binEmpty">No clips loaded yet. Add one or more MP4 files to get started.</p>
+    <ul class="clip-list" id="clipList"></ul>
+  </section>
+
+  <section class="panel monitor" aria-label="Preview and trim">
+    <div class="panel-head">
+      <h2>Monitor</h2>
+      <span class="monitor-source" id="monitorSourceName">No clip selected</span>
+    </div>
+
+    <div class="stage-wrap">
+      <video id="stage" class="stage-video" playsinline></video>
+      <p class="stage-empty" id="stageEmpty">Select a clip from the Media Bin to preview and cut it.</p>
+    </div>
+
+    <div class="transport">
+      <button type="button" class="primary-btn" id="playBtn" disabled>Play</button>
+      <span class="time-readout mono" id="currentTimeLabel">00:00.000</span>
+      <span class="time-sep">/</span>
+      <span class="time-readout mono" id="durationLabel">00:00.000</span>
+    </div>
+    <p class="hint">Preview audio plays normally until your first splice — after that, this tab captures sound directly, so preview stays visual only. Exported audio is unaffected.</p>
+
+    <div class="cut-editor">
+      <div class="cut-ruler" id="cutRuler">
+        <p class="cut-ruler-hint" id="cutRulerHint">Click to choose where to cut</p>
+        <div class="cut-playhead" id="cutPlayhead"></div>
+      </div>
+      <div class="cut-confirm" id="cutConfirm" hidden>
+        <span>Cut at <span class="mono" id="pendingTimeLabel">00:00.000</span> — click the ruler again to move it.</span>
+        <button type="button" class="mini-btn mini-btn--accent" id="confirmCutBtn">Confirm cut</button>
+        <button type="button" class="mini-btn" id="cancelCutBtn">Cancel</button>
+      </div>
+      <div class="piece-row" id="pieceRow"></div>
+      <p class="piece-row-hint">Click a piece to remove it from the clip — click again to bring it back.</p>
+      <div class="cut-readouts">
+        <span>Keeping <span class="mono" id="keepDurLabel">00:00.000</span> of <span class="mono" id="clipDurLabel">00:00.000</span></span>
+        <button type="button" class="mini-btn" id="resetCutsBtn">Undo all cuts</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel timeline" aria-label="Combine and export">
+    <div class="panel-head">
+      <h2>Combine</h2>
+      <span class="timeline-total">Keeping <span class="mono" id="totalDurLabel">00:00.000</span> across <span class="mono" id="clipCountLabel">0</span> clip(s)</span>
+    </div>
+    <p class="timeline-empty" id="timelineEmpty">Clips line up here in Media Bin order. Cut out what you don't want above, then combine below.</p>
+    <div class="export-row">
+      <button type="button" class="primary-btn primary-btn--accent" id="exportBtn" disabled>Combine kept clips</button>
+      <div class="export-progress" id="exportProgress" hidden>
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+        <span class="mono" id="progressLabel">0%</span>
+      </div>
+      <div class="export-result" id="exportResult" hidden>
+        <span id="resultInfo"></span>
+        <button type="button" class="primary-btn" id="saveBtn">Save file</button>
+        <button type="button" class="ghost-btn" id="previewResultBtn">Preview</button>
+      </div>
+    </div>
+    <canvas id="exportCanvas" hidden></canvas>
+    <video id="resultPreview" class="result-preview" controls hidden></video>
+  </section>
+</div>
+
+<script>
+  // ---------- constants & state ----------
+  const MIN_PIECE_DURATION = 0.15; // shortest piece a cut is allowed to create, in seconds
+
+  let sourceSeq = 0;
+  // id -> { id, file, url, name, duration, thumbnail, width, height, hue, pieces }
+  // pieces: [{ start, end, keep }] — always contiguous and covering [0, duration]
+  const sources = new Map();
+  let sourceOrder = []; // clip ids in Media Bin / combine order — this order IS the sequence
+  let activeSourceId = null;
+  let exporting = false;
+  let lastExport = null; // { blob, ext }
+  let pendingCutTime = null; // time chosen on the ruler but not yet confirmed as a cut
+
+  let audioCtx = null;
+  let audioDest = null;
+  let stageAudioNode = null;
+
+  // ---------- DOM refs ----------
+  const fileInput = document.getElementById('fileInput');
+  const dropzone = document.getElementById('dropzone');
+  const clipList = document.getElementById('clipList');
+  const binEmpty = document.getElementById('binEmpty');
+
+  const stageVideo = document.getElementById('stage');
+  const stageEmpty = document.getElementById('stageEmpty');
+  const monitorSourceName = document.getElementById('monitorSourceName');
+  const playBtn = document.getElementById('playBtn');
+  const currentTimeLabel = document.getElementById('currentTimeLabel');
+  const durationLabel = document.getElementById('durationLabel');
+
+  const cutRuler = document.getElementById('cutRuler');
+  const cutRulerHint = document.getElementById('cutRulerHint');
+  const cutPlayhead = document.getElementById('cutPlayhead');
+  const cutConfirm = document.getElementById('cutConfirm');
+  const pendingTimeLabel = document.getElementById('pendingTimeLabel');
+  const confirmCutBtn = document.getElementById('confirmCutBtn');
+  const cancelCutBtn = document.getElementById('cancelCutBtn');
+  const pieceRow = document.getElementById('pieceRow');
+  const keepDurLabel = document.getElementById('keepDurLabel');
+  const clipDurLabel = document.getElementById('clipDurLabel');
+  const resetCutsBtn = document.getElementById('resetCutsBtn');
+
+  const timelineEmpty = document.getElementById('timelineEmpty');
+  const totalDurLabel = document.getElementById('totalDurLabel');
+  const clipCountLabel = document.getElementById('clipCountLabel');
+  const exportBtn = document.getElementById('exportBtn');
+  const exportProgress = document.getElementById('exportProgress');
+  const progressFill = document.getElementById('progressFill');
+  const progressLabel = document.getElementById('progressLabel');
+  const exportResult = document.getElementById('exportResult');
+  const resultInfo = document.getElementById('resultInfo');
+  const saveBtn = document.getElementById('saveBtn');
+  const previewResultBtn = document.getElementById('previewResultBtn');
+  const exportCanvas = document.getElementById('exportCanvas');
+  const resultPreview = document.getElementById('resultPreview');
+
+  // ---------- helpers ----------
+  function formatTime(s) {
+    if (!isFinite(s) || s < 0) s = 0;
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    const ms = Math.round((s - Math.floor(s)) * 1000);
+    return String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0') + '.' + String(ms).padStart(3, '0');
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str == null ? '' : str;
+    return div.innerHTML;
+  }
+
+  function generateThumbnail(url) {
+    return new Promise((resolve) => {
+      const v = document.createElement('video');
+      v.preload = 'metadata';
+      v.muted = true;
+      v.playsInline = true;
+      v.src = url;
+      v.addEventListener('loadedmetadata', () => {
+        const seekTo = Math.min(1, (v.duration || 1) * 0.1);
+        try { v.currentTime = seekTo; } catch (e) { resolve({ dataUrl: null, duration: v.duration || 0, width: v.videoWidth, height: v.videoHeight }); }
+      });
+      v.addEventListener('seeked', () => {
+        let dataUrl = null;
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = 160;
+          canvas.height = Math.max(1, Math.round(160 * ((v.videoHeight || 9) / (v.videoWidth || 16))));
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+          dataUrl = canvas.toDataURL('image/jpeg', 0.72);
+        } catch (e) { /* thumbnail is a nice-to-have; fall back silently */ }
+        resolve({ dataUrl, duration: v.duration || 0, width: v.videoWidth, height: v.videoHeight });
+        v.remove();
+      }, { once: true });
+      v.addEventListener('error', () => resolve({ dataUrl: null, duration: 0, width: 0, height: 0 }));
+    });
+  }
+
+  function drawVideoFrame(ctx, video, canvas) {
+    const vw = video.videoWidth || 16;
+    const vh = video.videoHeight || 9;
+    const cw = canvas.width;
+    const ch = canvas.height;
+    const scale = Math.min(cw / vw, ch / vh);
+    const dw = vw * scale;
+    const dh = vh * scale;
+    const dx = (cw - dw) / 2;
+    const dy = (ch - dh) / 2;
+    ctx.fillStyle = '#0c0b0e';
+    ctx.fillRect(0, 0, cw, ch);
+    ctx.drawImage(video, dx, dy, dw, dh);
+  }
+
+  // ---------- media bin ----------
+  async function handleFiles(fileList) {
+    const files = Array.from(fileList || []).filter((f) => f.type.startsWith('video/'));
+    for (const f of files) {
+      await addSourceFile(f);
+    }
+  }
+
+  async function addSourceFile(file) {
+    const url = URL.createObjectURL(file);
+    const id = 'src_' + (sourceSeq++);
+    const meta = await generateThumbnail(url);
+    const hue = Math.round((sources.size * 137.508) % 360);
+    const duration = meta.duration || 0;
+    sources.set(id, {
+      id, file, url, name: file.name,
+      duration,
+      thumbnail: meta.dataUrl,
+      width: meta.width || 0,
+      height: meta.height || 0,
+      hue,
+      // Every clip starts as one whole kept piece — even one never opened in
+      // the Monitor still has valid pieces, so it's never silently dropped
+      // from the combined export.
+      pieces: [{ start: 0, end: duration, keep: true }],
+    });
+    sourceOrder.push(id);
+    renderBin();
+    renderExportSummary();
+    if (!activeSourceId) selectSource(id);
+  }
+
+  function removeSource(id) {
+    const src = sources.get(id);
+    if (!src) return;
+    sourceOrder = sourceOrder.filter((sid) => sid !== id);
+    sources.delete(id);
+    URL.revokeObjectURL(src.url);
+    if (activeSourceId === id) {
+      activeSourceId = null;
+      stageVideo.removeAttribute('src');
+      stageVideo.load();
+      stageEmpty.hidden = false;
+      monitorSourceName.textContent = 'No clip selected';
+      playBtn.disabled = true;
+      durationLabel.textContent = formatTime(0);
+      currentTimeLabel.textContent = formatTime(0);
+      renderPieces();
+    }
+    renderBin();
+    renderExportSummary();
+  }
+
+  function moveSource(id, dir) {
+    const idx = sourceOrder.indexOf(id);
+    const newIdx = idx + dir;
+    if (idx === -1 || newIdx < 0 || newIdx >= sourceOrder.length) return;
+    const tmp = sourceOrder[idx];
+    sourceOrder[idx] = sourceOrder[newIdx];
+    sourceOrder[newIdx] = tmp;
+    renderBin();
+  }
+
+  function selectSource(id) {
+    const src = sources.get(id);
+    if (!src || exporting) return;
+    activeSourceId = id;
+    stageEmpty.hidden = true;
+    monitorSourceName.textContent = src.name;
+    stageVideo.src = src.url;
+    stageVideo.load();
+    stageVideo.addEventListener('loadedmetadata', onStageLoaded, { once: true });
+    renderBin();
+    renderPieces();
+  }
+
+  function onStageLoaded() {
+    const src = sources.get(activeSourceId);
+    if (!src) return;
+    if (!src.duration || !isFinite(src.duration)) src.duration = stageVideo.duration || 0;
+    if (!src.width) { src.width = stageVideo.videoWidth; src.height = stageVideo.videoHeight; }
+    // If duration was unknown (or wrong) when this clip was added, its single
+    // starter piece may be stale — refresh it as long as no cut was made yet.
+    if (!src.pieces || !src.pieces.length) {
+      src.pieces = [{ start: 0, end: src.duration, keep: true }];
+    } else if (src.pieces.length === 1 && Math.abs(src.pieces[0].end - src.duration) > 0.05) {
+      src.pieces = [{ start: 0, end: src.duration, keep: src.pieces[0].keep }];
+    }
+    durationLabel.textContent = formatTime(stageVideo.duration);
+    playBtn.disabled = false;
+    renderPieces();
+    renderBin();
+    renderExportSummary();
+  }
+
+  function keptDurationOf(src) {
+    if (!src.pieces || !src.pieces.length) return src.duration || 0;
+    return src.pieces.reduce((sum, p) => sum + (p.keep ? Math.max(0, p.end - p.start) : 0), 0);
+  }
+
+  function grandTotalKept() {
+    let sum = 0;
+    sourceOrder.forEach((id) => {
+      const s = sources.get(id);
+      if (s) sum += keptDurationOf(s);
+    });
+    return sum;
+  }
+
+  function renderBin() {
+    clipList.innerHTML = '';
+    binEmpty.hidden = sources.size !== 0;
+    sourceOrder.forEach((id, i) => {
+      const src = sources.get(id);
+      if (!src) return;
+      const kept = keptDurationOf(src);
+      const metaText = src.pieces && src.pieces.length > 1
+        ? 'Keeping ' + formatTime(kept) + ' of ' + formatTime(src.duration)
+        : formatTime(src.duration);
+      const li = document.createElement('li');
+      li.className = 'clip-card' + (src.id === activeSourceId ? ' is-active' : '');
+      li.style.setProperty('--src-hue', src.hue);
+      li.innerHTML =
+        '<div class="clip-thumb">' + (src.thumbnail ? '<img src="' + src.thumbnail + '" alt="">' : '<div class="clip-thumb-fallback"></div>') + '</div>' +
+        '<div class="clip-info">' +
+          '<p class="clip-name" title="' + escapeHtml(src.name) + '">' + escapeHtml(src.name) + '</p>' +
+          '<p class="clip-meta mono">' + metaText + '</p>' +
+        '</div>' +
+        '<div class="clip-actions">' +
+          '<div class="clip-order">' +
+            '<button type="button" class="order-btn" data-action="up"' + (i === 0 ? ' disabled' : '') + ' title="Move earlier" aria-label="Move earlier">&#9650;</button>' +
+            '<button type="button" class="order-btn" data-action="down"' + (i === sourceOrder.length - 1 ? ' disabled' : '') + ' title="Move later" aria-label="Move later">&#9660;</button>' +
+          '</div>' +
+          '<button type="button" class="text-btn" data-action="edit">Cut</button>' +
+          '<button type="button" class="text-btn text-btn--danger" data-action="remove">Remove</button>' +
+        '</div>';
+      li.querySelector('[data-action="up"]').addEventListener('click', (e) => { e.stopPropagation(); moveSource(src.id, -1); });
+      li.querySelector('[data-action="down"]').addEventListener('click', (e) => { e.stopPropagation(); moveSource(src.id, 1); });
+      li.querySelector('[data-action="edit"]').addEventListener('click', (e) => { e.stopPropagation(); selectSource(src.id); });
+      li.querySelector('[data-action="remove"]').addEventListener('click', (e) => { e.stopPropagation(); removeSource(src.id); });
+      li.addEventListener('click', () => selectSource(src.id));
+      clipList.appendChild(li);
+    });
+  }
+
+  fileInput.addEventListener('change', (e) => { handleFiles(e.target.files); fileInput.value = ''; });
+  dropzone.addEventListener('click', () => fileInput.click());
+  ['dragenter', 'dragover'].forEach((evt) => dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.add('drag-over'); }));
+  ['dragleave'].forEach((evt) => dropzone.addEventListener(evt, () => dropzone.classList.remove('drag-over')));
+  dropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropzone.classList.remove('drag-over');
+    handleFiles(e.dataTransfer.files);
+  });
+
+  // ---------- cut & discard editor ----------
+  // Each source clip owns its own `pieces` list — click the ruler to slice a
+  // piece in two, click a piece to mark it kept or discarded.
+  function pctFromClientX(el, clientX) {
+    const rect = el.getBoundingClientRect();
+    const frac = (clientX - rect.left) / rect.width;
+    return Math.max(0, Math.min(1, frac));
+  }
+
+  function activeSource() { return activeSourceId ? sources.get(activeSourceId) : null; }
+
+  function cutPieceAt(time) {
+    const src = activeSource();
+    const duration = src ? src.duration : 0;
+    if (!src || !duration) return;
+    const idx = src.pieces.findIndex((p) => time > p.start + MIN_PIECE_DURATION && time < p.end - MIN_PIECE_DURATION);
+    if (idx === -1) return; // too close to an existing edge — ignore, rather than create a sliver
+    const piece = src.pieces[idx];
+    src.pieces.splice(idx, 1,
+      { start: piece.start, end: time, keep: piece.keep },
+      { start: time, end: piece.end, keep: piece.keep }
+    );
+    renderPieces();
+    renderBin();
+    renderExportSummary();
+    flashCut();
+  }
+
+  function flashCut() {
+    // Brief highlight so a new cut is unmistakable, not just a thin line.
+    pieceRow.classList.remove('just-cut');
+    void pieceRow.offsetWidth; // restart the CSS animation
+    pieceRow.classList.add('just-cut');
+  }
+
+  // ---------- two-stage cut: preview a spot, then confirm it ----------
+  // Clicking the ruler only proposes a cut location (pending). The clip
+  // actually splits only when the user presses "Confirm cut" — this makes
+  // the "see it, then commit" flow explicit instead of cutting instantly.
+  function setPendingCut(time) {
+    const src = activeSource();
+    if (!src || !src.duration) return;
+    pendingCutTime = time;
+    renderPendingCut();
+  }
+
+  function clearPendingCut() {
+    pendingCutTime = null;
+    renderPendingCut();
+  }
+
+  function renderPendingCut() {
+    const existing = cutRuler.querySelector('.cut-mark.is-pending');
+    if (existing) existing.remove();
+    const src = activeSource();
+    if (pendingCutTime == null || !src || !src.duration) {
+      cutConfirm.hidden = true;
+      return;
+    }
+    const mark = document.createElement('div');
+    mark.className = 'cut-mark is-pending';
+    mark.style.left = (pendingCutTime / src.duration * 100) + '%';
+    cutRuler.appendChild(mark);
+    pendingTimeLabel.textContent = formatTime(pendingCutTime);
+    cutConfirm.hidden = false;
+  }
+
+  function togglePieceKeep(idx) {
+    const src = activeSource();
+    if (!src || !src.pieces[idx]) return;
+    src.pieces[idx].keep = !src.pieces[idx].keep;
+    renderPieces();
+    renderBin();
+    renderExportSummary();
+  }
+
+  function renderPieces() {
+    const src = activeSource();
+    pieceRow.innerHTML = '';
+    document.querySelectorAll('.cut-mark').forEach((el) => el.remove());
+    if (!src || !src.pieces || !src.duration) {
+      keepDurLabel.textContent = formatTime(0);
+      clipDurLabel.textContent = formatTime(0);
+      cutRulerHint.textContent = 'Click to choose where to cut';
+      pendingCutTime = null;
+      cutConfirm.hidden = true;
+      return;
+    }
+    let keepTotal = 0;
+    src.pieces.forEach((piece, idx) => {
+      const dur = piece.end - piece.start;
+      if (piece.keep) keepTotal += dur;
+
+      // cut mark on the ruler for every internal boundary (skip the very start)
+      if (piece.start > 0) {
+        const mark = document.createElement('div');
+        mark.className = 'cut-mark';
+        mark.style.left = (piece.start / src.duration * 100) + '%';
+        cutRuler.appendChild(mark);
+      }
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'piece' + (piece.keep ? '' : ' is-discarded');
+      btn.style.flexGrow = String(Math.max(dur, 0.05));
+      btn.title = formatTime(piece.start) + ' – ' + formatTime(piece.end) + (piece.keep ? ' (click to remove this piece)' : ' (click to keep this piece)');
+      btn.setAttribute('aria-pressed', String(!piece.keep));
+      btn.innerHTML = piece.keep
+        ? '<span class="piece-label">' + formatTime(dur) + '</span>'
+        : '<span class="piece-label">&#10005; removed</span>';
+      btn.addEventListener('click', () => togglePieceKeep(idx));
+      pieceRow.appendChild(btn);
+    });
+    keepDurLabel.textContent = formatTime(keepTotal);
+    clipDurLabel.textContent = formatTime(src.duration);
+    cutRulerHint.textContent = src.pieces.length > 1
+      ? src.pieces.length + ' pieces — click to cut again'
+      : 'Click to choose where to cut';
+    renderPendingCut();
+  }
+
+  cutRuler.addEventListener('click', (e) => {
+    if (exporting) return;
+    const src = activeSource();
+    if (!src || !src.duration) return;
+    const time = pctFromClientX(cutRuler, e.clientX) * src.duration;
+    stageVideo.currentTime = time; // seek so the Monitor shows exactly where the cut would land
+    setPendingCut(time);
+  });
+
+  confirmCutBtn.addEventListener('click', () => {
+    if (pendingCutTime == null) return;
+    const time = pendingCutTime;
+    clearPendingCut();
+    cutPieceAt(time);
+  });
+
+  cancelCutBtn.addEventListener('click', () => {
+    clearPendingCut();
+  });
+
+  resetCutsBtn.addEventListener('click', () => {
+    const src = activeSource();
+    if (!src || !src.duration || exporting) return;
+    src.pieces = [{ start: 0, end: src.duration, keep: true }];
+    clearPendingCut();
+    renderPieces();
+    renderBin();
+    renderExportSummary();
+  });
+
+  playBtn.addEventListener('click', () => {
+    if (stageVideo.paused) stageVideo.play(); else stageVideo.pause();
+  });
+  stageVideo.addEventListener('play', () => { playBtn.textContent = 'Pause'; });
+  stageVideo.addEventListener('pause', () => { playBtn.textContent = 'Play'; });
+  stageVideo.addEventListener('timeupdate', () => {
+    currentTimeLabel.textContent = formatTime(stageVideo.currentTime);
+    const duration = stageVideo.duration || 0;
+    if (duration > 0) cutPlayhead.style.left = (stageVideo.currentTime / duration * 100) + '%';
+  });
+
+  // ---------- combine summary ----------
+  // There is no separate "sequence" to manage — the Media Bin order IS the
+  // combine order, and each clip's kept pieces (from the cut editor above)
+  // are what gets exported. This just reflects that state as one summary line.
+  function renderExportSummary() {
+    const total = grandTotalKept();
+    const clipsWithKeep = sourceOrder.filter((id) => {
+      const s = sources.get(id);
+      return s && keptDurationOf(s) >= 0.05;
+    }).length;
+    totalDurLabel.textContent = formatTime(total);
+    clipCountLabel.textContent = String(clipsWithKeep);
+    timelineEmpty.hidden = sources.size > 0;
+    exportBtn.disabled = exporting || total < 0.05;
+  }
+
+  // ---------- export (splice) ----------
+  function ensureAudioGraph() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (!audioDest) audioDest = audioCtx.createMediaStreamDestination();
+    if (!stageAudioNode) {
+      stageAudioNode = audioCtx.createMediaElementSource(stageVideo);
+      stageAudioNode.connect(audioDest);
+      // Not connected to audioCtx.destination on purpose: from here on, the
+      // stage element's audio is only reachable through this captured graph.
+    }
+  }
+
+  function pickPreferredMimeType() {
+    if (typeof MediaRecorder === 'undefined') return null;
+    const candidates = [
+      'video/mp4;codecs="avc1.42E01E,mp4a.40.2"',
+      'video/mp4',
+      'video/webm;codecs=vp9,opus',
+      'video/webm;codecs=vp8,opus',
+      'video/webm',
+    ];
+    for (const c of candidates) {
+      if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(c)) return c;
+    }
+    return '';
+  }
+
+  function loadVideoSrc(video, url) {
+    return new Promise((resolve, reject) => {
+      if (video.currentSrc === url || video.src === url) { resolve(); return; }
+      const onLoaded = () => { cleanup(); resolve(); };
+      const onErr = () => { cleanup(); reject(new Error('Could not load a source clip during splicing.')); };
+      function cleanup() {
+        video.removeEventListener('loadedmetadata', onLoaded);
+        video.removeEventListener('error', onErr);
+      }
+      video.addEventListener('loadedmetadata', onLoaded, { once: true });
+      video.addEventListener('error', onErr, { once: true });
+      video.src = url;
+      video.load();
+    });
+  }
+
+  function seekVideo(video, time) {
+    return new Promise((resolve) => {
+      let done = false;
+      const finish = () => { if (done) return; done = true; video.removeEventListener('seeked', finish); resolve(); };
+      video.addEventListener('seeked', finish, { once: true });
+      video.currentTime = time;
+      setTimeout(finish, 350); // fallback in case 'seeked' does not fire
+    });
+  }
+
+  async function playSegmentIntoCanvas(seg, ctx, canvas) {
+    const src = sources.get(seg.sourceId);
+    if (!src) return;
+    await loadVideoSrc(stageVideo, src.url);
+    await seekVideo(stageVideo, seg.start);
+    await stageVideo.play();
+    await new Promise((resolve, reject) => {
+      let rafId;
+      const onError = () => { cancelAnimationFrame(rafId); reject(new Error('Playback error while splicing.')); };
+      stageVideo.addEventListener('error', onError, { once: true });
+      const step = () => {
+        drawVideoFrame(ctx, stageVideo, canvas);
+        if (stageVideo.currentTime >= seg.end - 0.015 || stageVideo.ended) {
+          stageVideo.pause();
+          stageVideo.removeEventListener('error', onError);
+          cancelAnimationFrame(rafId);
+          resolve();
+          return;
+        }
+        rafId = requestAnimationFrame(step);
+      };
+      rafId = requestAnimationFrame(step);
+    });
+  }
+
+  function updateExportProgress(i, total, name) {
+    exportProgress.hidden = false;
+    const pct = Math.round((i / total) * 100);
+    progressFill.style.width = pct + '%';
+    progressLabel.textContent = 'Splicing ' + (i + 1) + ' / ' + total + (name ? ' — ' + name : '');
+  }
+
+  // Build the flat list of pieces to export, in Media Bin order — this is
+  // the only place "the sequence" is materialized; it's derived, not stored.
+  function buildExportSegments() {
+    const segments = [];
+    sourceOrder.forEach((id) => {
+      const src = sources.get(id);
+      if (!src || !src.pieces) return;
+      src.pieces.forEach((p) => {
+        if (p.keep && p.end - p.start >= 0.05) segments.push({ sourceId: id, start: p.start, end: p.end });
+      });
+    });
+    return segments;
+  }
+
+  function setExportingUI(active) {
+    document.body.classList.toggle('is-exporting', active);
+    exportBtn.disabled = active || grandTotalKept() < 0.05;
+    fileInput.disabled = active;
+  }
+
+  async function exportTimeline() {
+    const segments = buildExportSegments();
+    if (segments.length === 0 || exporting) return;
+    if (typeof MediaRecorder === 'undefined' || !exportCanvas.captureStream) {
+      alert('This browser does not support in-tab video recording, so combining is unavailable here.');
+      return;
+    }
+    exporting = true;
+    setExportingUI(true);
+    exportResult.hidden = true;
+    try {
+      ensureAudioGraph();
+      if (audioCtx.state === 'suspended') await audioCtx.resume();
+
+      let maxW = 0, maxH = 0;
+      segments.forEach((seg) => {
+        const s = sources.get(seg.sourceId);
+        if (s) { maxW = Math.max(maxW, s.width || 0); maxH = Math.max(maxH, s.height || 0); }
+      });
+      if (!maxW || !maxH) { maxW = 1280; maxH = 720; }
+      const cap = Math.min(1, 1920 / maxW, 1080 / maxH);
+      exportCanvas.width = Math.max(2, Math.round(maxW * cap));
+      exportCanvas.height = Math.max(2, Math.round(maxH * cap));
+      const ctx = exportCanvas.getContext('2d');
+
+      const canvasStream = exportCanvas.captureStream(30);
+      const combined = new MediaStream([
+        ...canvasStream.getVideoTracks(),
+        ...audioDest.stream.getAudioTracks(),
+      ]);
+
+      const preferred = pickPreferredMimeType();
+      if (preferred === null) throw new Error('Recording is not supported in this browser.');
+      const options = preferred ? { mimeType: preferred, videoBitsPerSecond: 8000000 } : {};
+      const recorder = new MediaRecorder(combined, options);
+      const chunks = [];
+      recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunks.push(e.data); };
+      const stopped = new Promise((resolve) => { recorder.onstop = resolve; });
+
+      recorder.start(250);
+
+      for (let i = 0; i < segments.length; i++) {
+        const seg = segments[i];
+        const src = sources.get(seg.sourceId);
+        updateExportProgress(i, segments.length, src ? src.name : '');
+        await playSegmentIntoCanvas(seg, ctx, exportCanvas);
+      }
+
+      progressFill.style.width = '100%';
+      progressLabel.textContent = 'Finishing up…';
+      recorder.stop();
+      await stopped;
+
+      const actualMime = recorder.mimeType || preferred || 'video/webm';
+      const blob = new Blob(chunks, { type: actualMime.split(';')[0] });
+      finishExport(blob, actualMime, segments.length);
+    } catch (err) {
+      console.error(err);
+      alert('Combining failed: ' + (err && err.message ? err.message : err));
+    } finally {
+      exporting = false;
+      setExportingUI(false);
+      exportProgress.hidden = true;
+    }
+  }
+
+  function finishExport(blob, mimeType, pieceCount) {
+    const ext = mimeType.indexOf('video/mp4') === 0 ? 'mp4' : 'webm';
+    lastExport = { blob, ext };
+    exportResult.hidden = false;
+    const sizeMb = (blob.size / (1024 * 1024)).toFixed(1);
+    resultInfo.textContent = pieceCount + ' piece' + (pieceCount > 1 ? 's' : '') + ' combined · ' + sizeMb + ' MB · .' + ext;
+    resultPreview.src = URL.createObjectURL(blob);
+    resultPreview.hidden = true;
+  }
+
+  exportBtn.addEventListener('click', exportTimeline);
+
+  previewResultBtn.addEventListener('click', () => {
+    resultPreview.hidden = !resultPreview.hidden;
+    if (resultPreview.hidden) resultPreview.pause(); else resultPreview.play();
+  });
+
+  async function getDownloads() {
+    if (!window.claude || typeof window.claude.use !== 'function') return null;
+    try { return await window.claude.use('downloads'); } catch (e) { return null; }
+  }
+
+  // True "Save As": lets the person pick the exact folder and filename via the
+  // browser's own file picker, and writes the bytes directly — no dependence
+  // on any host download surface, so nothing can silently fail to land on disk.
+  // Only available in Chromium-family browsers, and only when this page is not
+  // sandboxed inside a cross-origin iframe (e.g. opened as its own tab).
+  async function saveWithFilePicker(blob, filename) {
+    if (typeof window.showSaveFilePicker !== 'function') return 'unsupported';
+    const dotIdx = filename.lastIndexOf('.');
+    const ext = dotIdx >= 0 ? filename.slice(dotIdx) : '';
+    const mime = (blob.type || 'application/octet-stream').split(';')[0];
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: filename,
+        types: ext ? [{ description: 'Video file', accept: { [mime]: [ext] } }] : undefined,
+      });
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      return 'saved';
+    } catch (err) {
+      if (err && err.name === 'AbortError') return 'cancelled'; // person closed the dialog without choosing a spot
+      console.warn('showSaveFilePicker failed, falling back:', err);
+      return 'unsupported';
+    }
+  }
+
+  saveBtn.addEventListener('click', async () => {
+    if (!lastExport) return;
+    saveBtn.disabled = true;
+    try {
+      const filename = 'cutting-room-combined.' + lastExport.ext;
+
+      // 1) Prefer a real native "Save As" dialog — the person chooses the folder.
+      const pickerResult = await saveWithFilePicker(lastExport.blob, filename);
+      if (pickerResult === 'saved' || pickerResult === 'cancelled') return;
+
+      // 2) Fall back to the platform's own downloads capability when the file
+      // picker isn't available in this view (e.g. embedded in the chat panel).
+      const downloads = await getDownloads();
+      if (!downloads) {
+        alert('This view can\'t open a Save As dialog or use the built-in save. Try opening this page in its own browser tab and saving from there.');
+        return;
+      }
+      await downloads.save({ filename, data: lastExport.blob });
+    } catch (err) {
+      if (err && err.code !== 'declined') {
+        alert('Could not save the file: ' + (err && (err.message || err.code) ? (err.message || err.code) : err));
+      }
+    } finally {
+      saveBtn.disabled = false;
+    }
+  });
+
+  // ---------- initial render ----------
+  renderBin();
+  renderExportSummary();
+  renderPieces();
+</script>
