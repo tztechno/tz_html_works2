@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FX Data Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg:      #050a0f;
+    --bg2:     #080f18;
+    --bg3:     #0c1620;
+    --border:  #0d2a3d;
+    --text:    #8ab4cc;
+    --text-hi: #c8e8f8;
+    --accent:  #00d4ff;
+    --green:   #00ff9d;
+    --yellow:  #ffe066;
+    --red:     #ff4d6d;
+    --mono:    'Share Tech Mono', monospace;
+    --head:    'Rajdhani', sans-serif;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--mono); overflow-x: hidden; }
+  header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    background: var(--bg2);
+    flex-wrap: wrap;
+  }
+  header h1 { font-family: var(--head); font-weight: 700; font-size: 20px; color: var(--text-hi); letter-spacing: 1px; margin: 0; }
+  header .sub { font-size: 12px; color: var(--text); opacity: 0.7; flex: 1 1 auto; }
+  #lang-toggle {
+    margin-left: auto;
+    background: var(--bg3);
+    color: var(--text-hi);
+    border: 1px solid var(--border);
+    padding: 6px 14px;
+    border-radius: 4px;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    min-height: 32px;
+  }
+  #lang-toggle:hover { border-color: var(--accent); color: var(--accent); }
+  .panel {
+    padding: 16px 20px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: flex-end;
+  }
+  .field { display: flex; flex-direction: column; gap: 4px; flex: 1 1 160px; }
+  .field label { font-size: 11px; color: var(--text); opacity: 0.8; }
+  select, button, input[type=checkbox] { font-family: var(--mono); }
+  select {
+    background: var(--bg3);
+    color: var(--text-hi);
+    border: 1px solid var(--border);
+    padding: 10px 10px;
+    border-radius: 4px;
+    font-size: 13px;
+    min-width: 200px;
+    width: 100%;
+    /* 44px+ tap target height for comfortable touch use */
+    min-height: 44px;
+  }
+  button.primary {
+    background: var(--accent);
+    color: #002733;
+    border: none;
+    padding: 11px 18px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    min-height: 44px;
+    width: 100%;
+  }
+  button.primary:hover { filter: brightness(1.1); }
+  button.primary:disabled { opacity: 0.5; cursor: default; }
+  .checkbox-field { display: flex; align-items: center; gap: 8px; font-size: 12px; flex: 1 1 100%; }
+  .checkbox-field input[type=checkbox] { width: 20px; height: 20px; flex-shrink: 0; }
+  #error-banner, #info-banner {
+    display: none;
+    margin: 14px 20px 0 20px;
+    padding: 10px 14px;
+    border-radius: 4px;
+    font-size: 12.5px;
+    overflow-wrap: anywhere;
+  }
+  #error-banner { background: rgba(255, 77, 109, 0.12); border: 1px solid var(--red); color: var(--red); }
+  #info-banner { background: rgba(0, 212, 255, 0.08); border: 1px solid var(--accent); color: var(--accent); }
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; padding: 14px 20px; }
+  .stat { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; min-width: 0; }
+  .stat .k { font-size: 10px; opacity: 0.6; text-transform: uppercase; letter-spacing: 1px; }
+  .stat .v { font-size: 18px; color: var(--text-hi); font-weight: 600; margin-top: 2px; overflow-wrap: anywhere; }
+  .stat .v.up { color: var(--green); }
+  .stat .v.down { color: var(--red); }
+  .chart-wrap { margin: 0 20px 20px 20px; background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; padding: 14px; height: 440px; }
+  .actions-row { display: flex; gap: 10px; margin: 0 20px 20px 20px; align-items: center; flex-wrap: wrap; }
+  a.download-btn {
+    background: var(--bg3);
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    padding: 11px 16px;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+  a.download-btn.disabled { opacity: 0.4; pointer-events: none; }
+  .csv-name { font-size: 11px; opacity: 0.6; overflow-wrap: anywhere; }
+  .table-wrap { margin: 0 20px 30px 20px; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--border); border-radius: 6px; }
+  table.preview { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.preview th, table.preview td { border-bottom: 1px solid var(--border); padding: 8px 12px; text-align: right; white-space: nowrap; }
+  table.preview th { color: var(--text-hi); font-weight: 600; }
+  table.preview td:first-child, table.preview th:first-child { text-align: left; }
+  footer { text-align: center; font-size: 11px; opacity: 0.5; padding: 20px; }
+
+  /* ------------------------- Mobile breakpoint ------------------------- */
+  @media (max-width: 640px) {
+    header { padding: 12px 14px; gap: 8px; }
+    header h1 { font-size: 17px; }
+    header .sub { font-size: 10.5px; flex: 1 1 100%; order: 3; }
+    #lang-toggle { margin-left: 0; order: 2; }
+    .panel { padding: 12px 14px; gap: 10px; }
+    .field { flex: 1 1 100%; }
+    select { min-width: 0; font-size: 14px; }
+    button.primary { font-size: 14px; }
+    #error-banner, #info-banner { margin: 12px 14px 0 14px; padding: 10px 12px; font-size: 12px; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 12px 14px; }
+    .stat { padding: 8px 10px; }
+    .stat .v { font-size: 16px; }
+    .chart-wrap { margin: 0 14px 16px 14px; padding: 8px; height: 300px; }
+    .actions-row { margin: 0 14px 16px 14px; }
+    a.download-btn { width: 100%; justify-content: center; }
+    .csv-name { width: 100%; }
+    .table-wrap { margin: 0 14px 24px 14px; }
+    table.preview { font-size: 11px; }
+    table.preview th, table.preview td { padding: 7px 10px; }
+    footer { padding: 14px; font-size: 10px; }
+  }
+
+  @media (max-width: 380px) {
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .stat .v { font-size: 14.5px; }
+    .chart-wrap { height: 260px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>FX DATA DASHBOARD</h1>
+  <span class="sub" id="txt-subtitle"></span>
+  <button id="lang-toggle" type="button">EN</button>
+</header>
+
+<div class="panel">
+  <div class="field">
+    <label for="ticker" id="txt-label-ticker"></label>
+    <select id="ticker"></select>
+  </div>
+  <div class="field">
+    <label for="period" id="txt-label-period"></label>
+    <select id="period"></select>
+  </div>
+  <div class="field">
+    <button class="primary" id="fetch-btn"></button>
+  </div>
+  <div class="checkbox-field">
+    <input type="checkbox" id="ma-toggle" checked>
+    <label for="ma-toggle" id="txt-label-ma"></label>
+  </div>
+</div>
+
+<div id="error-banner"></div>
+<div id="info-banner"></div>
+
+<div class="stats-row">
+  <div class="stat"><div class="k" id="txt-stat-close-label"></div><div class="v" id="stat-close">--</div></div>
+  <div class="stat"><div class="k" id="txt-stat-change-label"></div><div class="v" id="stat-change">--</div></div>
+  <div class="stat"><div class="k" id="txt-stat-changepct-label"></div><div class="v" id="stat-change-pct">--</div></div>
+  <div class="stat"><div class="k" id="txt-stat-count-label"></div><div class="v" id="stat-count">--</div></div>
+  <div class="stat"><div class="k" id="txt-stat-date-label"></div><div class="v" id="stat-date">--</div></div>
+</div>
+
+<div class="chart-wrap">
+  <canvas id="chart"></canvas>
+</div>
+
+<div class="actions-row">
+  <a id="download-link" class="download-btn disabled" href="#"></a>
+  <span class="csv-name" id="csv-name"></span>
+</div>
+
+<div class="table-wrap">
+  <table class="preview" id="preview-table">
+    <thead><tr><th>Date</th><th>Rate</th></tr></thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<footer id="txt-footer"></footer>
+
+<script>
+// ---------------------------------------------------------------------------
+// Data source: Frankfurter API (https://frankfurter.dev), which republishes
+// the European Central Bank's daily reference rates. It is free, requires no
+// API key, and allows cross-origin browser requests (CORS), which is exactly
+// what a server-less HTML page needs. Trade-offs vs the Python/yfinance
+// version: rates are DAILY only (no intraday), one rate per business day
+// (ECB does not publish on weekends/EU holidays), and TWD is not covered
+// (Taiwan is not an ECB reference currency).
+// ---------------------------------------------------------------------------
+
+// NOTE: api.frankfurter.app now 302-redirects to api.frankfurter.dev/v1/.
+// A cross-origin redirect during a fetch() in "cors" mode needs proper CORS
+// headers on the redirect hop itself, not just the final response - when
+// that's missing the browser fails the whole request with a bare "Failed to
+// fetch" and no further detail. Pointing straight at the new host/path
+// avoids the redirect entirely.
+const API_BASE = "https://api.frankfurter.dev/v1";
+
+// --- UI text, in both languages. Everything the page displays lives here so
+// the language toggle only needs to re-render, never re-fetch. ---
+const STR = {
+  ja: {
+    subtitle: "ブラウザ単体で完結する為替データ取得・CSV出力・グラフ表示ツール（サーバー不要）",
+    labelTicker: "通貨ペア",
+    labelPeriod: "期間",
+    labelMa: "移動平均線 (MA5 / MA20) を表示",
+    fetchBtn: "最新データを取得",
+    fetchBtnBusy: "取得中...",
+    downloadBtn: "CSVをダウンロード",
+    statClose: "最新レート",
+    statChange: "前回比",
+    statChangePct: "変化率",
+    statCount: "データ件数",
+    statDate: "最終更新日",
+    footer: "FX Data Dashboard — Frankfurter API (ECB日次公表レート) + Chart.js — サーバー不要、ブラウザだけで動作",
+    infoSource: "データ元: Frankfurter API (ECB日次公表レート) — yfinance/Yahoo Financeとは値がわずかに異なります。営業日のみのデータです。",
+    errFetchFailed: "データ取得に失敗しました。",
+    errTwdUnsupported: " (TWDはこの無料データソースでは提供されていません。Python版のご利用をおすすめします。)",
+    errNoData: "指定した期間・通貨ペアのデータが見つかりませんでした。",
+    errNetwork: "通信エラー: ",
+    errTriedUrl: "試したURL: ",
+    errOpenDirect: "↳ このURLを新しいタブで直接開いて確認する",
+    errDiagnosis: "新しいタブでも開けない場合はネットワーク（オフライン/社内プロキシ/ファイアウォール）側の問題、新しいタブでは開けるのにここでエラーになる場合はブラウザ拡張機能（広告/トラッキングブロッカー等）がこのページのfetch通信をブロックしている可能性があります。",
+    numLocale: "ja-JP",
+    langToggle: "EN",
+  },
+  en: {
+    subtitle: "A server-less FX data tool: fetch rates, export CSV, and chart them right in the browser.",
+    labelTicker: "Currency Pair",
+    labelPeriod: "Period",
+    labelMa: "Show Moving Averages (MA5 / MA20)",
+    fetchBtn: "Fetch Latest Data",
+    fetchBtnBusy: "Fetching...",
+    downloadBtn: "Download CSV",
+    statClose: "Latest Rate",
+    statChange: "Change",
+    statChangePct: "Change %",
+    statCount: "Data Points",
+    statDate: "Last Updated",
+    footer: "FX Data Dashboard — Frankfurter API (ECB daily reference rates) + Chart.js — no server required, runs entirely in your browser",
+    infoSource: "Data source: Frankfurter API (ECB daily reference rates) — values differ slightly from yfinance/Yahoo Finance. Business days only.",
+    errFetchFailed: "Failed to fetch data.",
+    errTwdUnsupported: " (TWD is not available from this free data source. Consider using the Python version instead.)",
+    errNoData: "No data found for the selected currency pair and period.",
+    errNetwork: "Network error: ",
+    errTriedUrl: "URL attempted: ",
+    errOpenDirect: "↳ Open this URL directly in a new tab to check",
+    errDiagnosis: "If it still won't load in a new tab, this is likely a network-level block (offline, corporate proxy, firewall). If it loads fine in a new tab but fails here, a browser extension (ad blocker, tracker blocker, etc.) is probably blocking this page's fetch requests.",
+    numLocale: "en-US",
+    langToggle: "日本語",
+  },
+};
+
+let lang = "ja";
+
+// Same JPY-cross list as the notebook/Python version. "quote" is always JPY;
+// "base" is the other currency. JPY=X itself means USD/JPY.
+const TICKERS = [
+  { code: "JPY=X",    base: "USD", ja: "USD/JPY (米ドル/円)",        en: "USD/JPY" },
+  { code: "EURJPY=X", base: "EUR", ja: "EUR/JPY (ユーロ/円)",        en: "EUR/JPY" },
+  { code: "GBPJPY=X", base: "GBP", ja: "GBP/JPY (英ポンド/円)",      en: "GBP/JPY" },
+  { code: "AUDJPY=X", base: "AUD", ja: "AUD/JPY (豪ドル/円)",        en: "AUD/JPY" },
+  { code: "CADJPY=X", base: "CAD", ja: "CAD/JPY (カナダドル/円)",    en: "CAD/JPY" },
+  { code: "CHFJPY=X", base: "CHF", ja: "CHF/JPY (スイスフラン/円)",  en: "CHF/JPY" },
+  { code: "NZDJPY=X", base: "NZD", ja: "NZD/JPY (NZドル/円)",        en: "NZD/JPY" },
+  { code: "ZARJPY=X", base: "ZAR", ja: "ZAR/JPY (南アランド/円)",    en: "ZAR/JPY" },
+  { code: "TRYJPY=X", base: "TRY", ja: "TRY/JPY (トルコリラ/円)",    en: "TRY/JPY" },
+  { code: "SGDJPY=X", base: "SGD", ja: "SGD/JPY (シンガポールドル/円)", en: "SGD/JPY" },
+  { code: "HKDJPY=X", base: "HKD", ja: "HKD/JPY (香港ドル/円)",      en: "HKD/JPY" },
+  { code: "KRWJPY=X", base: "KRW", ja: "KRW/JPY (韓国ウォン/円)",    en: "KRW/JPY" },
+  { code: "CNYJPY=X", base: "CNY", ja: "CNY/JPY (人民元/円)",        en: "CNY/JPY" },
+  { code: "TWDJPY=X", base: "TWD", ja: "TWD/JPY (台湾ドル/円) ※このAPIは非対応", en: "TWD/JPY (unsupported by this API)" },
+  { code: "THBJPY=X", base: "THB", ja: "THB/JPY (タイバーツ/円)",    en: "THB/JPY" },
+  { code: "IDRJPY=X", base: "IDR", ja: "IDR/JPY (インドネシアルピア/円)", en: "IDR/JPY" },
+  { code: "PHPJPY=X", base: "PHP", ja: "PHP/JPY (フィリピンペソ/円)", en: "PHP/JPY" },
+  { code: "INRJPY=X", base: "INR", ja: "INR/JPY (インドルピー/円)",  en: "INR/JPY" },
+];
+
+// period -> number of calendar days to look back (used to compute the start
+// date); "ytd" and "max" are handled specially below.
+const PERIODS = [
+  { code: "5d",  ja: "5日",   en: "5 days",     days: 5 },
+  { code: "1mo", ja: "1ヶ月", en: "1 month",    days: 30 },
+  { code: "3mo", ja: "3ヶ月", en: "3 months",   days: 90 },
+  { code: "6mo", ja: "6ヶ月", en: "6 months",   days: 182 },
+  { code: "1y",  ja: "1年",   en: "1 year",     days: 365 },
+  { code: "2y",  ja: "2年",   en: "2 years",    days: 730 },
+  { code: "5y",  ja: "5年",   en: "5 years",    days: 1825 },
+  { code: "10y", ja: "10年",  en: "10 years",   days: 3650 },
+  { code: "ytd", ja: "年初来", en: "Year to date", days: null },
+  { code: "max", ja: "最大（データソースの提供範囲すべて）", en: "Max (full range available)", days: null },
+];
+
+// --- Populate dropdowns ---
+const tickerSel = document.getElementById("ticker");
+const periodSel = document.getElementById("period");
+
+function populateDropdowns() {
+  const prevTicker = tickerSel.value;
+  const prevPeriod = periodSel.value;
+
+  tickerSel.innerHTML = "";
+  TICKERS.forEach(t => {
+    const opt = document.createElement("option");
+    opt.value = t.code;
+    opt.textContent = `${t.code} - ${t[lang]}`;
+    tickerSel.appendChild(opt);
+  });
+
+  periodSel.innerHTML = "";
+  PERIODS.forEach(p => {
+    const opt = document.createElement("option");
+    opt.value = p.code;
+    opt.textContent = `${p.code} (${p[lang]})`;
+    periodSel.appendChild(opt);
+  });
+
+  // Preserve the user's selection across a language switch; default period
+  // to 1y only on first load (when nothing was selected yet).
+  tickerSel.value = prevTicker || TICKERS[0].code;
+  periodSel.value = prevPeriod || "1y";
+}
+
+function isoDate(d) {
+  return d.toISOString().slice(0, 10);
+}
+
+function dateRangeFor(periodCode) {
+  const end = new Date();
+  let start;
+  if (periodCode === "ytd") {
+    start = new Date(end.getFullYear(), 0, 1);
+  } else if (periodCode === "max") {
+    start = new Date("1999-01-04"); // earliest ECB daily reference rate
+  } else {
+    const period = PERIODS.find(p => p.code === periodCode);
+    start = new Date(end.getTime() - period.days * 24 * 60 * 60 * 1000);
+  }
+  return { start: isoDate(start), end: isoDate(end) };
+}
+
+// --- Chart setup ---
+Chart.defaults.color = "#2d566e";
+Chart.defaults.borderColor = "#0a1e2c";
+
+// Smaller screens get fewer axis ticks / a tighter legend so labels don't
+// overlap on a phone-width canvas. Chart.js also auto-skips ticks that don't
+// fit, but capping the target count up front keeps mobile layouts tidy.
+const isNarrowScreen = window.innerWidth < 480;
+const isMobileScreen = window.innerWidth < 640;
+
+const ctx = document.getElementById("chart").getContext("2d");
+const chart = new Chart(ctx, {
+  type: "line",
+  data: {
+    labels: [],
+    datasets: [
+      { label: "Rate", data: [], borderColor: "#00d4ff", borderWidth: 1.6, pointRadius: 0, tension: 0.25, spanGaps: false },
+      { label: "MA5", data: [], borderColor: "#00ff9d", borderWidth: 1.4, pointRadius: 0, spanGaps: false },
+      { label: "MA20", data: [], borderColor: "#ffe066", borderWidth: 1.4, pointRadius: 0, spanGaps: false },
+    ],
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 250 },
+    layout: { padding: { right: isMobileScreen ? 2 : 8 } },
+    plugins: {
+      legend: {
+        labels: {
+          font: { family: "'Share Tech Mono'", size: isMobileScreen ? 10 : 11 },
+          boxWidth: isMobileScreen ? 10 : 14,
+          padding: isMobileScreen ? 8 : 10,
+        },
+      },
+      tooltip: { mode: "index", intersect: false },
+    },
+    interaction: { mode: "index", intersect: false },
+    scales: {
+      x: {
+        grid: { color: "#0a1e2c" },
+        ticks: {
+          font: { family: "'Share Tech Mono'", size: isMobileScreen ? 8 : 9 },
+          maxTicksLimit: isNarrowScreen ? 4 : (isMobileScreen ? 6 : 10),
+          maxRotation: 0,
+        },
+      },
+      y: {
+        position: "right",
+        grid: { color: "#0a1e2c" },
+        ticks: {
+          font: { family: "'Share Tech Mono'", size: isMobileScreen ? 9 : 10 },
+          maxTicksLimit: isMobileScreen ? 5 : 8,
+        },
+      },
+    },
+  },
+});
+
+function movingAverage(values, window) {
+  const out = new Array(values.length).fill(null);
+  for (let i = 0; i < values.length; i++) {
+    if (i < window - 1) continue;
+    let sum = 0, valid = true;
+    for (let j = i - window + 1; j <= i; j++) {
+      if (values[j] === null || values[j] === undefined) { valid = false; break; }
+      sum += values[j];
+    }
+    out[i] = valid ? sum / window : null;
+  }
+  return out;
+}
+
+function fmt(n, digits = 4) {
+  if (n === null || n === undefined || isNaN(n)) return "--";
+  return Number(n).toLocaleString(STR[lang].numLocale, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+}
+
+// --- CSV generation (fully client-side, no server involved) ---
+function buildCsv(rows) {
+  const lines = ["Date,Rate"];
+  rows.forEach(r => lines.push(`${r.date},${r.rate}`));
+  return lines.join("\n");
+}
+
+function triggerCsvDownload(csvText, filename) {
+  const blob = new Blob(["﻿" + csvText], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.getElementById("download-link");
+  link.href = url;
+  link.download = filename;
+  link.classList.remove("disabled");
+  document.getElementById("csv-name").textContent = filename;
+}
+
+function renderPreviewTable(rows) {
+  const tbody = document.querySelector("#preview-table tbody");
+  tbody.innerHTML = "";
+  rows.slice(-15).reverse().forEach(r => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${r.date}</td><td>${fmt(r.rate)}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// --- Static text rendering (re-run on load and on every language switch) ---
+function applyStaticText() {
+  const t = STR[lang];
+  document.documentElement.lang = lang;
+  document.getElementById("txt-subtitle").textContent = t.subtitle;
+  document.getElementById("txt-label-ticker").textContent = t.labelTicker;
+  document.getElementById("txt-label-period").textContent = t.labelPeriod;
+  document.getElementById("txt-label-ma").textContent = t.labelMa;
+  document.getElementById("txt-stat-close-label").textContent = t.statClose;
+  document.getElementById("txt-stat-change-label").textContent = t.statChange;
+  document.getElementById("txt-stat-changepct-label").textContent = t.statChangePct;
+  document.getElementById("txt-stat-count-label").textContent = t.statCount;
+  document.getElementById("txt-stat-date-label").textContent = t.statDate;
+  document.getElementById("download-link").textContent = t.downloadBtn;
+  document.getElementById("txt-footer").textContent = t.footer;
+  document.getElementById("lang-toggle").textContent = t.langToggle;
+  if (!fetchBtn.disabled) fetchBtn.textContent = t.fetchBtn;
+}
+
+document.getElementById("lang-toggle").addEventListener("click", () => {
+  lang = lang === "ja" ? "en" : "ja";
+  populateDropdowns();
+  applyStaticText();
+});
+
+// --- Fetch + render ---
+const fetchBtn = document.getElementById("fetch-btn");
+const errorBanner = document.getElementById("error-banner");
+const infoBanner = document.getElementById("info-banner");
+
+function showError(msg) { errorBanner.style.display = "block"; errorBanner.innerHTML = "⚠ " + msg; }
+function hideError() { errorBanner.style.display = "none"; errorBanner.innerHTML = ""; }
+function showInfo(msg) { infoBanner.style.display = "block"; infoBanner.innerHTML = "ℹ " + msg; }
+function hideInfo() { infoBanner.style.display = "none"; infoBanner.innerHTML = ""; }
+
+async function fetchData() {
+  const t = STR[lang];
+  hideError();
+  hideInfo();
+  fetchBtn.disabled = true;
+  fetchBtn.textContent = t.fetchBtnBusy;
+  document.getElementById("download-link").classList.add("disabled");
+
+  const tickerInfo = TICKERS.find(t => t.code === tickerSel.value);
+  const periodCode = periodSel.value;
+  const { start, end } = dateRangeFor(periodCode);
+  const url = `${API_BASE}/${start}..${end}?from=${tickerInfo.base}&to=JPY`;
+
+  try {
+    const res = await fetch(url);
+    const d = await res.json();
+
+    if (!res.ok || d.error || !d.rates) {
+      showError(
+        (d.error || t.errFetchFailed) +
+        (tickerInfo.base === "TWD" ? t.errTwdUnsupported : "")
+      );
+      fetchBtn.disabled = false;
+      fetchBtn.textContent = t.fetchBtn;
+      return;
+    }
+
+    // d.rates: { "2026-08-01": { "JPY": 150.2 }, ... } -> sorted [{date, rate}]
+    const rows = Object.keys(d.rates)
+      .sort()
+      .map(date => ({ date, rate: d.rates[date].JPY }))
+      .filter(r => typeof r.rate === "number");
+
+    if (rows.length === 0) {
+      showError(t.errNoData);
+      fetchBtn.disabled = false;
+      fetchBtn.textContent = t.fetchBtn;
+      return;
+    }
+
+    const labels = rows.map(r => r.date);
+    const values = rows.map(r => r.rate);
+    const maToggle = document.getElementById("ma-toggle").checked;
+    const ma5 = maToggle ? movingAverage(values, 5) : [];
+    const ma20 = maToggle ? movingAverage(values, 20) : [];
+
+    chart.data.labels = labels;
+    chart.data.datasets[0].data = values;
+    chart.data.datasets[1].data = ma5;
+    chart.data.datasets[2].data = ma20;
+    chart.update();
+
+    renderPreviewTable(rows);
+
+    const lastRate = values[values.length - 1];
+    const prevRate = values.length > 1 ? values[values.length - 2] : null;
+    const change = prevRate !== null ? lastRate - prevRate : null;
+    const changePct = change !== null && prevRate ? (change / prevRate) * 100 : null;
+
+    document.getElementById("stat-close").textContent = fmt(lastRate);
+    const changeEl = document.getElementById("stat-change");
+    const changePctEl = document.getElementById("stat-change-pct");
+    changeEl.textContent = change === null ? "--" : (change >= 0 ? "+" : "") + fmt(change);
+    changePctEl.textContent = changePct === null ? "--" : (changePct >= 0 ? "+" : "") + fmt(changePct, 2) + "%";
+    [changeEl, changePctEl].forEach(el => {
+      el.classList.remove("up", "down");
+      if (change !== null) el.classList.add(change >= 0 ? "up" : "down");
+    });
+    document.getElementById("stat-count").textContent = rows.length;
+    document.getElementById("stat-date").textContent = labels[labels.length - 1];
+
+    const safeTicker = tickerInfo.code.replace("=", "").replace(".", "_");
+    const timestamp = new Date().toISOString().replace(/[:T]/g, "-").slice(0, 19);
+    const filename = `${safeTicker}_${periodCode}_${timestamp}.csv`;
+    triggerCsvDownload(buildCsv(rows), filename);
+
+    showInfo(t.infoSource);
+  } catch (e) {
+    // "Failed to fetch" is a generic browser error covering several distinct
+    // causes (offline, DNS failure, CORS rejection, blocked by an extension
+    // or corporate proxy) that JS cannot distinguish on its own. Surface the
+    // exact URL plus a plain link so the user can test reachability directly
+    // in a new tab, which bypasses fetch()/CORS entirely and narrows down
+    // whether this is a network-level block or something fetch-specific.
+    showError(
+      t.errNetwork + e.message +
+      "<br>" + t.errTriedUrl + "<code>" + url + "</code>" +
+      "<br><a href=\"" + url + "\" target=\"_blank\" rel=\"noopener\" style=\"color:inherit;text-decoration:underline;\">" + t.errOpenDirect + "</a>" +
+      "<br>" + t.errDiagnosis
+    );
+  } finally {
+    fetchBtn.disabled = false;
+    fetchBtn.textContent = t.fetchBtn;
+  }
+}
+
+fetchBtn.addEventListener("click", fetchData);
+
+// --- Initial render ---
+populateDropdowns();
+periodSel.value = "1y";
+applyStaticText();
+fetchData();
+</script>
+</body>
+</html>
