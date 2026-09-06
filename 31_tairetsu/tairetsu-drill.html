@@ -1,0 +1,854 @@
+<title>隊列ドリル</title>
+<style>
+  /* ---------- Design tokens ---------- */
+  :root {
+    --paper: #f4f6fb;
+    --grid-line: #c7d3ea;
+    --grid-line-strong: #a9bbe0;
+    --ink: #16213e;
+    --ink-soft: #4a5578;
+    --ink-faint: #8791b3;
+    --accent: #c23b4b;
+    --accent-soft: rgba(194, 59, 75, 0.32);
+    --surface: #ffffff;
+    --surface-border: #dbe2f0;
+    --focus: #2f6fed;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #0f1420;
+      --grid-line: #232f4d;
+      --grid-line-strong: #34426c;
+      --ink: #e7ecf7;
+      --ink-soft: #a3adcf;
+      --ink-faint: #6d7699;
+      --accent: #ff7a8a;
+      --accent-soft: rgba(255, 122, 138, 0.35);
+      --surface: #161c2c;
+      --surface-border: #29334f;
+      --focus: #7fa4ff;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0f1420;
+    --grid-line: #232f4d;
+    --grid-line-strong: #34426c;
+    --ink: #e7ecf7;
+    --ink-soft: #a3adcf;
+    --ink-faint: #6d7699;
+    --accent: #ff7a8a;
+    --accent-soft: rgba(255, 122, 138, 0.35);
+    --surface: #161c2c;
+    --surface-border: #29334f;
+    --focus: #7fa4ff;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Noto Sans JP", "Hiragino Sans", sans-serif;
+    padding: 28px clamp(16px, 4vw, 40px) 48px;
+  }
+
+  h1, h2 {
+    font-family: "Shippori Mincho", "Hiragino Mincho ProN", serif;
+    font-weight: 700;
+    text-wrap: balance;
+    margin: 0;
+  }
+
+  .page {
+    max-width: 1180px;
+    margin: 0 auto;
+  }
+
+  header.top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 10px 18px;
+    margin-bottom: 6px;
+  }
+  header.top h1 { font-size: clamp(24px, 3vw, 32px); letter-spacing: 0.02em; }
+  header.top .en { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 12px; color: var(--ink-faint); letter-spacing: 0.06em; text-transform: uppercase; }
+
+  p.lede {
+    max-width: 62ch;
+    color: var(--ink-soft);
+    line-height: 1.75;
+    font-size: 14.5px;
+    margin: 4px 0 24px;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.65fr) minmax(260px, 1fr);
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+
+  .stage {
+    background: var(--surface);
+    border: 1px solid var(--surface-border);
+    border-radius: 14px;
+    padding: 14px;
+  }
+
+  .field-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 5 / 3.05;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  canvas#field { width: 100%; height: 100%; display: block; }
+
+  .stage-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--surface-border);
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+  .stage-footer .formation-name {
+    font-family: "Shippori Mincho", serif;
+    font-size: 15px;
+    color: var(--ink);
+  }
+  .stage-footer .metric { font-variant-numeric: tabular-nums; }
+  .stage-footer .metric b { color: var(--ink); font-weight: 700; }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--surface-border);
+    border-radius: 14px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .panel h2 {
+    font-size: 13px;
+    color: var(--ink-soft);
+    letter-spacing: 0.08em;
+    font-family: "Noto Sans JP", sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .formation-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  button.formation-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    border: 1px solid var(--surface-border);
+    border-radius: 9px;
+    padding: 8px 9px;
+    color: var(--ink);
+    font-family: "Noto Sans JP", sans-serif;
+    font-size: 12.5px;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 120ms ease, background 120ms ease;
+  }
+  button.formation-btn:hover { border-color: var(--grid-line-strong); background: var(--paper); }
+  button.formation-btn.active {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    color: var(--ink);
+  }
+  button.formation-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+  button.formation-btn svg { flex: none; color: var(--ink-soft); }
+  button.formation-btn.active svg { color: var(--accent); }
+
+  .field-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .field-row label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+  }
+  .field-row label .val {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+  input[type="range"] {
+    width: 100%;
+    accent-color: var(--accent);
+  }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+  }
+  .switch {
+    position: relative;
+    width: 34px;
+    height: 19px;
+    flex: none;
+  }
+  .switch input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+  .switch .track {
+    position: absolute; inset: 0;
+    background: var(--grid-line);
+    border-radius: 999px;
+    transition: background 120ms ease;
+  }
+  .switch .thumb {
+    position: absolute; top: 2px; left: 2px;
+    width: 15px; height: 15px;
+    background: var(--surface);
+    border-radius: 50%;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+    transition: transform 120ms ease;
+  }
+  .switch input:checked + .track { background: var(--accent); }
+  .switch input:checked + .track + .thumb { transform: translateX(15px); }
+  .switch input:focus-visible + .track { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+  button.action {
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    border-radius: 9px;
+    padding: 9px 12px;
+    font-family: "Noto Sans JP", sans-serif;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  button.action:hover { opacity: 0.88; }
+  button.action:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  button.action.secondary {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--surface-border);
+    font-weight: 500;
+  }
+
+  section.how {
+    margin-top: 26px;
+    border-top: 1px solid var(--surface-border);
+    padding-top: 20px;
+  }
+  section.how h2 {
+    font-family: "Shippori Mincho", serif;
+    font-size: 17px;
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+  section.how .cols {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+  }
+  @media (max-width: 760px) {
+    section.how .cols { grid-template-columns: 1fr; }
+  }
+  section.how .cols div {
+    font-size: 13.5px;
+    line-height: 1.75;
+    color: var(--ink-soft);
+  }
+  section.how .cols div b {
+    display: block;
+    color: var(--ink);
+    font-weight: 700;
+    margin-bottom: 4px;
+    font-size: 13.5px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@700&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap">
+
+<div class="page">
+  <header class="top">
+    <h1>隊列ドリル</h1>
+    <span class="en">Formation Drill Simulator</span>
+  </header>
+  <p class="lede">
+    日大芸術学部「集団行動」のような、多数の演者が隊列を組んで移動・変形する演出を再現するデモです。
+    各演者に目標地点を割り当て、移動距離の合計が最小になるように対応づけてから、
+    イージングを掛けて一斉に移動させています。下のボタンで隊形を選ぶと、現在の並びから新しい隊形へなめらかに遷移します。
+  </p>
+
+  <div class="layout">
+    <div class="stage">
+      <div class="field-wrap">
+        <canvas id="field" aria-label="隊列シミュレーション表示エリア" role="img"></canvas>
+      </div>
+      <div class="stage-footer">
+        <div>
+          隊形: <span class="formation-name" id="formationLabel">円陣</span>
+        </div>
+        <div class="metric">人数 <b id="countReadout">90</b> ・ 1マス = 5m</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div>
+        <h2>隊形を選ぶ</h2>
+        <div class="formation-grid" id="formationGrid"></div>
+      </div>
+
+      <div class="field-row">
+        <label>人数<span class="val" id="countVal">90</span></label>
+        <input type="range" id="countSlider" min="12" max="260" step="1" value="90">
+      </div>
+
+      <div class="field-row">
+        <label>移動時間<span class="val" id="durVal">1.2s</span></label>
+        <input type="range" id="durSlider" min="400" max="3200" step="100" value="1200">
+      </div>
+
+      <div class="toggle-row">
+        <span>移動軌跡を表示</span>
+        <span class="switch">
+          <input type="checkbox" id="trailToggle" checked>
+          <span class="track"></span>
+          <span class="thumb"></span>
+        </span>
+      </div>
+
+      <div class="toggle-row">
+        <span>番号を表示</span>
+        <span class="switch">
+          <input type="checkbox" id="numberToggle">
+          <span class="track"></span>
+          <span class="thumb"></span>
+        </span>
+      </div>
+
+      <div class="toggle-row">
+        <span>自動で隊形を巡回</span>
+        <span class="switch">
+          <input type="checkbox" id="autoToggle">
+          <span class="track"></span>
+          <span class="thumb"></span>
+        </span>
+      </div>
+
+      <button class="action secondary" id="scatterBtn" type="button">散開（集合前の状態）</button>
+    </div>
+  </div>
+
+  <section class="how">
+    <h2>仕組み（技術的な実現方法）</h2>
+    <div class="cols">
+      <div>
+        <b>1. 隊形は座標の集合として定義</b>
+        円・方陣・V字・菱形・螺旋・星・波などの隊形を、演者数ぶんの (x, y) 座標リストとして数式で生成します。
+      </div>
+      <div>
+        <b>2. 最短移動になるよう対応づけ</b>
+        現在地と目標地点の全組み合わせの距離を計算し、近い組から貪欲法で1対1に割り当てることで、
+        隊列が大きく交差しない自然な移動経路になります。
+      </div>
+      <div>
+        <b>3. イージングで一斉に補間</b>
+        requestAnimationFrame で経過時間を進め、easeInOutCubic を掛けて各点を開始位置から
+        目標位置へ滑らかに補間するだけで、数百人規模でも軽快に動きます。
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- Field geometry (logical units, independent of screen pixels) ----------
+  var FIELD_W = 1000;
+  var FIELD_H = 610;
+  var MARGIN = 46;
+
+  var canvas = document.getElementById("field");
+  var ctx = canvas.getContext("2d");
+
+  // ---------- Simulation state ----------
+  var N = 90;
+  var MIN_N = 12, MAX_N = 260;
+  var durationMs = 1200;
+  var showTrails = true;
+  var showNumbers = false;
+  var autoCycle = false;
+  var autoTimer = null;
+  var autoIndex = 0;
+
+  var currentPositions = [];   // interpolated positions drawn this frame
+  var transition = null;       // { from:[], to:[], start, duration }
+  var lastMoveArrows = [];     // [{from:{x,y}, to:{x,y}}] kept until replaced by next transition
+  var currentFormationKey = "circle";
+
+  var FORMATIONS = [
+    { key: "circle",  label: "円陣",   icon: iconCircle },
+    { key: "grid",    label: "方陣",   icon: iconGrid },
+    { key: "line",    label: "一列",   icon: iconLine },
+    { key: "v",       label: "V字",    icon: iconV },
+    { key: "diamond", label: "菱形",   icon: iconDiamond },
+    { key: "spiral",  label: "螺旋",   icon: iconSpiral },
+    { key: "star",    label: "星形",   icon: iconStar },
+    { key: "wave",    label: "波列",   icon: iconWave }
+  ];
+
+  // ---------- Formation generators (return N points in field coordinates) ----------
+  function fCircle(n) {
+    var cx = FIELD_W / 2, cy = FIELD_H / 2, r = Math.min(FIELD_W, FIELD_H) / 2 - MARGIN;
+    var pts = [];
+    for (var i = 0; i < n; i++) {
+      var a = (i / n) * Math.PI * 2 - Math.PI / 2;
+      pts.push({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) });
+    }
+    return pts;
+  }
+
+  function fGrid(n) {
+    var aspect = FIELD_W / FIELD_H;
+    var cols = Math.max(1, Math.round(Math.sqrt(n * aspect)));
+    var rows = Math.ceil(n / cols);
+    var usableW = FIELD_W - MARGIN * 2;
+    var usableH = FIELD_H - MARGIN * 2;
+    var gapX = cols > 1 ? usableW / (cols - 1) : 0;
+    var gapY = rows > 1 ? usableH / (rows - 1) : 0;
+    var pts = [];
+    for (var i = 0; i < n; i++) {
+      var col = i % cols, row = Math.floor(i / cols);
+      var rowCount = Math.min(cols, n - row * cols);
+      var rowOffset = cols > 1 ? ((cols - rowCount) * gapX) / 2 : 0;
+      pts.push({
+        x: MARGIN + rowOffset + col * gapX,
+        y: rows > 1 ? MARGIN + row * gapY : FIELD_H / 2
+      });
+    }
+    return pts;
+  }
+
+  function fLine(n) {
+    var usableW = FIELD_W - MARGIN * 2;
+    var gap = n > 1 ? usableW / (n - 1) : 0;
+    var pts = [];
+    for (var i = 0; i < n; i++) {
+      pts.push({ x: MARGIN + i * gap, y: FIELD_H / 2 });
+    }
+    return pts;
+  }
+
+  function fV(n) {
+    var apex = { x: FIELD_W / 2, y: MARGIN + 10 };
+    var leftEnd = { x: MARGIN, y: FIELD_H - MARGIN };
+    var rightEnd = { x: FIELD_W - MARGIN, y: FIELD_H - MARGIN };
+    var nLeft = Math.ceil(n / 2), nRight = n - nLeft;
+    var pts = [];
+    for (var i = 0; i < nLeft; i++) {
+      var t = nLeft > 1 ? i / (nLeft - 1) : 0;
+      pts.push(lerpPt(apex, leftEnd, t));
+    }
+    for (var j = 0; j < nRight; j++) {
+      var t2 = nRight > 1 ? (j + 1) / nRight : 1;
+      pts.push(lerpPt(apex, rightEnd, t2));
+    }
+    return pts;
+  }
+
+  function fPolygonOutline(n, vertices) {
+    // Distribute n points at equal arc-length steps around a closed polygon.
+    var edges = [];
+    var total = 0;
+    for (var i = 0; i < vertices.length; i++) {
+      var a = vertices[i], b = vertices[(i + 1) % vertices.length];
+      var len = Math.hypot(b.x - a.x, b.y - a.y);
+      edges.push({ a: a, b: b, len: len });
+      total += len;
+    }
+    var pts = [];
+    for (var k = 0; k < n; k++) {
+      var target = (k / n) * total;
+      var acc = 0;
+      for (var e = 0; e < edges.length; e++) {
+        var edge = edges[e];
+        if (target <= acc + edge.len || e === edges.length - 1) {
+          var t = edge.len > 0 ? (target - acc) / edge.len : 0;
+          pts.push(lerpPt(edge.a, edge.b, Math.min(1, Math.max(0, t))));
+          break;
+        }
+        acc += edge.len;
+      }
+    }
+    return pts;
+  }
+
+  function fDiamond(n) {
+    var cx = FIELD_W / 2, cy = FIELD_H / 2;
+    var rx = FIELD_W / 2 - MARGIN, ry = FIELD_H / 2 - MARGIN;
+    var vertices = [
+      { x: cx, y: cy - ry },
+      { x: cx + rx, y: cy },
+      { x: cx, y: cy + ry },
+      { x: cx - rx, y: cy }
+    ];
+    return fPolygonOutline(n, vertices);
+  }
+
+  function fStar(n) {
+    var cx = FIELD_W / 2, cy = FIELD_H / 2;
+    var rOuter = Math.min(FIELD_W, FIELD_H) / 2 - MARGIN;
+    var rInner = rOuter * 0.42;
+    var points = 5;
+    var vertices = [];
+    for (var i = 0; i < points * 2; i++) {
+      var r = i % 2 === 0 ? rOuter : rInner;
+      var a = (i / (points * 2)) * Math.PI * 2 - Math.PI / 2;
+      vertices.push({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) });
+    }
+    return fPolygonOutline(n, vertices);
+  }
+
+  function fSpiral(n) {
+    var cx = FIELD_W / 2, cy = FIELD_H / 2;
+    var rMax = Math.min(FIELD_W, FIELD_H) / 2 - MARGIN;
+    var turns = 2.4;
+    var pts = [];
+    for (var i = 0; i < n; i++) {
+      var t = n > 1 ? i / (n - 1) : 0;
+      var theta = t * turns * Math.PI * 2;
+      var r = t * rMax;
+      pts.push({ x: cx + r * Math.cos(theta), y: cy + r * Math.sin(theta) });
+    }
+    return pts;
+  }
+
+  function fWave(n) {
+    var usableW = FIELD_W - MARGIN * 2;
+    var gap = n > 1 ? usableW / (n - 1) : 0;
+    var amp = FIELD_H / 2 - MARGIN - 30;
+    var pts = [];
+    for (var i = 0; i < n; i++) {
+      var x = MARGIN + i * gap;
+      var y = FIELD_H / 2 + amp * Math.sin((i / Math.max(1, n - 1)) * Math.PI * 3);
+      pts.push({ x: x, y: y });
+    }
+    return pts;
+  }
+
+  function fScatter(n) {
+    var pts = [];
+    for (var i = 0; i < n; i++) {
+      pts.push({
+        x: MARGIN + Math.random() * (FIELD_W - MARGIN * 2),
+        y: MARGIN + Math.random() * (FIELD_H - MARGIN * 2)
+      });
+    }
+    return pts;
+  }
+
+  var GENERATORS = {
+    circle: fCircle, grid: fGrid, line: fLine, v: fV,
+    diamond: fDiamond, spiral: fSpiral, star: fStar, wave: fWave, scatter: fScatter
+  };
+
+  function lerpPt(a, b, t) { return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }; }
+  function easeInOutCubic(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+
+  function randomBorderPoint() {
+    var side = Math.floor(Math.random() * 4);
+    var x, y;
+    if (side === 0) { x = MARGIN + Math.random() * (FIELD_W - MARGIN * 2); y = 4; }
+    else if (side === 1) { x = MARGIN + Math.random() * (FIELD_W - MARGIN * 2); y = FIELD_H - 4; }
+    else if (side === 2) { x = 4; y = MARGIN + Math.random() * (FIELD_H - MARGIN * 2); }
+    else { x = FIELD_W - 4; y = MARGIN + Math.random() * (FIELD_H - MARGIN * 2); }
+    return { x: x, y: y };
+  }
+
+  // Greedy nearest-neighbor assignment: minimizes crossing paths reasonably well
+  // by matching the globally closest pairs first (not a true optimum, but fast and visually clean).
+  function greedyAssign(from, to) {
+    var n = from.length;
+    var pairs = [];
+    for (var i = 0; i < n; i++) {
+      for (var j = 0; j < n; j++) {
+        var dx = from[i].x - to[j].x, dy = from[i].y - to[j].y;
+        pairs.push([i, j, dx * dx + dy * dy]);
+      }
+    }
+    pairs.sort(function (a, b) { return a[2] - b[2]; });
+    var usedFrom = new Array(n).fill(false);
+    var usedTo = new Array(n).fill(false);
+    var result = new Array(n);
+    var count = 0;
+    for (var k = 0; k < pairs.length && count < n; k++) {
+      var i2 = pairs[k][0], j2 = pairs[k][1];
+      if (usedFrom[i2] || usedTo[j2]) continue;
+      usedFrom[i2] = true; usedTo[j2] = true;
+      result[i2] = to[j2];
+      count++;
+    }
+    return result;
+  }
+
+  function startTransition(formationKey, newN) {
+    var from = (currentPositions.length ? currentPositions.slice() : fScatter(newN));
+
+    if (newN > from.length) {
+      var extra = newN - from.length;
+      for (var i = 0; i < extra; i++) from.push(randomBorderPoint());
+    } else if (newN < from.length) {
+      from = from.slice(0, newN);
+    }
+
+    var to = GENERATORS[formationKey](newN);
+    var matched = greedyAssign(from, to);
+
+    lastMoveArrows = from.map(function (p, i) { return { from: p, to: matched[i] }; });
+    transition = { from: from, to: matched, start: performance.now(), duration: durationMs };
+    currentFormationKey = formationKey;
+    N = newN;
+
+    document.getElementById("formationLabel").textContent =
+      FORMATIONS.find(function (f) { return f.key === formationKey; }) ?
+      FORMATIONS.find(function (f) { return f.key === formationKey; }).label : "散開";
+    document.getElementById("countReadout").textContent = String(N);
+  }
+
+  // ---------- Rendering ----------
+  function resizeCanvas() {
+    var dpr = window.devicePixelRatio || 1;
+    var rect = canvas.getBoundingClientRect();
+    canvas.width = Math.round(rect.width * dpr);
+    canvas.height = Math.round(rect.height * dpr);
+  }
+
+  function fieldToPixel(scale) {
+    return function (p) { return { x: p.x * scale, y: p.y * scale }; };
+  }
+
+  function draw() {
+    var styles = getComputedStyle(document.documentElement);
+    var paper = styles.getPropertyValue("--paper").trim();
+    var gridLine = styles.getPropertyValue("--grid-line").trim();
+    var gridLineStrong = styles.getPropertyValue("--grid-line-strong").trim();
+    var ink = styles.getPropertyValue("--ink").trim();
+    var inkFaint = styles.getPropertyValue("--ink-faint").trim();
+    var accent = styles.getPropertyValue("--accent").trim();
+
+    var scale = canvas.width / FIELD_W;
+    var toPx = fieldToPixel(scale);
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = paper;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Graph-paper style grid, echoing the squared paper used for real formation diagrams
+    var minor = 25, major = 100;
+    ctx.lineWidth = Math.max(1, scale * 0.6);
+    ctx.strokeStyle = gridLine;
+    ctx.beginPath();
+    for (var gx = 0; gx <= FIELD_W; gx += minor) {
+      var px = toPx({ x: gx, y: 0 }).x;
+      ctx.moveTo(px, 0); ctx.lineTo(px, canvas.height);
+    }
+    for (var gy = 0; gy <= FIELD_H; gy += minor) {
+      var py = toPx({ x: 0, y: gy }).y;
+      ctx.moveTo(0, py); ctx.lineTo(canvas.width, py);
+    }
+    ctx.stroke();
+
+    ctx.strokeStyle = gridLineStrong;
+    ctx.lineWidth = Math.max(1, scale * 1.1);
+    ctx.beginPath();
+    for (var gx2 = 0; gx2 <= FIELD_W; gx2 += major) {
+      var px2 = toPx({ x: gx2, y: 0 }).x;
+      ctx.moveTo(px2, 0); ctx.lineTo(px2, canvas.height);
+    }
+    for (var gy2 = 0; gy2 <= FIELD_H; gy2 += major) {
+      var py2 = toPx({ x: 0, y: gy2 }).y;
+      ctx.moveTo(0, py2); ctx.lineTo(canvas.width, py2);
+    }
+    ctx.stroke();
+
+    // Movement trails from the previous transition
+    if (showTrails && lastMoveArrows.length) {
+      ctx.strokeStyle = accent;
+      ctx.globalAlpha = 0.4;
+      ctx.lineWidth = Math.max(1, scale * 0.8);
+      ctx.beginPath();
+      for (var a = 0; a < lastMoveArrows.length; a++) {
+        var seg = lastMoveArrows[a];
+        var p0 = toPx(seg.from), p1 = toPx(seg.to);
+        ctx.moveTo(p0.x, p0.y);
+        ctx.lineTo(p1.x, p1.y);
+      }
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    // Performers
+    var radius = Math.max(2.4, scale * 6.2 * (90 / Math.max(40, N)));
+    radius = Math.min(radius, scale * 9);
+    ctx.fillStyle = ink;
+    var showNums = showNumbers && N <= 140;
+    for (var i = 0; i < currentPositions.length; i++) {
+      var pt = toPx(currentPositions[i]);
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, radius, 0, Math.PI * 2);
+      ctx.fill();
+      if (showNums) {
+        ctx.fillStyle = inkFaint;
+        ctx.font = (radius * 1.7) + "px 'JetBrains Mono', monospace";
+        ctx.textAlign = "center";
+        ctx.fillText(String(i + 1), pt.x, pt.y - radius - 3);
+        ctx.fillStyle = ink;
+      }
+    }
+  }
+
+  function tick(now) {
+    if (transition) {
+      var t = Math.min(1, (now - transition.start) / transition.duration);
+      var e = easeInOutCubic(t);
+      currentPositions = transition.from.map(function (p, i) {
+        return lerpPt(p, transition.to[i], e);
+      });
+      if (t >= 1) {
+        currentPositions = transition.to.slice();
+        transition = null;
+      }
+    }
+    draw();
+    requestAnimationFrame(tick);
+  }
+
+  // ---------- Icons (small, simple shapes only) ----------
+  function svgWrap(inner) {
+    return '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">' + inner + '</svg>';
+  }
+  function iconCircle() { return svgWrap('<circle cx="9" cy="9" r="6.5" stroke="currentColor" stroke-width="1.4"/>'); }
+  function iconGrid() {
+    var d = "";
+    for (var r = 0; r < 3; r++) for (var c = 0; c < 3; c++) {
+      d += '<circle cx="' + (4 + c * 5) + '" cy="' + (4 + r * 5) + '" r="1.1" fill="currentColor"/>';
+    }
+    return svgWrap(d);
+  }
+  function iconLine() {
+    var d = "";
+    for (var i = 0; i < 5; i++) d += '<circle cx="' + (2 + i * 3.6) + '" cy="9" r="1.1" fill="currentColor"/>';
+    return svgWrap(d);
+  }
+  function iconV() { return svgWrap('<path d="M3 3 L9 14 L15 3" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'); }
+  function iconDiamond() { return svgWrap('<path d="M9 2.5 L15.5 9 L9 15.5 L2.5 9 Z" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linejoin="round"/>'); }
+  function iconSpiral() { return svgWrap('<path d="M9 9 m0 -5.4 a5.4 5.4 0 1 1 -4.4 2.3 a3.2 3.2 0 1 0 2.6 1.4" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/>'); }
+  function iconStar() { return svgWrap('<path d="M9 2 L10.8 7 L16 7.3 L11.9 10.6 L13.3 15.7 L9 12.7 L4.7 15.7 L6.1 10.6 L2 7.3 L7.2 7 Z" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linejoin="round"/>'); }
+  function iconWave() { return svgWrap('<path d="M2 9 Q5 3 9 9 T16 9" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round"/>'); }
+
+  // ---------- UI wiring ----------
+  function buildFormationButtons() {
+    var grid = document.getElementById("formationGrid");
+    FORMATIONS.forEach(function (f) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "formation-btn" + (f.key === currentFormationKey ? " active" : "");
+      btn.dataset.key = f.key;
+      btn.innerHTML = f.icon() + "<span>" + f.label + "</span>";
+      btn.addEventListener("click", function () {
+        startTransition(f.key, N);
+        Array.prototype.forEach.call(grid.children, function (c) { c.classList.remove("active"); });
+        btn.classList.add("active");
+      });
+      grid.appendChild(btn);
+    });
+  }
+
+  function setupControls() {
+    var countSlider = document.getElementById("countSlider");
+    var countVal = document.getElementById("countVal");
+    countSlider.addEventListener("input", function () {
+      countVal.textContent = countSlider.value;
+    });
+    countSlider.addEventListener("change", function () {
+      startTransition(currentFormationKey, parseInt(countSlider.value, 10));
+    });
+
+    var durSlider = document.getElementById("durSlider");
+    var durVal = document.getElementById("durVal");
+    durSlider.addEventListener("input", function () {
+      durationMs = parseInt(durSlider.value, 10);
+      durVal.textContent = (durationMs / 1000).toFixed(1) + "s";
+    });
+
+    document.getElementById("trailToggle").addEventListener("change", function (e) {
+      showTrails = e.target.checked;
+    });
+    document.getElementById("numberToggle").addEventListener("change", function (e) {
+      showNumbers = e.target.checked;
+    });
+
+    document.getElementById("autoToggle").addEventListener("change", function (e) {
+      autoCycle = e.target.checked;
+      if (autoCycle) {
+        autoTimer = setInterval(function () {
+          autoIndex = (autoIndex + 1) % FORMATIONS.length;
+          var key = FORMATIONS[autoIndex].key;
+          startTransition(key, N);
+          var grid = document.getElementById("formationGrid");
+          Array.prototype.forEach.call(grid.children, function (c) {
+            c.classList.toggle("active", c.dataset.key === key);
+          });
+        }, Math.max(1800, durationMs + 900));
+      } else if (autoTimer) {
+        clearInterval(autoTimer);
+        autoTimer = null;
+      }
+    });
+
+    document.getElementById("scatterBtn").addEventListener("click", function () {
+      startTransition("scatter", N);
+      var grid = document.getElementById("formationGrid");
+      Array.prototype.forEach.call(grid.children, function (c) { c.classList.remove("active"); });
+      document.getElementById("formationLabel").textContent = "散開";
+    });
+  }
+
+  window.addEventListener("resize", resizeCanvas);
+
+  buildFormationButtons();
+  setupControls();
+  resizeCanvas();
+  currentPositions = fCircle(N);
+  document.getElementById("formationLabel").textContent = "円陣";
+  document.getElementById("countReadout").textContent = String(N);
+  requestAnimationFrame(function (t0) {
+    resizeCanvas();
+    requestAnimationFrame(tick);
+  });
+})();
+</script>
