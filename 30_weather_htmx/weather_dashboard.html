@@ -3,25 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Japan Weather Dashboard - HTMX & wttr.in</title>
-  <!-- Load HTMX via CDN -->
-  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-  <script>
-    // Remove custom HTMX headers to avoid CORS preflight rejections
-    document.addEventListener("htmx:configRequest", (event) => {
-      delete event.detail.headers["HX-Request"];
-      delete event.detail.headers["HX-Trigger"];
-      delete event.detail.headers["HX-Target"];
-      delete event.detail.headers["HX-Current-URL"];
-    });
-    // Show a readable error message instead of an infinite "Loading..." state
-    document.addEventListener("htmx:responseError", (event) => {
-      event.detail.target.innerHTML = "⚠️ 取得失敗（プロキシ/wttr.inが混雑中の可能性）。しばらくして再読込されます。";
-    });
-    document.addEventListener("htmx:sendError", (event) => {
-      event.detail.target.innerHTML = "⚠️ 通信エラー。ネットワーク接続を確認してください。";
-    });
-  </script>
+  <title>Japan Weather Dashboard - Open-Meteo</title>
   <style>
     :root {
       --bg-color: #0d1117;
@@ -77,13 +59,9 @@
       white-space: pre-wrap;
       word-break: break-word;
     }
-    .htmx-indicator {
-      display: none;
+    .weather-body.loading {
       color: #8b949e;
       font-size: 0.9rem;
-    }
-    .htmx-request .htmx-indicator {
-      display: inline-block;
     }
   </style>
 </head>
@@ -91,60 +69,112 @@
   <header>
     <h1>Japan Weather Monitor</h1>
     <div style="font-size: 0.85rem; color: #8b949e;">
-      Powered by wttr.in & htmx
+      Powered by Open-Meteo
     </div>
   </header>
   <div class="dashboard-grid">
-    <!-- Sapporo (Starts immediately) -->
+    <!-- Sapporo -->
     <div class="weather-card">
       <div class="card-header">札幌 (Sapporo)</div>
-      <div class="weather-body"
-           hx-get="https://api.allorigins.win/raw?url=https%3A%2F%2Fwttr.in%2FSapporo%3Fformat%3D%25c%2B%25t%2B(%E4%BD%93%E6%84%9F%2B%25f)%250A%E9%A2%A8%3A%2B%25w%250A%E6%B9%BF%E5%BA%A6%3A%2B%25h%250A%E9%99%8D%E6%B0%B4%E9%87%8F%3A%2B%25p%26lang%3Dja"
-           hx-trigger="load, every 600s"
-           hx-swap="innerHTML">
-        <span class="htmx-indicator">Loading weather...</span>
+      <div class="weather-body loading" id="weather-sapporo" data-lat="43.0618" data-lon="141.3545" data-delay="0">
+        Loading weather...
       </div>
     </div>
-    <!-- Tokyo (Delayed 300ms) -->
+    <!-- Tokyo -->
     <div class="weather-card">
       <div class="card-header">東京 (Tokyo)</div>
-      <div class="weather-body"
-           hx-get="https://api.allorigins.win/raw?url=https%3A%2F%2Fwttr.in%2FTokyo%3Fformat%3D%25c%2B%25t%2B(%E4%BD%93%E6%84%9F%2B%25f)%250A%E9%A2%A8%3A%2B%25w%250A%E6%B9%BF%E5%BA%A6%3A%2B%25h%250A%E9%99%8D%E6%B0%B4%E9%87%8F%3A%2B%25p%26lang%3Dja"
-           hx-trigger="load delay:300ms, every 600s"
-           hx-swap="innerHTML">
-        <span class="htmx-indicator">Loading weather...</span>
+      <div class="weather-body loading" id="weather-tokyo" data-lat="35.6895" data-lon="139.6917" data-delay="300">
+        Loading weather...
       </div>
     </div>
-    <!-- Osaka (Delayed 600ms) -->
+    <!-- Osaka -->
     <div class="weather-card">
       <div class="card-header">大阪 (Osaka)</div>
-      <div class="weather-body"
-           hx-get="https://api.allorigins.win/raw?url=https%3A%2F%2Fwttr.in%2FOsaka%3Fformat%3D%25c%2B%25t%2B(%E4%BD%93%E6%84%9F%2B%25f)%250A%E9%A2%A8%3A%2B%25w%250A%E6%B9%BF%E5%BA%A6%3A%2B%25h%250A%E9%99%8D%E6%B0%B4%E9%87%8F%3A%2B%25p%26lang%3Dja"
-           hx-trigger="load delay:600ms, every 600s"
-           hx-swap="innerHTML">
-        <span class="htmx-indicator">Loading weather...</span>
+      <div class="weather-body loading" id="weather-osaka" data-lat="34.6937" data-lon="135.5023" data-delay="600">
+        Loading weather...
       </div>
     </div>
-    <!-- Fukuoka (Delayed 900ms) -->
+    <!-- Fukuoka -->
     <div class="weather-card">
       <div class="card-header">福岡 (Fukuoka)</div>
-      <div class="weather-body"
-           hx-get="https://api.allorigins.win/raw?url=https%3A%2F%2Fwttr.in%2FFukuoka%3Fformat%3D%25c%2B%25t%2B(%E4%BD%93%E6%84%9F%2B%25f)%250A%E9%A2%A8%3A%2B%25w%250A%E6%B9%BF%E5%BA%A6%3A%2B%25h%250A%E9%99%8D%E6%B0%B4%E9%87%8F%3A%2B%25p%26lang%3Dja"
-           hx-trigger="load delay:900ms, every 600s"
-           hx-swap="innerHTML">
-        <span class="htmx-indicator">Loading weather...</span>
+      <div class="weather-body loading" id="weather-fukuoka" data-lat="33.5904" data-lon="130.4017" data-delay="900">
+        Loading weather...
       </div>
     </div>
-    <!-- Naha (Delayed 1200ms) -->
+    <!-- Naha -->
     <div class="weather-card">
       <div class="card-header">那覇 (Naha)</div>
-      <div class="weather-body"
-           hx-get="https://api.allorigins.win/raw?url=https%3A%2F%2Fwttr.in%2FNaha%3Fformat%3D%25c%2B%25t%2B(%E4%BD%93%E6%84%9F%2B%25f)%250A%E9%A2%A8%3A%2B%25w%250A%E6%B9%BF%E5%BA%A6%3A%2B%25h%250A%E9%99%8D%E6%B0%B4%E9%87%8F%3A%2B%25p%26lang%3Dja"
-           hx-trigger="load delay:1200ms, every 600s"
-           hx-swap="innerHTML">
-        <span class="htmx-indicator">Loading weather...</span>
+      <div class="weather-body loading" id="weather-naha" data-lat="26.2124" data-lon="127.6809" data-delay="1200">
+        Loading weather...
       </div>
     </div>
   </div>
+
+  <script>
+    // WMO weather code -> emoji + Japanese label (per Open-Meteo docs)
+    var WEATHER_CODES = {
+      0: "☀️ 快晴", 1: "🌤️ ほぼ晴れ", 2: "⛅ 一部曇り", 3: "☁️ 曇り",
+      45: "🌫️ 霧", 48: "🌫️ 霧(着氷)",
+      51: "🌦️ 弱い霧雨", 53: "🌦️ 霧雨", 55: "🌦️ 強い霧雨",
+      56: "🌧️ 着氷性の霧雨", 57: "🌧️ 強い着氷性の霧雨",
+      61: "🌧️ 弱い雨", 63: "🌧️ 雨", 65: "🌧️ 強い雨",
+      66: "🌧️ 着氷性の雨", 67: "🌧️ 強い着氷性の雨",
+      71: "🌨️ 弱い雪", 73: "🌨️ 雪", 75: "🌨️ 強い雪", 77: "🌨️ 霧雪",
+      80: "🌦️ 弱いにわか雨", 81: "🌦️ にわか雨", 82: "🌦️ 激しいにわか雨",
+      85: "🌨️ 弱いにわか雪", 86: "🌨️ 強いにわか雪",
+      95: "⛈️ 雷雨", 96: "⛈️ 雷雨(雹)", 99: "⛈️ 激しい雷雨(雹)"
+    };
+
+    var REFRESH_INTERVAL_MS = 600 * 1000; // 10 minutes, same cadence as before
+
+    function formatWeather(data) {
+      var c = data.current;
+      var desc = WEATHER_CODES[c.weather_code] || ("不明(code:" + c.weather_code + ")");
+      return desc + " " + c.temperature_2m + "°C (体感 " + c.apparent_temperature + "°C)\n" +
+             "風: " + c.wind_speed_10m + "km/h\n" +
+             "湿度: " + c.relative_humidity_2m + "%\n" +
+             "降水量: " + c.precipitation + "mm";
+    }
+
+    function loadWeather(el) {
+      var lat = el.dataset.lat;
+      var lon = el.dataset.lon;
+      var url = "https://api.open-meteo.com/v1/forecast" +
+                "?latitude=" + lat +
+                "&longitude=" + lon +
+                "&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m" +
+                "&timezone=" + encodeURIComponent("Asia/Tokyo");
+
+      fetch(url)
+        .then(function (response) {
+          if (!response.ok) {
+            throw new Error("HTTP " + response.status);
+          }
+          return response.json();
+        })
+        .then(function (data) {
+          el.textContent = formatWeather(data);
+          el.classList.remove("loading");
+        })
+        .catch(function (err) {
+          el.textContent = "⚠️ 取得失敗。しばらくして再読込されます。(" + err.message + ")";
+        });
+    }
+
+    function startPolling(el) {
+      var delay = parseInt(el.dataset.delay, 10) || 0;
+      setTimeout(function () {
+        loadWeather(el);
+        setInterval(function () {
+          loadWeather(el);
+        }, REFRESH_INTERVAL_MS);
+      }, delay);
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+      var cards = document.querySelectorAll(".weather-body[data-lat]");
+      cards.forEach(startPolling);
+    });
+  </script>
 </body>
 </html>
