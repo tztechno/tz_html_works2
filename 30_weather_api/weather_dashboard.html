@@ -72,45 +72,33 @@
       Powered by Open-Meteo
     </div>
   </header>
-  <div class="dashboard-grid">
-    <!-- Sapporo -->
-    <div class="weather-card">
-      <div class="card-header">札幌 (Sapporo)</div>
-      <div class="weather-body loading" id="weather-sapporo" data-lat="43.0618" data-lon="141.3545" data-delay="0">
-        Loading weather...
-      </div>
-    </div>
-    <!-- Tokyo -->
-    <div class="weather-card">
-      <div class="card-header">東京 (Tokyo)</div>
-      <div class="weather-body loading" id="weather-tokyo" data-lat="35.6895" data-lon="139.6917" data-delay="300">
-        Loading weather...
-      </div>
-    </div>
-    <!-- Osaka -->
-    <div class="weather-card">
-      <div class="card-header">大阪 (Osaka)</div>
-      <div class="weather-body loading" id="weather-osaka" data-lat="34.6937" data-lon="135.5023" data-delay="600">
-        Loading weather...
-      </div>
-    </div>
-    <!-- Fukuoka -->
-    <div class="weather-card">
-      <div class="card-header">福岡 (Fukuoka)</div>
-      <div class="weather-body loading" id="weather-fukuoka" data-lat="33.5904" data-lon="130.4017" data-delay="900">
-        Loading weather...
-      </div>
-    </div>
-    <!-- Naha -->
-    <div class="weather-card">
-      <div class="card-header">那覇 (Naha)</div>
-      <div class="weather-body loading" id="weather-naha" data-lat="26.2124" data-lon="127.6809" data-delay="1200">
-        Loading weather...
-      </div>
-    </div>
-  </div>
+  <div class="dashboard-grid" id="dashboard-grid"></div>
 
   <script>
+    // City list: [Japanese label, English label, lat, lon]
+    // Covers all regions of Japan, north to south.
+    var CITIES = [
+      ["札幌", "Sapporo",    43.0618, 141.3545],
+      ["仙台", "Sendai",     38.2682, 140.8694],
+      ["東京", "Tokyo",      35.6895, 139.6917],
+      ["横浜", "Yokohama",   35.4437, 139.6380],
+      ["新潟", "Niigata",    37.9161, 139.0364],
+      ["金沢", "Kanazawa",   36.5613, 136.6562],
+      ["名古屋", "Nagoya",   35.1815, 136.9066],
+      ["静岡", "Shizuoka",   34.9756, 138.3827],
+      ["京都", "Kyoto",      35.0116, 135.7681],
+      ["大阪", "Osaka",      34.6937, 135.5023],
+      ["神戸", "Kobe",       34.6901, 135.1955],
+      ["広島", "Hiroshima",  34.3853, 132.4553],
+      ["松山", "Matsuyama",  33.8392, 132.7657],
+      ["福岡", "Fukuoka",    33.5904, 130.4017],
+      ["鹿児島", "Kagoshima", 31.5966, 130.5571],
+      ["那覇", "Naha",       26.2124, 127.6809]
+    ];
+
+    var STAGGER_MS = 300;          // gap between each city's first request
+    var REFRESH_INTERVAL_MS = 600 * 1000; // 10 minutes
+
     // WMO weather code -> emoji + Japanese label (per Open-Meteo docs)
     var WEATHER_CODES = {
       0: "☀️ 快晴", 1: "🌤️ ほぼ晴れ", 2: "⛅ 一部曇り", 3: "☁️ 曇り",
@@ -125,15 +113,59 @@
       95: "⛈️ 雷雨", 96: "⛈️ 雷雨(雹)", 99: "⛈️ 激しい雷雨(雹)"
     };
 
-    var REFRESH_INTERVAL_MS = 600 * 1000; // 10 minutes, same cadence as before
+    function buildCards() {
+      var grid = document.getElementById("dashboard-grid");
+      CITIES.forEach(function (city, i) {
+        var jp = city[0], en = city[1], lat = city[2], lon = city[3];
+        var card = document.createElement("div");
+        card.className = "weather-card";
+
+        var header = document.createElement("div");
+        header.className = "card-header";
+        header.textContent = jp + " (" + en + ")";
+
+        var body = document.createElement("div");
+        body.className = "weather-body loading";
+        body.id = "weather-" + en.toLowerCase();
+        body.dataset.lat = lat;
+        body.dataset.lon = lon;
+        body.dataset.delay = i * STAGGER_MS;
+        body.textContent = "Loading weather...";
+
+        card.appendChild(header);
+        card.appendChild(body);
+        grid.appendChild(card);
+      });
+    }
+
+    // hourly.precipitation[i] is the "preceding hour sum" ending at
+    // hourly.time[i] (per Open-Meteo docs) -- i.e. the value at the most
+    // recent past-or-present timestamp is the last FULLY COMPLETED hour's
+    // precipitation total. We report that as mm/h.
+    // data.current.time and data.hourly.time share the same local
+    // (timezone=Asia/Tokyo) naive-ISO format, so a plain string compare
+    // against current.time avoids any separate "what time is it" logic.
+    function latestCompletedHourPrecip(data) {
+      var hourly = data.hourly;
+      var now = data.current.time;
+      var bestIndex = -1;
+      for (var i = 0; i < hourly.time.length; i++) {
+        if (hourly.time[i] <= now) {
+          bestIndex = i;
+        }
+      }
+      if (bestIndex === -1) bestIndex = 0;
+      return { value: hourly.precipitation[bestIndex], time: hourly.time[bestIndex] };
+    }
 
     function formatWeather(data) {
       var c = data.current;
+      var precip = latestCompletedHourPrecip(data);
       var desc = WEATHER_CODES[c.weather_code] || ("不明(code:" + c.weather_code + ")");
       return desc + " " + c.temperature_2m + "°C (体感 " + c.apparent_temperature + "°C)\n" +
              "風: " + c.wind_speed_10m + "km/h\n" +
              "湿度: " + c.relative_humidity_2m + "%\n" +
-             "降水量: " + c.precipitation + "mm";
+             "降水量(直近1h): " + precip.value + "mm/h";
     }
 
     function loadWeather(el) {
@@ -142,7 +174,8 @@
       var url = "https://api.open-meteo.com/v1/forecast" +
                 "?latitude=" + lat +
                 "&longitude=" + lon +
-                "&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m" +
+                "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m" +
+                "&hourly=precipitation&past_hours=2&forecast_days=1" +
                 "&timezone=" + encodeURIComponent("Asia/Tokyo");
 
       fetch(url)
@@ -172,6 +205,7 @@
     }
 
     document.addEventListener("DOMContentLoaded", function () {
+      buildCards();
       var cards = document.querySelectorAll(".weather-body[data-lat]");
       cards.forEach(startPolling);
     });
