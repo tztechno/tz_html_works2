@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>区間タイマー</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+  :root{
+    --bg:#f4f5f8;
+    --surface:#ffffff;
+    --surface-2:#eef0f5;
+    --text:#1b1e29;
+    --text-muted:#5c6378;
+    --border:#dde0ea;
+    --accent:#e07a2c;
+    --accent-strong:#c8631a;
+    --accent-soft:#fbe6d4;
+    --accent-contrast:#fffaf5;
+    --good:#2f8f5b;
+    --good-soft:#e2f4ea;
+    --shadow: 0 1px 2px rgba(20,22,30,.04), 0 8px 24px -12px rgba(20,22,30,.18);
+    --radius-lg:18px;
+    --radius-md:12px;
+    --radius-sm:8px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14161d;
+      --surface:#1b1e28;
+      --surface-2:#242835;
+      --text:#eceef4;
+      --text-muted:#9aa0b4;
+      --border:#2c3140;
+      --accent:#ff9d52;
+      --accent-strong:#ffb578;
+      --accent-soft:#3a2a1a;
+      --accent-contrast:#1b1204;
+      --good:#5cc98c;
+      --good-soft:#173428;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 28px -12px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14161d;
+    --surface:#1b1e28;
+    --surface-2:#242835;
+    --text:#eceef4;
+    --text-muted:#9aa0b4;
+    --border:#2c3140;
+    --accent:#ff9d52;
+    --accent-strong:#ffb578;
+    --accent-soft:#3a2a1a;
+    --accent-contrast:#1b1204;
+    --good:#5cc98c;
+    --good-soft:#173428;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 28px -12px rgba(0,0,0,.5);
+  }
+
+  *{ box-sizing:border-box; }
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:"Manrope",-apple-system,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{
+    max-width:760px;
+    margin:0 auto;
+    padding:36px 20px 64px;
+    display:flex;
+    flex-direction:column;
+    gap:20px;
+  }
+  header{
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+  }
+  header h1{
+    margin:0;
+    font-size:1.5rem;
+    font-weight:800;
+    letter-spacing:-0.01em;
+    text-wrap:balance;
+  }
+  header p{
+    margin:0;
+    color:var(--text-muted);
+    font-size:.9rem;
+  }
+
+  .card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius-lg);
+    box-shadow:var(--shadow);
+    padding:22px;
+  }
+
+  /* ---- status hero ---- */
+  .status{
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+    transition: border-color .25s ease, box-shadow .25s ease;
+  }
+  .status.flash{
+    border-color:var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow);
+  }
+  .status-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+  .eyebrow{
+    font-size:.72rem;
+    font-weight:700;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--text-muted);
+  }
+  .current-item{
+    font-size:1.5rem;
+    font-weight:800;
+    line-height:1.25;
+    text-wrap:balance;
+    margin-top:2px;
+  }
+  .next-item{
+    font-size:.85rem;
+    color:var(--text-muted);
+    text-align:right;
+  }
+  .next-item strong{ color:var(--text); font-weight:700; }
+
+  .clock-row{
+    display:flex;
+    align-items:baseline;
+    gap:14px;
+    flex-wrap:wrap;
+  }
+  .clock{
+    font-family:"JetBrains Mono",ui-monospace,monospace;
+    font-variant-numeric:tabular-nums;
+    font-weight:700;
+    font-size:3rem;
+    line-height:1;
+    letter-spacing:-0.01em;
+  }
+  .clock-total{
+    font-family:"JetBrains Mono",ui-monospace,monospace;
+    font-variant-numeric:tabular-nums;
+    color:var(--text-muted);
+    font-size:1.05rem;
+  }
+
+  .bar-track{
+    height:8px;
+    border-radius:99px;
+    background:var(--surface-2);
+    overflow:hidden;
+  }
+  .bar-fill{
+    height:100%;
+    border-radius:99px;
+    background:var(--accent);
+    width:0%;
+    transition: width .15s linear;
+  }
+  .bar-track.overall{ height:5px; }
+  .bar-track.overall .bar-fill{ background:var(--text-muted); opacity:.55; }
+
+  .controls{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  button{
+    font-family:inherit;
+    font-weight:700;
+    font-size:.92rem;
+    border-radius:999px;
+    border:1px solid transparent;
+    padding:11px 20px;
+    cursor:pointer;
+    transition: transform .08s ease, background .15s ease, border-color .15s ease;
+  }
+  button:active{ transform:scale(.97); }
+  button:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  .btn-primary{ background:var(--accent); color:var(--accent-contrast); }
+  .btn-primary:hover{ background:var(--accent-strong); }
+  .btn-primary:disabled{ background:var(--surface-2); color:var(--text-muted); cursor:not-allowed; }
+  .btn-ghost{ background:transparent; border-color:var(--border); color:var(--text); }
+  .btn-ghost:hover{ border-color:var(--text-muted); }
+  .btn-ghost:disabled{ color:var(--text-muted); cursor:not-allowed; opacity:.6; }
+
+  .status-message{
+    font-size:.85rem;
+    color:var(--good);
+    font-weight:700;
+  }
+
+  /* ---- editor ---- */
+  .editor-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    margin-bottom:14px;
+    flex-wrap:wrap;
+  }
+  .editor-head h2{
+    margin:0;
+    font-size:1.05rem;
+    font-weight:800;
+  }
+  .editor-head .total{
+    font-size:.82rem;
+    color:var(--text-muted);
+    font-family:"JetBrains Mono",ui-monospace,monospace;
+  }
+
+  .rows{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  .row{
+    display:grid;
+    grid-template-columns:auto 1fr auto auto auto;
+    align-items:center;
+    gap:10px;
+    padding:10px 12px;
+    border:1px solid var(--border);
+    border-radius:var(--radius-md);
+    background:var(--surface);
+  }
+  .row.active-row{
+    border-color:var(--accent);
+    background:var(--accent-soft);
+  }
+  .row-index{
+    font-family:"JetBrains Mono",ui-monospace,monospace;
+    font-size:.78rem;
+    color:var(--text-muted);
+    width:1.4em;
+    text-align:right;
+  }
+  .row input[type="text"]{
+    width:100%;
+    border:1px solid var(--border);
+    background:var(--surface-2);
+    color:var(--text);
+    border-radius:var(--radius-sm);
+    padding:8px 10px;
+    font:inherit;
+    font-weight:600;
+  }
+  .duration-input{
+    display:flex;
+    align-items:center;
+    gap:4px;
+    font-family:"JetBrains Mono",ui-monospace,monospace;
+    font-size:.85rem;
+    color:var(--text-muted);
+  }
+  .duration-input input[type="number"]{
+    width:3.4em;
+    border:1px solid var(--border);
+    background:var(--surface-2);
+    color:var(--text);
+    border-radius:var(--radius-sm);
+    padding:7px 6px;
+    font:inherit;
+    text-align:center;
+    -moz-appearance:textfield;
+  }
+  .duration-input input::-webkit-outer-spin-button,
+  .duration-input input::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+  .row-range{
+    font-family:"JetBrains Mono",ui-monospace,monospace;
+    font-size:.76rem;
+    color:var(--text-muted);
+    white-space:nowrap;
+  }
+  .icon-btn{
+    background:transparent;
+    border:1px solid transparent;
+    color:var(--text-muted);
+    padding:6px 9px;
+    border-radius:var(--radius-sm);
+    font-size:.85rem;
+  }
+  .icon-btn:hover{ background:var(--surface-2); color:var(--text); }
+
+  .add-row{
+    margin-top:12px;
+    align-self:flex-start;
+  }
+
+  .hint{
+    margin-top:14px;
+    font-size:.8rem;
+    color:var(--text-muted);
+  }
+
+  input:disabled, .icon-btn:disabled{ opacity:.5; cursor:not-allowed; }
+
+  @media (max-width:560px){
+    .row{ grid-template-columns:auto 1fr; grid-template-areas:"idx label" "range dur" "del del"; row-gap:8px; }
+    .row-index{ grid-area:idx; }
+    .row input[type="text"]{ grid-area:label; }
+    .row-range{ grid-area:range; }
+    .duration-input{ grid-area:dur; justify-self:end; }
+    .icon-btn{ grid-area:del; justify-self:end; }
+    .clock{ font-size:2.4rem; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .bar-fill, .status, button{ transition:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>区間タイマー</h1>
+    <p>時間帯ごとに項目をあらかじめ決めておき、スタートすると自動で切り替わります。</p>
+  </header>
+
+  <section class="card status" id="statusCard">
+    <div class="status-top">
+      <div>
+        <div class="eyebrow" id="stateLabel">待機中</div>
+        <div class="current-item" id="currentItem">-</div>
+      </div>
+      <div class="next-item" id="nextItem"></div>
+    </div>
+
+    <div class="clock-row">
+      <span class="clock" id="clockElapsed">00:00</span>
+      <span class="clock-total" id="clockTotal">/ 00:00</span>
+    </div>
+
+    <div>
+      <div class="bar-track"><div class="bar-fill" id="segmentBar"></div></div>
+      <div class="bar-track overall" style="margin-top:6px;"><div class="bar-fill" id="overallBar"></div></div>
+    </div>
+
+    <div class="controls">
+      <button class="btn-primary" id="startBtn">スタート</button>
+      <button class="btn-ghost" id="pauseBtn" disabled>一時停止</button>
+      <button class="btn-ghost" id="resetBtn">リセット</button>
+    </div>
+    <div class="status-message" id="statusMessage" style="display:none;"></div>
+  </section>
+
+  <section class="card" id="editorCard">
+    <div class="editor-head">
+      <h2>スケジュール</h2>
+      <span class="total">合計 <span id="totalDuration">00:00</span></span>
+    </div>
+    <div class="rows" id="rows"></div>
+    <button class="btn-ghost add-row" id="addRowBtn">+ 項目を追加</button>
+    <p class="hint">サンプルのポモドーロ構成が入力済みです。分・秒と項目名は自由に編集できます（変更はブラウザに保存されます）。</p>
+  </section>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---- constants ----
+  var STORAGE_KEY = "segment-timer-schedule-v1";
+  var TICK_MS = 100;
+
+  var DEFAULT_SCHEDULE = [
+    { label: "ウォームアップ・準備", min: 5, sec: 0 },
+    { label: "集中作業（ポモドーロ 1）", min: 20, sec: 0 },
+    { label: "休憩", min: 5, sec: 0 },
+    { label: "集中作業（ポモドーロ 2）", min: 20, sec: 0 },
+    { label: "休憩", min: 5, sec: 0 }
+  ];
+
+  // ---- state ----
+  var segments = loadSchedule();
+  var running = false;
+  var accumulatedMs = 0;      // elapsed time banked from previous run/pause cycles
+  var runStartTs = null;      // performance.now() when current run began
+  var tickHandle = null;
+  var activeIndex = -1;
+  var finished = false;
+  var audioCtx = null;
+
+  // ---- DOM refs ----
+  var rowsEl = document.getElementById("rows");
+  var totalDurationEl = document.getElementById("totalDuration");
+  var addRowBtn = document.getElementById("addRowBtn");
+  var startBtn = document.getElementById("startBtn");
+  var pauseBtn = document.getElementById("pauseBtn");
+  var resetBtn = document.getElementById("resetBtn");
+  var statusCard = document.getElementById("statusCard");
+  var stateLabel = document.getElementById("stateLabel");
+  var currentItemEl = document.getElementById("currentItem");
+  var nextItemEl = document.getElementById("nextItem");
+  var clockElapsedEl = document.getElementById("clockElapsed");
+  var clockTotalEl = document.getElementById("clockTotal");
+  var segmentBarEl = document.getElementById("segmentBar");
+  var overallBarEl = document.getElementById("overallBar");
+  var statusMessageEl = document.getElementById("statusMessage");
+
+  // ---- persistence ----
+  function loadSchedule(){
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return DEFAULT_SCHEDULE.map(cloneSeg);
+      var parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed) || parsed.length === 0) return DEFAULT_SCHEDULE.map(cloneSeg);
+      return parsed.map(function(s){
+        return {
+          label: typeof s.label === "string" ? s.label : "項目",
+          min: Math.max(0, parseInt(s.min, 10) || 0),
+          sec: Math.max(0, Math.min(59, parseInt(s.sec, 10) || 0))
+        };
+      });
+    } catch (e) {
+      return DEFAULT_SCHEDULE.map(cloneSeg);
+    }
+  }
+
+  function saveSchedule(){
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(segments)); }
+    catch (e) { /* storage unavailable: continue without persistence */ }
+  }
+
+  function cloneSeg(s){ return { label: s.label, min: s.min, sec: s.sec }; }
+
+  // ---- helpers ----
+  function segDurationSec(s){ return s.min * 60 + s.sec; }
+
+  function formatClock(totalSeconds){
+    totalSeconds = Math.max(0, Math.round(totalSeconds));
+    var m = Math.floor(totalSeconds / 60);
+    var s = totalSeconds % 60;
+    return (m < 10 ? "0" + m : "" + m) + ":" + (s < 10 ? "0" + s : "" + s);
+  }
+
+  function cumulativeStarts(){
+    var starts = [];
+    var acc = 0;
+    for (var i = 0; i < segments.length; i++){
+      starts.push(acc);
+      acc += segDurationSec(segments[i]);
+    }
+    starts.push(acc); // total at the end
+    return starts;
+  }
+
+  function totalSeconds(){
+    var t = 0;
+    for (var i = 0; i < segments.length; i++) t += segDurationSec(segments[i]);
+    return t;
+  }
+
+  // ---- audio (created lazily on first user gesture) ----
+  function ensureAudio(){
+    if (!audioCtx) {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (Ctx) audioCtx = new Ctx();
+    }
+    if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+    return audioCtx;
+  }
+
+  function beep(freq, startDelay, duration){
+    var ctx = ensureAudio();
+    if (!ctx) return;
+    var t0 = ctx.currentTime + startDelay;
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(freq, t0);
+    gain.gain.setValueAtTime(0, t0);
+    gain.gain.linearRampToValueAtTime(0.25, t0 + 0.015);
+    gain.gain.linearRampToValueAtTime(0, t0 + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + duration + 0.02);
+  }
+
+  function playSegmentChangeSound(){ beep(880, 0, 0.16); }
+  function playFinishSound(){ beep(660, 0, 0.14); beep(880, 0.18, 0.14); beep(1046, 0.36, 0.28); }
+
+  // ---- rendering: editor rows ----
+  function renderRows(){
+    rowsEl.innerHTML = "";
+    var starts = cumulativeStarts();
+    segments.forEach(function(seg, i){
+      var row = document.createElement("div");
+      row.className = "row" + (i === activeIndex && running ? " active-row" : "");
+
+      var idx = document.createElement("div");
+      idx.className = "row-index";
+      idx.textContent = (i + 1) + ".";
+      row.appendChild(idx);
+
+      var labelInput = document.createElement("input");
+      labelInput.type = "text";
+      labelInput.value = seg.label;
+      labelInput.disabled = running;
+      labelInput.setAttribute("aria-label", "項目名");
+      labelInput.addEventListener("input", function(){
+        segments[i].label = labelInput.value;
+        saveSchedule();
+        if (i === activeIndex) currentItemEl.textContent = labelInput.value || "-";
+        updateNextLabel();
+      });
+      row.appendChild(labelInput);
+
+      var range = document.createElement("div");
+      range.className = "row-range";
+      range.textContent = formatClock(starts[i]) + "–" + formatClock(starts[i + 1]);
+      row.appendChild(range);
+
+      var durWrap = document.createElement("div");
+      durWrap.className = "duration-input";
+      var minInput = document.createElement("input");
+      minInput.type = "number";
+      minInput.min = "0";
+      minInput.value = seg.min;
+      minInput.disabled = running;
+      minInput.setAttribute("aria-label", "分");
+      var secInput = document.createElement("input");
+      secInput.type = "number";
+      secInput.min = "0";
+      secInput.max = "59";
+      secInput.value = seg.sec;
+      secInput.disabled = running;
+      secInput.setAttribute("aria-label", "秒");
+
+      function commitDuration(){
+        var m = Math.max(0, parseInt(minInput.value, 10) || 0);
+        var s = Math.max(0, Math.min(59, parseInt(secInput.value, 10) || 0));
+        segments[i].min = m;
+        segments[i].sec = s;
+        saveSchedule();
+        renderRows();
+        renderTotals();
+      }
+      minInput.addEventListener("change", commitDuration);
+      secInput.addEventListener("change", commitDuration);
+
+      durWrap.appendChild(minInput);
+      durWrap.appendChild(document.createTextNode("分"));
+      durWrap.appendChild(secInput);
+      durWrap.appendChild(document.createTextNode("秒"));
+      row.appendChild(durWrap);
+
+      var delBtn = document.createElement("button");
+      delBtn.className = "icon-btn";
+      delBtn.type = "button";
+      delBtn.textContent = "削除";
+      delBtn.disabled = running || segments.length <= 1;
+      delBtn.addEventListener("click", function(){
+        segments.splice(i, 1);
+        saveSchedule();
+        renderRows();
+        renderTotals();
+      });
+      row.appendChild(delBtn);
+
+      rowsEl.appendChild(row);
+    });
+  }
+
+  function renderTotals(){
+    totalDurationEl.textContent = formatClock(totalSeconds());
+    clockTotalEl.textContent = "/ " + formatClock(totalSeconds());
+    var canStart = segments.length > 0 && totalSeconds() > 0;
+    startBtn.disabled = running || !canStart;
+  }
+
+  function updateNextLabel(){
+    if (activeIndex >= 0 && activeIndex < segments.length - 1) {
+      nextItemEl.innerHTML = "次: <strong>" + escapeHtml(segments[activeIndex + 1].label || "項目") + "</strong>";
+    } else if (running || finished) {
+      nextItemEl.textContent = "これで最後の項目です";
+    } else {
+      nextItemEl.textContent = "";
+    }
+  }
+
+  function escapeHtml(str){
+    var div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  // ---- timer engine ----
+  function currentElapsedMs(){
+    if (!running) return accumulatedMs;
+    return accumulatedMs + (performance.now() - runStartTs);
+  }
+
+  function findActiveIndex(elapsedSec){
+    var starts = cumulativeStarts();
+    for (var i = 0; i < segments.length; i++){
+      if (elapsedSec < starts[i + 1] || i === segments.length - 1) return i;
+    }
+    return segments.length - 1;
+  }
+
+  function flashStatus(){
+    statusCard.classList.remove("flash");
+    // force reflow so the animation can restart
+    void statusCard.offsetWidth;
+    statusCard.classList.add("flash");
+    setTimeout(function(){ statusCard.classList.remove("flash"); }, 500);
+  }
+
+  function tick(){
+    var elapsedMs = currentElapsedMs();
+    var elapsedSec = elapsedMs / 1000;
+    var total = totalSeconds();
+
+    if (elapsedSec >= total) {
+      elapsedSec = total;
+      finishRun();
+    }
+
+    var starts = cumulativeStarts();
+    var newIndex = findActiveIndex(elapsedSec);
+
+    if (newIndex !== activeIndex) {
+      activeIndex = newIndex;
+      var seg = segments[activeIndex];
+      currentItemEl.textContent = seg ? (seg.label || "項目") : "-";
+      updateNextLabel();
+      renderRows();
+      if (running) { playSegmentChangeSound(); flashStatus(); }
+    }
+
+    var segStart = starts[activeIndex] || 0;
+    var segEnd = starts[activeIndex + 1] || segStart;
+    var segLen = Math.max(0.001, segEnd - segStart);
+    var segElapsed = Math.min(segLen, Math.max(0, elapsedSec - segStart));
+
+    clockElapsedEl.textContent = formatClock(elapsedSec);
+    segmentBarEl.style.width = (segElapsed / segLen * 100).toFixed(2) + "%";
+    overallBarEl.style.width = (total > 0 ? (elapsedSec / total * 100) : 0).toFixed(2) + "%";
+  }
+
+  function finishRun(){
+    if (finished) return;
+    finished = true;
+    running = false;
+    accumulatedMs = totalSeconds() * 1000;
+    clearInterval(tickHandle);
+    tickHandle = null;
+    startBtn.disabled = true;
+    pauseBtn.disabled = true;
+    stateLabel.textContent = "完了";
+    statusMessageEl.style.display = "block";
+    statusMessageEl.textContent = "スケジュールが終了しました。";
+    playFinishSound();
+    flashStatus();
+  }
+
+  function startTimer(){
+    ensureAudio();
+    if (segments.length === 0 || totalSeconds() <= 0) return;
+    if (finished) resetTimer(false);
+    running = true;
+    finished = false;
+    runStartTs = performance.now();
+    if (activeIndex === -1) {
+      activeIndex = 0;
+      currentItemEl.textContent = segments[0].label || "項目";
+      updateNextLabel();
+    }
+    stateLabel.textContent = "実行中";
+    statusMessageEl.style.display = "none";
+    startBtn.disabled = true;
+    pauseBtn.disabled = false;
+    resetBtn.disabled = false;
+    renderRows();
+    tickHandle = setInterval(tick, TICK_MS);
+    tick();
+  }
+
+  function pauseTimer(){
+    if (!running) return;
+    accumulatedMs = currentElapsedMs();
+    running = false;
+    clearInterval(tickHandle);
+    tickHandle = null;
+    stateLabel.textContent = "一時停止中";
+    startBtn.disabled = false;
+    startBtn.textContent = "再開";
+    pauseBtn.disabled = true;
+    renderRows();
+  }
+
+  function resetTimer(rerender){
+    running = false;
+    finished = false;
+    accumulatedMs = 0;
+    activeIndex = -1;
+    clearInterval(tickHandle);
+    tickHandle = null;
+    stateLabel.textContent = "待機中";
+    startBtn.textContent = "スタート";
+    startBtn.disabled = false;
+    pauseBtn.disabled = true;
+    statusMessageEl.style.display = "none";
+    currentItemEl.textContent = segments[0] ? (segments[0].label || "項目") : "-";
+    nextItemEl.textContent = "";
+    clockElapsedEl.textContent = "00:00";
+    segmentBarEl.style.width = "0%";
+    overallBarEl.style.width = "0%";
+    renderTotals();
+    if (rerender !== false) renderRows();
+  }
+
+  // ---- wire up ----
+  startBtn.addEventListener("click", startTimer);
+  pauseBtn.addEventListener("click", pauseTimer);
+  resetBtn.addEventListener("click", function(){ resetTimer(true); });
+  addRowBtn.addEventListener("click", function(){
+    segments.push({ label: "新しい項目", min: 5, sec: 0 });
+    saveSchedule();
+    renderRows();
+    renderTotals();
+  });
+
+  // ---- initial paint ----
+  currentItemEl.textContent = segments[0] ? (segments[0].label || "項目") : "-";
+  renderRows();
+  renderTotals();
+})();
+</script>
+</body>
+</html>
