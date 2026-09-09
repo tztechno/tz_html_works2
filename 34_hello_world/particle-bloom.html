@@ -1,0 +1,695 @@
+<title>Particle Bloom</title>
+<style>
+  /* ---- Design tokens: same deliberate world as First Print (deep indigo void → warm ember genesis) ---- */
+  :root {
+    --bg-0: #070a14;      /* void, deepest layer */
+    --bg-1: #0f1530;      /* mid gradient stop, faint indigo glow */
+    --ink: #f3efe6;       /* warm parchment white — primary text */
+    --ink-dim: #9aa3c7;   /* muted lavender-blue — captions */
+    --ink-faint: #5b6389; /* dimmer still — hints, ticks */
+    --amber: #ffb066;     /* accent / button color */
+    --line: rgba(255, 255, 255, 0.14);
+    --panel: rgba(15, 21, 48, 0.55);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { height: 100%; }
+
+  body {
+    margin: 0;
+    background: var(--bg-0);
+    color: var(--ink);
+    font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    overflow: hidden;
+    cursor: crosshair;
+  }
+
+  /* Canvas fills the viewport — it is the entire composition, not a hero banner */
+  #stage {
+    position: fixed;
+    inset: 0;
+    display: block;
+    width: 100vw;
+    height: 100vh;
+  }
+
+  .chrome {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    padding: clamp(16px, 3vw, 36px);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .top-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .eyebrow {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6em;
+    font-size: 12.5px;
+    letter-spacing: 0.04em;
+    color: var(--ink-dim);
+    min-width: 0;
+  }
+
+  .eyebrow .path { color: var(--ink-faint); flex: none; }
+
+  .eyebrow .comment {
+    color: var(--ink-dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .choose-btn {
+    pointer-events: auto;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 16px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--panel);
+    backdrop-filter: blur(6px);
+    color: var(--ink);
+    font-family: inherit;
+    font-size: 12px;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+    transition: border-color 0.15s ease, transform 0.15s ease;
+  }
+
+  .choose-btn:hover { border-color: var(--amber); }
+  .choose-btn:active { transform: scale(0.97); }
+
+  .choose-btn:focus-visible {
+    outline: 2px solid var(--amber);
+    outline-offset: 2px;
+  }
+
+  .choose-btn svg { width: 14px; height: 14px; flex: none; }
+
+  .footer-row {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    font-size: 11.5px;
+    letter-spacing: 0.03em;
+    color: var(--ink-faint);
+  }
+
+  .footer-row .status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .footer-row .status span:last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--amber);
+    box-shadow: 0 0 8px 1px var(--amber);
+    flex: none;
+  }
+
+  .hint {
+    text-align: right;
+    color: var(--ink-faint);
+    flex: none;
+  }
+
+  .hint strong { color: var(--ink-dim); font-weight: 500; }
+
+  /* Full-window drop target, shown only while a file is being dragged over the page */
+  .dropzone {
+    position: fixed;
+    inset: 18px;
+    border: 2px dashed var(--amber);
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    letter-spacing: 0.04em;
+    color: var(--ink);
+    background: rgba(7, 10, 20, 0.55);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+  }
+
+  body.dragging .dropzone { opacity: 1; }
+
+  @media (max-width: 640px) {
+    .top-row { flex-wrap: wrap; }
+    .eyebrow .comment { display: none; }
+    .footer-row { flex-direction: column; align-items: flex-start; gap: 6px; }
+    .hint { text-align: left; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .dot { box-shadow: none; }
+  }
+</style>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,900&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<canvas id="stage" aria-hidden="true"></canvas>
+
+<div class="chrome">
+  <div class="top-row">
+    <div class="eyebrow">
+      <span class="path" id="eyebrowPath">genesis.c</span>
+      <span class="comment" id="eyebrowComment">// drop any image here, or choose one</span>
+    </div>
+    <label class="choose-btn" for="fileInput">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="3"></rect>
+        <circle cx="9" cy="9" r="1.6"></circle>
+        <path d="M21 15l-5-5-9 9"></path>
+      </svg>
+      Choose image
+    </label>
+    <input type="file" id="fileInput" accept="image/*" hidden>
+  </div>
+
+  <div class="footer-row">
+    <div class="status">
+      <span class="dot" id="pulseDot"></span>
+      <span id="statusLabel">printf("Hello, World\n");</span>
+    </div>
+    <div class="hint"><strong>move</strong> to disturb · <strong>click</strong> to reform</div>
+  </div>
+</div>
+
+<div class="dropzone" id="dropzone">drop image to dissolve it into particles</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var canvas = document.getElementById('stage');
+  var ctx = canvas.getContext('2d');
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Off-screen layer for the crisp settled-image overlay. It's composited
+  // on its own so a "hole" can be punched into ITS alpha (destination-out)
+  // without erasing the particle mosaic already drawn on the main canvas —
+  // erasing directly on the main canvas would just reveal the page behind
+  // it, not the mosaic underneath.
+  var overlayCanvas = document.createElement('canvas');
+  var octx = overlayCanvas.getContext('2d');
+
+  var fileInput = document.getElementById('fileInput');
+  var dropzone = document.getElementById('dropzone');
+  var statusLabel = document.getElementById('statusLabel');
+  var eyebrowComment = document.getElementById('eyebrowComment');
+  var pulseDot = document.getElementById('pulseDot');
+
+  // Demo captions cycled on click while no image has been loaded yet —
+  // once an image is chosen, the footer instead shows its filename.
+  var demoPrints = [
+    'printf("Hello, World\\n");',
+    'console.log("Hello, World");',
+    'print("Hello, World")',
+    'System.out.println("Hello, World");',
+    'puts "Hello, World"',
+    'echo "Hello, World";',
+    'Console.WriteLine("Hello, World");'
+  ];
+  var demoPrintIndex = 0;
+
+  var DPR = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
+  var W = 0, H = 0;
+
+  var particles = [];
+  var stars = [];
+  var mouse = { x: -9999, y: -9999, active: false };
+  var lastFormedAt = 0;
+
+  // mode is 'text' (the built-in "Hello, World" demo) or 'image' (a user-chosen photo)
+  var mode = 'text';
+  var loadedImage = null;
+  var loadedName = '';
+  var desiredCount = 5500; // baseline particle budget before the resolution split below
+
+  // Splitting each sampling cell in half along both axes (2x horizontal,
+  // 2x vertical) quadruples particle density, trading some performance for
+  // a much less blocky, higher-resolution result.
+  var RESOLUTION_SPLIT = 2;
+
+  // Where the current scene's fitted box sits, kept up to date by
+  // buildTargets() — used to draw the crisp, full-resolution image on top
+  // once the particles have settled (see the "settle crossfade" below).
+  var sceneBoxW = 0, sceneBoxH = 0, sceneOffsetX = 0, sceneOffsetY = 0;
+
+  // How strongly and how far the cursor pushes particles aside, and how
+  // large a window is cut into the crisp overlay to match (see the
+  // destination-out punch in the render loop) — kept in sync so the visible
+  // "hole" always matches the area actually being disturbed.
+  var MOUSE_REPEL_RADIUS = 150;
+  var MOUSE_REPEL_FORCE = 6.5;
+
+  function resize() {
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = Math.floor(W * DPR);
+    canvas.height = Math.floor(H * DPR);
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    overlayCanvas.width = canvas.width;
+    overlayCanvas.height = canvas.height;
+    octx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    buildStars();
+    buildTargets();
+  }
+
+  // Faint static starfield behind the particles, for depth
+  function buildStars() {
+    var count = Math.round((W * H) / 9000);
+    stars = [];
+    for (var i = 0; i < count; i++) {
+      stars.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        r: Math.random() * 1.1 + 0.2,
+        a: Math.random() * 0.5 + 0.15,
+        phase: Math.random() * Math.PI * 2
+      });
+    }
+  }
+
+  // Sample the text "Hello, World" onto an offscreen canvas and collect the
+  // coordinates (plus a warm/cool color) of every lit pixel.
+  function sampleTextPoints(boxW, boxH) {
+    var off = document.createElement('canvas');
+    off.width = boxW;
+    off.height = boxH;
+    var octx = off.getContext('2d');
+    octx.clearRect(0, 0, boxW, boxH);
+
+    var fontSize = Math.min(boxW / 6.4, boxH * 0.62);
+    octx.font = '900 ' + fontSize + 'px "Fraunces", serif';
+    octx.textAlign = 'center';
+    octx.textBaseline = 'middle';
+    octx.fillStyle = '#fff';
+    octx.fillText('Hello, World', boxW / 2, boxH / 2);
+
+    var img = octx.getImageData(0, 0, boxW, boxH).data;
+    var pts = [];
+    var step = Math.max(1, Math.floor(Math.min(boxW, boxH) / 260 / RESOLUTION_SPLIT));
+    for (var y = 0; y < boxH; y += step) {
+      for (var x = 0; x < boxW; x += step) {
+        var alpha = img[(y * boxW + x) * 4 + 3];
+        if (alpha > 120) {
+          var warm = Math.random() < 0.82;
+          var c = warm
+            ? (Math.random() < 0.5 ? [255, 176, 102] : [255, 217, 138])
+            : [111, 224, 201];
+          pts.push({ x: x, y: y, r: c[0], g: c[1], b: c[2], baseAlpha: 1 });
+        }
+      }
+    }
+    return { pts: pts, step: step };
+  }
+
+  // Draw a user-supplied image into a fitted box and sample its actual pixel
+  // colors on a grid — this is what turns "any picture" into a particle field.
+  //
+  // Each tile's color is the AVERAGE of every source pixel that falls inside
+  // it (a box filter), not a single point-sampled pixel — a lone sample per
+  // cell would make each tile a flat, slightly arbitrary color and the whole
+  // image read as noisier than the photo actually is. Averaging is what a
+  // proper image downscale does, and it's what makes each tile represent the
+  // region it stands for.
+  function sampleImagePoints(image, boxW, boxH) {
+    var off = document.createElement('canvas');
+    off.width = boxW;
+    off.height = boxH;
+    var octx = off.getContext('2d');
+    octx.clearRect(0, 0, boxW, boxH);
+    octx.drawImage(image, 0, 0, boxW, boxH);
+
+    var img = octx.getImageData(0, 0, boxW, boxH).data;
+    var area = boxW * boxH;
+    var step = Math.max(1, Math.round(Math.sqrt(area / desiredCount) / RESOLUTION_SPLIT));
+
+    var cols = Math.ceil(boxW / step);
+    var rows = Math.ceil(boxH / step);
+    var binCount = cols * rows;
+    var sumR = new Float64Array(binCount);
+    var sumG = new Float64Array(binCount);
+    var sumB = new Float64Array(binCount);
+    var sumA = new Float64Array(binCount);
+    var count = new Int32Array(binCount);
+
+    // Bin every source pixel into its tile and accumulate sums — one pass
+    // over the full image, then divide once per tile below.
+    for (var y = 0; y < boxH; y++) {
+      var by = (y / step) | 0;
+      var rowBase = by * cols;
+      for (var x = 0; x < boxW; x++) {
+        var idx = (y * boxW + x) * 4;
+        var alpha = img[idx + 3];
+        if (alpha < 16) continue; // ignore transparent background (PNG/logo cutouts)
+        var bin = rowBase + ((x / step) | 0);
+        sumR[bin] += img[idx];
+        sumG[bin] += img[idx + 1];
+        sumB[bin] += img[idx + 2];
+        sumA[bin] += alpha;
+        count[bin]++;
+      }
+    }
+
+    var pts = [];
+    for (var by2 = 0; by2 < rows; by2++) {
+      for (var bx2 = 0; bx2 < cols; bx2++) {
+        var b2 = by2 * cols + bx2;
+        var n = count[b2];
+        if (n === 0) continue; // tile was entirely transparent — skip it
+        var r = sumR[b2] / n, g = sumG[b2] / n, bch = sumB[b2] / n;
+        var luminance = (0.299 * r + 0.587 * g + 0.114 * bch) / 255;
+        // Darker tiles are dimmed rather than dropped, so shadow detail
+        // survives as a faint glimmer instead of a flat void.
+        var baseAlpha = 0.32 + 0.68 * luminance;
+        var px = Math.min(boxW - 1, bx2 * step + step / 2);
+        var py = Math.min(boxH - 1, by2 * step + step / 2);
+        pts.push({ x: px, y: py, r: Math.round(r), g: Math.round(g), b: Math.round(bch), baseAlpha: baseAlpha });
+      }
+    }
+    return { pts: pts, step: step };
+  }
+
+  function buildTargets() {
+    var boxW, boxH, sample;
+
+    if (mode === 'image' && loadedImage) {
+      var maxW = Math.min(W * 0.88, 1500);
+      var maxH = Math.min(H * 0.76, 820);
+      var scale = Math.min(maxW / loadedImage.naturalWidth, maxH / loadedImage.naturalHeight, 1);
+      boxW = Math.max(1, Math.round(loadedImage.naturalWidth * scale));
+      boxH = Math.max(1, Math.round(loadedImage.naturalHeight * scale));
+      sample = sampleImagePoints(loadedImage, boxW, boxH);
+    } else {
+      boxW = Math.min(W * 0.92, 1400);
+      boxH = Math.min(H * 0.5, 420);
+      sample = sampleTextPoints(Math.round(boxW), Math.round(boxH));
+    }
+
+    var pts = sample.pts;
+    // Square side length is tied to the sampling grid spacing so tiles sit
+    // edge-to-edge like a mosaic, instead of leaving gaps the way round
+    // dots do — this is what actually reconstructs the source image.
+    var tileSize = sample.step * 1.08;
+    var offsetX = (W - boxW) / 2;
+    var offsetY = (H - boxH) / 2;
+
+    sceneBoxW = boxW;
+    sceneBoxH = boxH;
+    sceneOffsetX = offsetX;
+    sceneOffsetY = offsetY;
+
+    // Shuffle so particle-to-target assignment doesn't read as scanlines
+    for (var i = pts.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = pts[i]; pts[i] = pts[j]; pts[j] = tmp;
+    }
+
+    var targetCount = pts.length;
+    var existing = particles.length;
+
+    // Reuse particles that already exist so switching images morphs the
+    // scene rather than resetting it.
+    for (var k = 0; k < targetCount; k++) {
+      var pt = pts[k];
+      var tx = pt.x + offsetX;
+      var ty = pt.y + offsetY;
+      if (k < existing) {
+        var ep = particles[k];
+        ep.tx = tx;
+        ep.ty = ty;
+        ep.color = pt.r + ',' + pt.g + ',' + pt.b;
+        ep.baseAlpha = pt.baseAlpha;
+        ep.size = tileSize * (0.92 + Math.random() * 0.16);
+      } else {
+        var startAngle = Math.random() * Math.PI * 2;
+        var startR = Math.max(W, H) * (0.6 + Math.random() * 0.6);
+        particles.push({
+          x: W / 2 + Math.cos(startAngle) * startR,
+          y: H / 2 + Math.sin(startAngle) * startR,
+          tx: tx,
+          ty: ty,
+          vx: 0,
+          vy: 0,
+          // A near-square tile, sized off the sampling grid (see tileSize
+          // above) rather than a round dot, so the image reads as a mosaic
+          // instead of scattered speckles.
+          size: tileSize * (0.92 + Math.random() * 0.16),
+          color: pt.r + ',' + pt.g + ',' + pt.b,
+          baseAlpha: pt.baseAlpha,
+          twinklePhase: Math.random() * Math.PI * 2,
+          twinkleSpeed: 0.6 + Math.random() * 0.8
+        });
+      }
+    }
+    if (particles.length > targetCount) {
+      particles.length = targetCount;
+    }
+  }
+
+  function scatter() {
+    // A small "supernova": fling every particle outward, then let the
+    // normal spring-to-target behavior pull it back into formation.
+    for (var i = 0; i < particles.length; i++) {
+      var p = particles[i];
+      var dx = p.tx - W / 2, dy = p.ty - H / 2;
+      var dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      var force = 8 + Math.random() * 10;
+      p.vx += (dx / dist) * force;
+      p.vy += (dy / dist) * force;
+    }
+    lastFormedAt = performance.now();
+    if (mode === 'text') {
+      demoPrintIndex = (demoPrintIndex + 1) % demoPrints.length;
+      statusLabel.textContent = demoPrints[demoPrintIndex];
+    }
+  }
+
+  function loadImageFile(file) {
+    if (!file || file.type.indexOf('image/') !== 0) return;
+    var url = URL.createObjectURL(file);
+    var img = new Image();
+    img.onload = function () {
+      loadedImage = img;
+      loadedName = file.name;
+      mode = 'image';
+      eyebrowComment.textContent = '// dissolving ' + loadedName;
+      statusLabel.textContent = loadedName + ' — reassembling';
+      buildTargets();
+      lastFormedAt = performance.now();
+      URL.revokeObjectURL(url);
+      // Once particle positions settle, swap the status line to a steady read-out
+      window.setTimeout(function () {
+        if (loadedName === file.name) {
+          statusLabel.textContent = loadedName + ' · ' + particles.length.toLocaleString() + ' particles';
+        }
+      }, 900);
+    };
+    img.onerror = function () {
+      statusLabel.textContent = 'could not read ' + file.name;
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  }
+
+  fileInput.addEventListener('change', function (e) {
+    if (e.target.files && e.target.files[0]) loadImageFile(e.target.files[0]);
+    fileInput.value = ''; // allow choosing the same file again later
+  });
+
+  var dragDepth = 0;
+  window.addEventListener('dragenter', function (e) {
+    e.preventDefault();
+    dragDepth++;
+    document.body.classList.add('dragging');
+  });
+  window.addEventListener('dragover', function (e) { e.preventDefault(); });
+  window.addEventListener('dragleave', function () {
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (dragDepth === 0) document.body.classList.remove('dragging');
+  });
+  window.addEventListener('drop', function (e) {
+    e.preventDefault();
+    dragDepth = 0;
+    document.body.classList.remove('dragging');
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+      loadImageFile(e.dataTransfer.files[0]);
+    }
+  });
+
+  canvas.addEventListener('pointermove', function (e) {
+    mouse.x = e.clientX;
+    mouse.y = e.clientY;
+    mouse.active = true;
+  });
+  canvas.addEventListener('pointerleave', function () {
+    mouse.active = false;
+  });
+  canvas.addEventListener('pointerdown', function () {
+    if (!reduceMotion) scatter();
+  });
+
+  window.addEventListener('resize', resize);
+
+  var startTime = performance.now();
+
+  function step(now) {
+    var t = (now - startTime) / 1000;
+    ctx.clearRect(0, 0, W, H);
+
+    // Background: deep vertical gradient with a soft warm glow behind the scene
+    var g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#070a14');
+    g.addColorStop(0.55, '#0f1530');
+    g.addColorStop(1, '#0a0e22');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+
+    var glow = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * 0.45);
+    glow.addColorStop(0, 'rgba(255, 176, 102, 0.10)');
+    glow.addColorStop(1, 'rgba(255, 176, 102, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, W, H);
+
+    // Starfield
+    for (var s = 0; s < stars.length; s++) {
+      var st = stars[s];
+      var tw = reduceMotion ? st.a : st.a * (0.6 + 0.4 * Math.sin(t * 0.8 + st.phase));
+      ctx.beginPath();
+      ctx.fillStyle = 'rgba(243, 239, 230, ' + tw.toFixed(3) + ')';
+      ctx.arc(st.x, st.y, st.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Slow breathing pulse once the scene has been settled for a moment —
+    // suggests a heartbeat: the image / word has just come alive.
+    var breathe = reduceMotion ? 1 : 0.85 + 0.15 * Math.sin(t * 1.3);
+    var dotPulse = 0.5 + 0.5 * Math.sin(t * 2.4);
+    pulseDot.style.opacity = (0.5 + dotPulse * 0.5).toFixed(2);
+
+    var dispSum = 0;
+
+    for (var i = 0; i < particles.length; i++) {
+      var p = particles[i];
+
+      // Spring toward target, with mild damping
+      var dx = p.tx - p.x;
+      var dy = p.ty - p.y;
+      dispSum += Math.sqrt(dx * dx + dy * dy);
+      var stiffness = reduceMotion ? 0.14 : 0.065;
+      p.vx += dx * stiffness;
+      p.vy += dy * stiffness;
+
+      // Cursor repels nearby particles — a wide, strong push so the motion
+      // reads clearly rather than as a faint ripple.
+      if (mouse.active && !reduceMotion) {
+        var mdx = p.x - mouse.x, mdy = p.y - mouse.y;
+        var mdist2 = mdx * mdx + mdy * mdy;
+        if (mdist2 < MOUSE_REPEL_RADIUS * MOUSE_REPEL_RADIUS) {
+          var mdist = Math.sqrt(mdist2) || 1;
+          var push = (1 - mdist / MOUSE_REPEL_RADIUS) * MOUSE_REPEL_FORCE;
+          p.vx += (mdx / mdist) * push;
+          p.vy += (mdy / mdist) * push;
+        }
+      }
+
+      p.vx *= 0.86;
+      p.vy *= 0.86;
+      p.x += p.vx;
+      p.y += p.vy;
+
+      var tw = reduceMotion ? 1 : 0.7 + 0.3 * Math.sin(t * p.twinkleSpeed + p.twinklePhase);
+      var alpha = Math.min(1, tw * breathe * p.baseAlpha);
+
+      // Square tiles (not round dots) so adjacent particles butt up against
+      // each other and actually reconstruct the source image without gaps.
+      ctx.fillStyle = 'rgba(' + p.color + ', ' + alpha.toFixed(3) + ')';
+      ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+    }
+
+    // Once the particles have mostly arrived at their targets, crossfade in
+    // the real image at full resolution — this is what makes the resting
+    // picture visually indistinguishable from the original, rather than
+    // capping fidelity at the particle count. Moving the cursor through it
+    // (or clicking) pushes particles off target, which fades this back out
+    // and reveals the mosaic doing the disturbing.
+    if (mode === 'image' && loadedImage && particles.length) {
+      var avgDisp = dispSum / particles.length;
+      var settleT = 1 - Math.min(1, avgDisp / 14);
+      settleT = settleT * settleT * (3 - 2 * settleT); // smoothstep easing
+      if (settleT > 0.01) {
+        // Build the crisp overlay on its own off-screen layer first...
+        octx.clearRect(0, 0, W, H);
+        octx.globalAlpha = settleT;
+        octx.drawImage(loadedImage, sceneOffsetX, sceneOffsetY, sceneBoxW, sceneBoxH);
+        octx.globalAlpha = 1;
+
+        // ...then cut a soft window into THAT layer's alpha right where the
+        // cursor is. Punching the hole here (rather than on the main canvas)
+        // means the mosaic already drawn on the main canvas shows through
+        // naturally once this layer is composited on top — erasing directly
+        // on the main canvas would just reveal the page behind the canvas,
+        // not the particles.
+        if (mouse.active && !reduceMotion) {
+          octx.save();
+          octx.globalCompositeOperation = 'destination-out';
+          var holeR = MOUSE_REPEL_RADIUS * 1.35;
+          var hole = octx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, holeR);
+          hole.addColorStop(0, 'rgba(0, 0, 0, 0.95)');
+          hole.addColorStop(0.7, 'rgba(0, 0, 0, 0.6)');
+          hole.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          octx.fillStyle = hole;
+          octx.beginPath();
+          octx.arc(mouse.x, mouse.y, holeR, 0, Math.PI * 2);
+          octx.fill();
+          octx.restore();
+        }
+
+        ctx.drawImage(overlayCanvas, 0, 0, W, H);
+      }
+    }
+
+    requestAnimationFrame(step);
+  }
+
+  resize();
+  // Start already-converged so the resting frame (right after load) reads
+  // as the formed word, not an empty scatter.
+  for (var i = 0; i < particles.length; i++) {
+    particles[i].x = particles[i].tx + (Math.random() - 0.5) * 40;
+    particles[i].y = particles[i].ty + (Math.random() - 0.5) * 40;
+  }
+  requestAnimationFrame(step);
+})();
+</script>
