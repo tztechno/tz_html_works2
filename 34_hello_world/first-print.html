@@ -1,0 +1,385 @@
+<title>First Print</title>
+<style>
+  /* ---- Design tokens: a single deliberate world (deep indigo void → warm ember genesis) ---- */
+  :root {
+    --bg-0: #070a14;      /* void, deepest layer */
+    --bg-1: #0f1530;      /* mid gradient stop, faint indigo glow */
+    --bg-2: #171f42;      /* horizon glow near the text */
+    --ink: #f3efe6;       /* warm parchment white — primary text */
+    --ink-dim: #9aa3c7;   /* muted lavender-blue — captions */
+    --ink-faint: #5b6389; /* dimmer still — hints, ticks */
+    --amber: #ffb066;     /* primary particle / accent color */
+    --gold: #ffd98a;      /* lighter highlight variant */
+    --teal: #6fe0c9;      /* cool secondary particle color */
+    --line: rgba(255, 255, 255, 0.09);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--bg-0);
+    color: var(--ink);
+    font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    overflow: hidden;
+    cursor: crosshair;
+  }
+
+  /* Canvas fills the viewport — it is the entire composition, not a hero banner */
+  #stage {
+    position: fixed;
+    inset: 0;
+    display: block;
+    width: 100vw;
+    height: 100vh;
+  }
+
+  .chrome {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    padding: clamp(16px, 3vw, 36px);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .eyebrow {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6em;
+    font-size: 12.5px;
+    letter-spacing: 0.04em;
+    color: var(--ink-dim);
+  }
+
+  .eyebrow .path {
+    color: var(--ink-faint);
+  }
+
+  .eyebrow .comment {
+    color: var(--ink-dim);
+  }
+
+  .footer-row {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    font-size: 11.5px;
+    letter-spacing: 0.03em;
+    color: var(--ink-faint);
+  }
+
+  .footer-row .lang-tick {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--amber);
+    box-shadow: 0 0 8px 1px var(--amber);
+    flex: none;
+  }
+
+  .hint {
+    text-align: right;
+    color: var(--ink-faint);
+  }
+
+  .hint strong {
+    color: var(--ink-dim);
+    font-weight: 500;
+  }
+
+  @media (max-width: 560px) {
+    .footer-row { flex-direction: column; align-items: flex-start; gap: 6px; }
+    .hint { text-align: left; }
+  }
+
+  /* Respect reduced motion: the JS also checks this, but keep any CSS transitions honest */
+  @media (prefers-reduced-motion: reduce) {
+    .dot { box-shadow: none; }
+  }
+</style>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,900&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<canvas id="stage" aria-hidden="true"></canvas>
+
+<div class="chrome">
+  <div class="eyebrow">
+    <span class="path">genesis.c</span>
+    <span class="comment">// the first thing every program says</span>
+  </div>
+  <div class="footer-row">
+    <div class="lang-tick">
+      <span class="dot" id="pulseDot"></span>
+      <span id="langLabel">printf("Hello, World\n");</span>
+    </div>
+    <div class="hint"><strong>move</strong> to disturb · <strong>click</strong> to reprint</div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var canvas = document.getElementById('stage');
+  var ctx = canvas.getContext('2d');
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // A short rotation of how "Hello, World" is printed across languages —
+  // purely a caption detail, cosmetic, cycled slowly in the footer.
+  var prints = [
+    'printf("Hello, World\\n");',
+    'console.log("Hello, World");',
+    'print("Hello, World")',
+    'System.out.println("Hello, World");',
+    'puts "Hello, World"',
+    'echo "Hello, World";',
+    'Console.WriteLine("Hello, World");'
+  ];
+  var printIndex = 0;
+  var langLabel = document.getElementById('langLabel');
+  var pulseDot = document.getElementById('pulseDot');
+
+  var DPR = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
+  var W = 0, H = 0;
+
+  var particles = [];
+  var stars = [];
+  var mouse = { x: -9999, y: -9999, active: false };
+  var lastFormedAt = 0;
+
+  function resize() {
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = Math.floor(W * DPR);
+    canvas.height = Math.floor(H * DPR);
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    buildStars();
+    buildTargets();
+  }
+
+  // Faint static starfield behind the particle text, for depth
+  function buildStars() {
+    var count = Math.round((W * H) / 9000);
+    stars = [];
+    for (var i = 0; i < count; i++) {
+      stars.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        r: Math.random() * 1.1 + 0.2,
+        a: Math.random() * 0.5 + 0.15,
+        phase: Math.random() * Math.PI * 2
+      });
+    }
+  }
+
+  // Sample the text "Hello, World" onto an offscreen canvas and collect
+  // the coordinates of lit pixels — these become the particles' target grid.
+  function sampleTextPoints(text, boxW, boxH) {
+    var off = document.createElement('canvas');
+    var scale = 1; // sampling at CSS-pixel resolution is enough for particle density
+    off.width = boxW;
+    off.height = boxH;
+    var octx = off.getContext('2d');
+    octx.clearRect(0, 0, boxW, boxH);
+
+    var fontSize = Math.min(boxW / 6.4, boxH * 0.62);
+    octx.font = '900 ' + fontSize + 'px "Fraunces", serif';
+    octx.textAlign = 'center';
+    octx.textBaseline = 'middle';
+    octx.fillStyle = '#fff';
+    octx.fillText(text, boxW / 2, boxH / 2);
+
+    var img = octx.getImageData(0, 0, boxW, boxH).data;
+    var pts = [];
+    var step = Math.max(2, Math.floor(Math.min(boxW, boxH) / 260));
+    for (var y = 0; y < boxH; y += step) {
+      for (var x = 0; x < boxW; x += step) {
+        var alpha = img[(y * boxW + x) * 4 + 3];
+        if (alpha > 120) pts.push({ x: x, y: y });
+      }
+    }
+    return pts;
+  }
+
+  function buildTargets() {
+    var boxW = Math.min(W * 0.92, 1400);
+    var boxH = Math.min(H * 0.5, 420);
+    var offsetX = (W - boxW) / 2;
+    var offsetY = (H - boxH) / 2;
+
+    var pts = sampleTextPoints('Hello, World', Math.round(boxW), Math.round(boxH));
+    // Shuffle slightly so particle-to-target assignment doesn't read as scanlines
+    for (var i = pts.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = pts[i]; pts[i] = pts[j]; pts[j] = tmp;
+    }
+
+    var targetCount = pts.length;
+    var existing = particles.length;
+
+    // Reuse particles that already exist so a resize doesn't reset the scene;
+    // add or trim to match the new target count.
+    for (var k = 0; k < targetCount; k++) {
+      var tx = pts[k].x + offsetX;
+      var ty = pts[k].y + offsetY;
+      if (k < existing) {
+        particles[k].tx = tx;
+        particles[k].ty = ty;
+      } else {
+        var startAngle = Math.random() * Math.PI * 2;
+        var startR = Math.max(W, H) * (0.6 + Math.random() * 0.6);
+        particles.push({
+          x: W / 2 + Math.cos(startAngle) * startR,
+          y: H / 2 + Math.sin(startAngle) * startR,
+          tx: tx,
+          ty: ty,
+          vx: 0,
+          vy: 0,
+          r: Math.random() * 1.3 + 0.7,
+          hue: Math.random() < 0.82 ? 'warm' : 'cool',
+          twinklePhase: Math.random() * Math.PI * 2,
+          twinkleSpeed: 0.6 + Math.random() * 0.8
+        });
+      }
+    }
+    if (particles.length > targetCount) {
+      particles.length = targetCount;
+    }
+  }
+
+  function scatter() {
+    // A small "supernova": fling every particle outward, then let the
+    // normal spring-to-target behavior pull it back into formation.
+    for (var i = 0; i < particles.length; i++) {
+      var p = particles[i];
+      var dx = p.tx - W / 2, dy = p.ty - H / 2;
+      var dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      var force = 8 + Math.random() * 10;
+      p.vx += (dx / dist) * force;
+      p.vy += (dy / dist) * force;
+    }
+    lastFormedAt = performance.now();
+    printIndex = (printIndex + 1) % prints.length;
+    langLabel.textContent = prints[printIndex];
+  }
+
+  canvas.addEventListener('pointermove', function (e) {
+    mouse.x = e.clientX;
+    mouse.y = e.clientY;
+    mouse.active = true;
+  });
+  canvas.addEventListener('pointerleave', function () {
+    mouse.active = false;
+  });
+  canvas.addEventListener('pointerdown', function () {
+    if (!reduceMotion) scatter();
+  });
+
+  window.addEventListener('resize', resize);
+
+  var startTime = performance.now();
+
+  function step(now) {
+    var t = (now - startTime) / 1000;
+    ctx.clearRect(0, 0, W, H);
+
+    // Background: deep vertical gradient with a soft warm glow behind the text
+    var g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#070a14');
+    g.addColorStop(0.55, '#0f1530');
+    g.addColorStop(1, '#0a0e22');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+
+    var glow = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * 0.45);
+    glow.addColorStop(0, 'rgba(255, 176, 102, 0.10)');
+    glow.addColorStop(1, 'rgba(255, 176, 102, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, W, H);
+
+    // Starfield
+    for (var s = 0; s < stars.length; s++) {
+      var st = stars[s];
+      var tw = reduceMotion ? st.a : st.a * (0.6 + 0.4 * Math.sin(t * 0.8 + st.phase));
+      ctx.beginPath();
+      ctx.fillStyle = 'rgba(243, 239, 230, ' + tw.toFixed(3) + ')';
+      ctx.arc(st.x, st.y, st.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Slow breathing pulse once the text has been settled for a moment —
+    // suggests a heartbeat: the program has just come alive.
+    var settleAge = (now - lastFormedAt) / 1000;
+    var breathe = reduceMotion ? 1 : 0.85 + 0.15 * Math.sin(t * 1.3);
+    var dotPulse = 0.5 + 0.5 * Math.sin(t * 2.4);
+    pulseDot.style.opacity = (0.5 + dotPulse * 0.5).toFixed(2);
+
+    for (var i = 0; i < particles.length; i++) {
+      var p = particles[i];
+
+      // Spring toward target, with mild damping
+      var dx = p.tx - p.x;
+      var dy = p.ty - p.y;
+      var stiffness = reduceMotion ? 0.14 : 0.065;
+      p.vx += dx * stiffness;
+      p.vy += dy * stiffness;
+
+      // Cursor repels nearby particles, causing gentle local disturbance
+      if (mouse.active && !reduceMotion) {
+        var mdx = p.x - mouse.x, mdy = p.y - mouse.y;
+        var mdist2 = mdx * mdx + mdy * mdy;
+        var radius = 90;
+        if (mdist2 < radius * radius) {
+          var mdist = Math.sqrt(mdist2) || 1;
+          var push = (1 - mdist / radius) * 3.2;
+          p.vx += (mdx / mdist) * push;
+          p.vy += (mdy / mdist) * push;
+        }
+      }
+
+      p.vx *= 0.82;
+      p.vy *= 0.82;
+      p.x += p.vx;
+      p.y += p.vy;
+
+      var tw = reduceMotion ? 1 : 0.55 + 0.45 * Math.sin(t * p.twinkleSpeed + p.twinklePhase);
+      var alpha = Math.min(1, tw * breathe);
+      var color = p.hue === 'warm'
+        ? (Math.random() < 0.5 ? '255, 176, 102' : '255, 217, 138')
+        : '111, 224, 201';
+
+      ctx.beginPath();
+      ctx.fillStyle = 'rgba(' + color + ', ' + alpha.toFixed(3) + ')';
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    requestAnimationFrame(step);
+  }
+
+  resize();
+  // Start already-converged so the resting frame (right after load) reads
+  // as the formed word, not an empty scatter.
+  for (var i = 0; i < particles.length; i++) {
+    particles[i].x = particles[i].tx + (Math.random() - 0.5) * 40;
+    particles[i].y = particles[i].ty + (Math.random() - 0.5) * 40;
+  }
+  requestAnimationFrame(step);
+})();
+</script>
