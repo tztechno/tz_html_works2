@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shorts Video/Audio Combiner</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-border: #2a2e38;
+    --text: #e8eaed;
+    --muted: #9aa0ab;
+    --accent: #6ee7b7;
+    --accent-dark: #10b981;
+    --danger: #f87171;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: 24px 16px 64px;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 1.35rem; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 0.9rem; margin: 0 0 24px; }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .panel h2 {
+    font-size: 0.95rem;
+    margin: 0 0 14px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  label {
+    display: block;
+    font-size: 0.85rem;
+    margin: 14px 0 6px;
+  }
+  label:first-of-type { margin-top: 0; }
+  input[type="file"] {
+    width: 100%;
+    padding: 10px;
+    background: #0d0f13;
+    border: 1px dashed var(--panel-border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 0.85rem;
+  }
+  input[type="number"], input[type="text"] {
+    width: 100%;
+    padding: 8px 10px;
+    background: #0d0f13;
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 0.9rem;
+  }
+  input[type="range"] { width: 100%; }
+  .row { display: flex; gap: 16px; flex-wrap: wrap; }
+  .row > div { flex: 1 1 200px; min-width: 0; }
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .checkbox-row input { width: 16px; height: 16px; }
+  .checkbox-row label { margin: 0; }
+  .hint { color: var(--muted); font-size: 0.78rem; margin-top: 4px; }
+  /* Custom file picker: the browser's own file-input button label follows the
+     OS/browser language (e.g. Japanese Chrome shows "ファイルを選択"), and
+     there is no HTML/CSS way to override that native label directly. Instead
+     the real <input type="file"> is visually hidden and a normal <label>
+     (styleable, with our own English text) is used to open the file dialog,
+     with a small JS snippet below to show the chosen file name next to it. */
+  .file-picker { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .file-picker input[type="file"] {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+  }
+  .file-picker-btn {
+    display: inline-block; flex: 0 0 auto; margin: 0; padding: 9px 16px;
+    background: var(--panel-border); color: var(--text); border-radius: 8px;
+    font-size: 0.85rem; font-weight: 600; cursor: pointer;
+  }
+  .file-picker-btn:hover { background: #363c49; }
+  .file-picker-name { color: var(--muted); font-size: 0.85rem; word-break: break-all; }
+  button {
+    appearance: none;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 20px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    background: var(--accent);
+    color: #06281c;
+    width: 100%;
+  }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  button:not(:disabled):hover { background: var(--accent-dark); }
+  #log {
+    background: #0a0c10;
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 12px;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 260px;
+    overflow-y: auto;
+    color: var(--muted);
+  }
+  .progress-track {
+    height: 8px;
+    background: #0a0c10;
+    border-radius: 999px;
+    overflow: hidden;
+    margin-top: 10px;
+    border: 1px solid var(--panel-border);
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
+    transition: width 0.15s ease;
+  }
+  .status-line {
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin-top: 8px;
+  }
+  video {
+    width: 100%;
+    border-radius: 8px;
+    margin-top: 12px;
+    background: #000;
+    max-height: 480px;
+  }
+  a.download-btn {
+    display: block;
+    text-align: center;
+    margin-top: 10px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    background: var(--accent);
+    color: #06281c;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  a.download-btn:hover { background: var(--accent-dark); }
+  .error-box {
+    border: 1px solid var(--danger);
+    background: rgba(248,113,113,0.1);
+    color: var(--danger);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 0.85rem;
+    margin-top: 12px;
+  }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Shorts Video/Audio Combiner</h1>
+  <p class="sub">Trims a video + audio track to a short-form length and combines them, entirely in your browser (ffmpeg.wasm — nothing is uploaded anywhere).</p>
+
+  <div class="panel">
+    <h2>1. Source files</h2>
+    <label for="videoFile">Video file</label>
+    <div class="file-picker">
+      <label class="file-picker-btn" for="videoFile">Choose File</label>
+      <span class="file-picker-name" id="videoFileName">No file chosen</span>
+      <input type="file" id="videoFile" accept="video/*">
+    </div>
+    <label for="audioFile">Audio file</label>
+    <div class="file-picker">
+      <label class="file-picker-btn" for="audioFile">Choose File</label>
+      <span class="file-picker-name" id="audioFileName">No file chosen</span>
+      <input type="file" id="audioFile" accept="audio/*">
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>2. Options</h2>
+    <div class="row">
+      <div>
+        <label for="volume">Audio volume (0.0 – 2.0)</label>
+        <input type="number" id="volume" value="0.08" min="0" max="5" step="0.01">
+      </div>
+      <div>
+        <label for="maxDuration">Max short duration (seconds)</label>
+        <input type="number" id="maxDuration" value="178" min="1" step="1">
+      </div>
+    </div>
+    <div class="checkbox-row">
+      <input type="checkbox" id="isShort" checked>
+      <label for="isShort">Short-form mode (crop/pad to 1080x1920 portrait, cap duration)</label>
+    </div>
+    <p class="hint">When unchecked, the full source video length is kept and no portrait padding is applied — same as <code>is_short=False</code> in the original script.</p>
+  </div>
+
+  <div class="panel">
+    <h2>3. Run</h2>
+    <button id="runBtn">Convert</button>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="status-line" id="statusLine">Idle — pick a video and audio file, then press Convert.</div>
+    <div id="errorBox" class="error-box" hidden></div>
+    <div id="log"></div>
+  </div>
+
+  <div class="panel" id="resultPanel" hidden>
+    <h2>4. Result</h2>
+    <video id="resultVideo" controls></video>
+    <a id="downloadLink" class="download-btn" download="output_combined.mp4">Download output_combined.mp4</a>
+  </div>
+</div>
+
+<!-- ffmpeg.wasm engine.
+     This uses @ffmpeg/core DIRECTLY (not the @ffmpeg/ffmpeg wrapper package),
+     loaded via a completely ordinary <script src="..."> tag pointing at the
+     CDN. That is a deliberate choice, not a simplification for its own sake:
+     the @ffmpeg/ffmpeg wrapper always spawns a background Web Worker to run
+     ffmpeg-core in, and browsers refuse to construct a Worker whose script
+     isn't same-origin — which a page opened by double-clicking it (a
+     file://... URL, origin "null") never is. No amount of patching that
+     wrapper's code changes this; it was tested and confirmed to fail with
+     errors like "cannot be accessed from origin" / "Cannot find module
+     'blob:null/...'" specifically because of that Worker.
+     @ffmpeg/core itself (the actual WebAssembly ffmpeg build) has no such
+     restriction: it runs synchronously on whatever thread loads it, so
+     running it directly on the main thread — see ensureFFmpegLoaded() below
+     — avoids the Worker requirement entirely and works from a plain
+     double-clicked file. The one trade-off is that the page's UI freezes
+     while a conversion is running (there's no separate thread left to keep
+     it responsive); see the note in handleRun(). -->
+<script src="https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd/ffmpeg-core.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  // ---- constants -----------------------------------------------------
+  const CORE_VERSION = "0.12.10";
+  const CORE_BASE = `https://cdn.jsdelivr.net/npm/@ffmpeg/core@${CORE_VERSION}/dist/umd`;
+
+  // ---- DOM refs --------------------------------------------------------
+  const videoFileInput = document.getElementById("videoFile");
+  const audioFileInput = document.getElementById("audioFile");
+  const volumeInput = document.getElementById("volume");
+  const maxDurationInput = document.getElementById("maxDuration");
+  const isShortInput = document.getElementById("isShort");
+  const runBtn = document.getElementById("runBtn");
+  const logBox = document.getElementById("log");
+  const statusLine = document.getElementById("statusLine");
+  const progressFill = document.getElementById("progressFill");
+  const errorBox = document.getElementById("errorBox");
+  const resultPanel = document.getElementById("resultPanel");
+  const resultVideo = document.getElementById("resultVideo");
+  const downloadLink = document.getElementById("downloadLink");
+
+  let core = null; // the loaded ffmpeg-core instance (see ensureFFmpegLoaded)
+  let allLogLines = []; // rolling buffer of every line ffmpeg has logged this session
+
+  function log(message) {
+    const line = document.createElement("div");
+    line.textContent = message;
+    logBox.appendChild(line);
+    logBox.scrollTop = logBox.scrollHeight;
+  }
+
+  function setStatus(text) {
+    statusLine.textContent = text;
+  }
+
+  function setProgress(fraction) {
+    progressFill.style.width = `${Math.max(0, Math.min(1, fraction)) * 100}%`;
+  }
+
+  function showError(message) {
+    errorBox.hidden = false;
+    errorBox.textContent = message;
+  }
+
+  function clearError() {
+    errorBox.hidden = true;
+    errorBox.textContent = "";
+  }
+
+  // Read a File/Blob (e.g. from an <input type="file">) into a Uint8Array
+  // that ffmpeg's virtual filesystem can write.
+  async function fetchFile(file) {
+    const buf = await file.arrayBuffer();
+    return new Uint8Array(buf);
+  }
+
+  // Parse "Duration: HH:MM:SS.ss" out of raw ffmpeg log text.
+  function parseDurationFromLog(text) {
+    const match = text.match(/Duration:\s*(\d+):(\d+):(\d+\.\d+)/);
+    if (!match) return null;
+    const [, hh, mm, ss] = match;
+    return parseInt(hh, 10) * 3600 + parseInt(mm, 10) * 60 + parseFloat(ss);
+  }
+
+  async function ensureFFmpegLoaded() {
+    if (core) return;
+
+    setStatus("Loading ffmpeg core (~30MB, first run only)...");
+    // createFFmpegCore is the global function defined by the <script> tag
+    // above (from @ffmpeg/core's UMD build). locateFile tells it where to
+    // fetch the matching .wasm binary from — by default it guesses based on
+    // its own script's URL, which isn't reliable in every context.
+    core = await createFFmpegCore({
+      locateFile: (path, prefix) =>
+        path.endsWith(".wasm") ? `${CORE_BASE}/ffmpeg-core.wasm` : prefix + path,
+    });
+    core.setLogger(({ message }) => {
+      allLogLines.push(message);
+      log(message);
+    });
+    setStatus("ffmpeg core loaded.");
+  }
+
+  // Run an ffmpeg command and return everything it logged during that call.
+  // Some commands (e.g. `-i file` with no output) intentionally exit with a
+  // non-zero status but still print useful info (like Duration) before doing
+  // so — core.exec() itself never throws for that, it just records a non-zero
+  // core.ret, so callers that only need the log text can ignore ret entirely.
+  function runFF(args) {
+    const start = allLogLines.length;
+    core.exec(...args);
+    core.reset();
+    return allLogLines.slice(start).join("\n");
+  }
+
+  function getMediaDuration(filename) {
+    const text = runFF(["-i", filename]);
+    const duration = parseDurationFromLog(text);
+    if (duration === null) {
+      throw new Error(`Could not read duration from ${filename}. Is it a valid media file?`);
+    }
+    return duration;
+  }
+
+  async function combineAndTrim({ videoFile, audioFile, volume, isShort, maxDuration }) {
+    const videoName = "input_video" + getExt(videoFile.name);
+    const audioName = "input_audio" + getExt(audioFile.name);
+    const trimmedAudioName = "trimmed_audio.mp3";
+    const outputName = "output_combined.mp4";
+
+    setStatus("Loading files into ffmpeg's virtual filesystem...");
+    core.FS.writeFile(videoName, await fetchFile(videoFile));
+    core.FS.writeFile(audioName, await fetchFile(audioFile));
+
+    setProgress(0.1);
+    setStatus("Probing source video duration...");
+    const sourceDuration = getMediaDuration(videoName);
+    log(`source video duration: ${sourceDuration.toFixed(2)}s`);
+
+    // Cap the output duration to maxDuration when isShort is enabled.
+    const duration = isShort ? Math.min(sourceDuration, maxDuration) : sourceDuration;
+    log(`target output duration: ${duration.toFixed(2)}s`);
+
+    // Step 1: trim the audio down to the target duration BEFORE combining,
+    // writing a standalone mp3 (same two-step approach as the original script,
+    // so the combine step never needs a "shortest" flag on the audio side).
+    setProgress(0.2);
+    setStatus("Trimming audio track... (the page may look frozen — this is expected, see note below)");
+    // Yield one tick so the status text/progress bar above actually paint
+    // before the blocking exec() call below; everything from here until the
+    // combine step finishes runs synchronously with no UI updates in between,
+    // since there's no separate worker thread to keep the page responsive
+    // (see the comment above ensureFFmpegLoaded for why).
+    await new Promise((r) => setTimeout(r, 0));
+    runFF([
+      "-t", String(duration),
+      "-i", audioName,
+      "-filter:a", `volume=${volume}`,
+      "-c:a", "libmp3lame",
+      trimmedAudioName,
+    ]);
+
+    // Step 2: combine video with the already-trimmed audio. The video input
+    // is ALSO trimmed to `duration` here (via -t before its -i), and streams
+    // are mapped explicitly (0:v -> video, 1:a -> trimmed audio) so ffmpeg's
+    // default stream-selection heuristics can't accidentally pick the
+    // original video's own audio track instead of the trimmed one.
+    setProgress(0.5);
+    setStatus("Combining video and audio... (page frozen until this finishes)");
+    await new Promise((r) => setTimeout(r, 0));
+    const args = ["-t", String(duration), "-i", videoName, "-i", trimmedAudioName];
+    if (isShort) {
+      args.push(
+        "-vf",
+        "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:color=black"
+      );
+    }
+    args.push(
+      "-map", "0:v:0",
+      "-map", "1:a:0",
+      "-c:v", "libx264",
+      "-c:a", "aac",
+      "-pix_fmt", "yuv420p",
+      "-movflags", "+faststart",
+      outputName
+    );
+    runFF(args);
+
+    setStatus("Reading output file...");
+    let data;
+    try {
+      data = core.FS.readFile(outputName);
+    } catch (e) {
+      throw new Error("ffmpeg did not produce an output file — check the log above for the actual ffmpeg error.");
+    }
+
+    // Clean up the virtual filesystem for this run.
+    for (const name of [videoName, audioName, trimmedAudioName, outputName]) {
+      try { core.FS.unlink(name); } catch (e) { /* ignore */ }
+    }
+
+    return data;
+  }
+
+  function getExt(filename) {
+    const idx = filename.lastIndexOf(".");
+    return idx === -1 ? "" : filename.slice(idx);
+  }
+
+  async function handleRun() {
+    clearError();
+    resultPanel.hidden = true;
+    logBox.textContent = "";
+    setProgress(0);
+
+    const videoFile = videoFileInput.files[0];
+    const audioFile = audioFileInput.files[0];
+    if (!videoFile || !audioFile) {
+      showError("Please choose both a video file and an audio file.");
+      return;
+    }
+
+    const volume = parseFloat(volumeInput.value);
+    const maxDuration = parseFloat(maxDurationInput.value);
+    const isShort = isShortInput.checked;
+
+    runBtn.disabled = true;
+    try {
+      await ensureFFmpegLoaded();
+      const data = await combineAndTrim({ videoFile, audioFile, volume, isShort, maxDuration });
+
+      const blob = new Blob([data.buffer], { type: "video/mp4" });
+      const url = URL.createObjectURL(blob);
+      resultVideo.src = url;
+      downloadLink.href = url;
+      resultPanel.hidden = false;
+      setStatus("Done.");
+      setProgress(1);
+      log("done");
+    } catch (err) {
+      console.error(err);
+      showError(err && err.message ? err.message : String(err));
+      setStatus("Failed — see error above.");
+    } finally {
+      runBtn.disabled = false;
+    }
+  }
+
+  runBtn.addEventListener("click", handleRun);
+
+  // Show the chosen file's name next to the English "Choose File" button,
+  // since the native input gives no visual feedback once it's hidden.
+  function bindFilePicker(input, nameElId) {
+    const nameEl = document.getElementById(nameElId);
+    input.addEventListener("change", () => {
+      nameEl.textContent = input.files.length ? input.files[0].name : "No file chosen";
+    });
+  }
+  bindFilePicker(videoFileInput, "videoFileName");
+  bindFilePicker(audioFileInput, "audioFileName");
+})();
+</script>
+</body>
+</html>
