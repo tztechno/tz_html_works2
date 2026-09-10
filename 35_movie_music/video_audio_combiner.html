@@ -78,6 +78,24 @@
   .checkbox-row input { width: 16px; height: 16px; }
   .checkbox-row label { margin: 0; }
   .hint { color: var(--muted); font-size: 0.78rem; margin-top: 4px; }
+  /* Custom file picker: the browser's own file-input button label follows the
+     OS/browser language (e.g. Japanese Chrome shows "ファイルを選択"), and
+     there is no HTML/CSS way to override that native label directly. Instead
+     the real <input type="file"> is visually hidden and a normal <label>
+     (styleable, with our own English text) is used to open the file dialog,
+     with a small JS snippet below to show the chosen file name next to it. */
+  .file-picker { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .file-picker input[type="file"] {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+  }
+  .file-picker-btn {
+    display: inline-block; flex: 0 0 auto; margin: 0; padding: 9px 16px;
+    background: var(--panel-border); color: var(--text); border-radius: 8px;
+    font-size: 0.85rem; font-weight: 600; cursor: pointer;
+  }
+  .file-picker-btn:hover { background: #363c49; }
+  .file-picker-name { color: var(--muted); font-size: 0.85rem; word-break: break-all; }
   button {
     appearance: none;
     border: none;
@@ -164,9 +182,17 @@
   <div class="panel">
     <h2>1. Source files</h2>
     <label for="videoFile">Video file</label>
-    <input type="file" id="videoFile" accept="video/*">
+    <div class="file-picker">
+      <label class="file-picker-btn" for="videoFile">Choose File</label>
+      <span class="file-picker-name" id="videoFileName">No file chosen</span>
+      <input type="file" id="videoFile" accept="video/*">
+    </div>
     <label for="audioFile">Audio file</label>
-    <input type="file" id="audioFile" accept="audio/*">
+    <div class="file-picker">
+      <label class="file-picker-btn" for="audioFile">Choose File</label>
+      <span class="file-picker-name" id="audioFileName">No file chosen</span>
+      <input type="file" id="audioFile" accept="audio/*">
+    </div>
   </div>
 
   <div class="panel">
@@ -516,6 +542,17 @@
   }
 
   runBtn.addEventListener("click", handleRun);
+
+  // Show the chosen file's name next to the English "Choose File" button,
+  // since the native input gives no visual feedback once it's hidden.
+  function bindFilePicker(input, nameElId) {
+    const nameEl = document.getElementById(nameElId);
+    input.addEventListener("change", () => {
+      nameEl.textContent = input.files.length ? input.files[0].name : "No file chosen";
+    });
+  }
+  bindFilePicker(videoFileInput, "videoFileName");
+  bindFilePicker(audioFileInput, "audioFileName");
 })();
 </script>
 </body>
