@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Café Pause</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@400;600&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
 <style>
@@ -89,6 +89,7 @@
     border:1px solid rgba(232,166,74,0.28);
     border-radius:999px;
     padding:9px 16px;
+    -webkit-backdrop-filter:blur(6px);
     backdrop-filter:blur(6px);
     transition:opacity 0.6s ease;
   }
@@ -127,6 +128,7 @@
     -webkit-tap-highlight-color:transparent;
     touch-action:none;
     user-select:none;
+    -webkit-backdrop-filter:blur(6px);
     backdrop-filter:blur(6px);
   }
   .pad-btn:active{ background:rgba(232,166,74,0.28); }
@@ -207,7 +209,7 @@
     <p>A fictional coffee house from Japan's Shōwa era. Step inside to see the siphon brewers glow and the stained-glass lamps sway.</p>
   </div>
   <div class="hint" id="hint">
-    <span>Drag<span style="opacity:.6"> / </span>swipe to look around</span>
+    <span>Click then move the mouse to look freely<span style="opacity:.6"> · </span>Esc releases the cursor</span>
     <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> to walk, or use the arrows</span>
   </div>
 </div>
@@ -766,6 +768,22 @@
   var keys = {};
   var hasInteracted = false;
   var MOVE_KEYS = ["w","a","s","d","arrowup","arrowdown","arrowleft","arrowright"];
+  // Look freedom: yaw is unrestricted (full 360 turn); pitch is capped just
+  // short of straight up/down so the view never flips upside-down.
+  var PITCH_LIMIT = 1.52;
+  function clampPitch(p){ return Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, p)); }
+  var pointerLocked = false;
+  function tryPointerLock(){
+    if (!dom.requestPointerLock || pointerLocked) return;
+    try {
+      var req = dom.requestPointerLock();
+      if (req && typeof req.catch === "function") req.catch(function(){ /* fall back to drag-to-look */ });
+    } catch (err) { /* fall back to drag-to-look */ }
+  }
+  document.addEventListener("pointerlockchange", function(){
+    pointerLocked = (document.pointerLockElement === dom);
+  });
+  document.addEventListener("pointerlockerror", function(){ pointerLocked = false; });
 
   function hideHint(){
     if (!hasInteracted){
@@ -779,16 +797,28 @@
     lastX = e.clientX; lastY = e.clientY;
     dom.focus();
     hideHint();
+    // Ask for real pointer-lock so the view can turn freely from wherever the
+    // cursor is, not just while a drag is in progress. If the embedding
+    // context refuses it, drag-to-look below keeps working exactly as before.
+    tryPointerLock();
   });
   window.addEventListener("pointerup", function(){ isPointerDown = false; });
   window.addEventListener("pointermove", function(e){
+    if (pointerLocked){
+      // True free-look: any cursor movement turns the camera, anywhere on
+      // screen, without needing to hold the pointer down.
+      yaw -= (e.movementX || 0) * 0.0026;
+      pitch -= (e.movementY || 0) * 0.0026;
+      pitch = clampPitch(pitch);
+      return;
+    }
     if (!isPointerDown) return;
     var dx = e.clientX - lastX;
     var dy = e.clientY - lastY;
     lastX = e.clientX; lastY = e.clientY;
     yaw -= dx * 0.0032;
     pitch -= dy * 0.0032;
-    pitch = Math.max(-1.1, Math.min(1.1, pitch));
+    pitch = clampPitch(pitch);
   });
 
   function onKeyDown(e){
@@ -856,10 +886,18 @@
   }
 
   // ---------- resize ----------
-  window.addEventListener("resize", function(){
+  // "resize" alone can miss the viewport change on mobile browsers when the
+  // address bar shows/hides or the phone rotates, so orientationchange is
+  // handled too (with a short delay, since the new size isn't always final
+  // the instant the event fires).
+  function onViewportResize(){
     camera.aspect = window.innerWidth/window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+  window.addEventListener("resize", onViewportResize);
+  window.addEventListener("orientationchange", function(){
+    setTimeout(onViewportResize, 200);
   });
 
   // ---------- render loop ----------

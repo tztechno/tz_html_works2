@@ -35,6 +35,16 @@ Movement is limited to the footprint of the room — you can't walk through the 
 - A night-lit window looking out on a softly glowing street, and a neon "COFFEE" sign by the entrance
 - A wall clock, framed wall art, and potted plants for atmosphere
 
+## Using it on a smartphone
+
+The scene works on phones and tablets, with a few differences from desktop:
+
+- **Looking around**: phones don't support the browser's Pointer Lock feature, so tapping and dragging with a finger is how you look around (the same drag control that desktop falls back to if pointer lock isn't available there either).
+- **Walking**: use the on-screen directional pad in the bottom-right corner — there's no keyboard on a phone, so this is the primary way to move.
+- **Two-finger operation**: because looking and walking are separate gestures, moving *and* turning at the same time takes one thumb on the pad and one finger dragging elsewhere on the screen, similar to the twin-stick controls in many mobile games.
+- **Performance**: the scene renders in real time with lighting and shadows, so it runs best on phones from the last few years. Older or lower-end devices may see reduced frame rates, but the scene will still load and be usable.
+- **Rotating the phone**: switching between portrait and landscape is supported — the view resizes automatically after a brief moment.
+
 ## Sharing or reusing the file
 
 `cafe-pause-3d.html` is a single, self-contained file — you can rename it, attach it to an email, or drop it into any static web host. It has no dependencies other than the two items it loads over the network (Three.js and the Google Fonts stylesheet), so it will keep working anywhere as long as those two hosts are reachable.

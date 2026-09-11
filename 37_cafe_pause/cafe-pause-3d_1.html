@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Café Pause</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@400;600&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
 <style>
@@ -89,7 +89,6 @@
     border:1px solid rgba(232,166,74,0.28);
     border-radius:999px;
     padding:9px 16px;
-    -webkit-backdrop-filter:blur(6px);
     backdrop-filter:blur(6px);
     transition:opacity 0.6s ease;
   }
@@ -128,7 +127,6 @@
     -webkit-tap-highlight-color:transparent;
     touch-action:none;
     user-select:none;
-    -webkit-backdrop-filter:blur(6px);
     backdrop-filter:blur(6px);
   }
   .pad-btn:active{ background:rgba(232,166,74,0.28); }
@@ -886,18 +884,10 @@
   }
 
   // ---------- resize ----------
-  // "resize" alone can miss the viewport change on mobile browsers when the
-  // address bar shows/hides or the phone rotates, so orientationchange is
-  // handled too (with a short delay, since the new size isn't always final
-  // the instant the event fires).
-  function onViewportResize(){
+  window.addEventListener("resize", function(){
     camera.aspect = window.innerWidth/window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
-  }
-  window.addEventListener("resize", onViewportResize);
-  window.addEventListener("orientationchange", function(){
-    setTimeout(onViewportResize, 200);
   });
 
   // ---------- render loop ----------
