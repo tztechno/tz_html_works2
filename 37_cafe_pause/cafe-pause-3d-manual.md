@@ -12,11 +12,15 @@ A short "Brewing the coffee…" loading screen appears for a moment while the 3D
 
 | Action | Input |
 |---|---|
-| Look around | Click (or tap) and drag anywhere on the scene |
+| Look around freely | Click once, then just move the mouse — the view turns wherever you point, without holding the button down |
+| Look around (fallback) | Click (or tap) and drag, if your browser doesn't allow the free-look mode above |
+| Release the cursor | Press `Esc` |
 | Walk forward / back | `W` / `S`, or the up/down on-screen arrow |
 | Strafe left / right | `A` / `D`, or the left/right on-screen arrow |
 | Walk with arrow keys | Arrow keys work identically to WASD |
 | Move on touch devices | Use the on-screen directional pad in the bottom-right corner |
+
+Clicking the scene requests full mouse-look (the browser's Pointer Lock feature): once granted, the camera turns freely from wherever you are standing, in any direction, just by moving the mouse — press `Esc` at any time to release the cursor. If the browser or the page you've embedded this in doesn't allow that (some sandboxed environments block it), the scene automatically falls back to click-and-drag looking instead, so it always works one way or the other.
 
 The on-screen directional pad is always visible and works on both desktop and mobile — it's the most reliable way to move if a physical keyboard ever doesn't respond (for example, if the browser hasn't yet given the page keyboard focus). Clicking anywhere in the scene first will also make keyboard input more reliable.
 
