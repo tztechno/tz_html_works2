@@ -1,0 +1,755 @@
+<title>Softlight</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Work+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    color-scheme: light;
+    --ink:#15191c;
+    --ink-soft:#3c4144;
+    --muted:#6b6a63;
+    --paper:#f2efe9;
+    --paper-raised:#ffffff;
+    --line:#dcd6c9;
+    --teal:#276b63;
+    --teal-ink:#062421;
+    --gold:#c97a2e;
+    --gold-ink:#1b1305;
+    --gold-soft:#f0dcc0;
+    --radius:14px;
+    --shadow: 0 1px 2px rgba(20,18,12,.07), 0 10px 28px -14px rgba(20,18,12,.28);
+    --font-display:'Instrument Serif','Iowan Old Style',Georgia,serif;
+    --font-body:'Work Sans','Segoe UI',system-ui,sans-serif;
+    --font-mono:'IBM Plex Mono','SFMono-Regular',Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      color-scheme: dark;
+      --ink:#eeeae1;
+      --ink-soft:#c7c2b8;
+      --muted:#93938c;
+      --paper:#15181a;
+      --paper-raised:#1d2124;
+      --line:#2c3134;
+      --teal:#5fb3a8;
+      --teal-ink:#052220;
+      --gold:#e2a25a;
+      --gold-ink:#1c1002;
+      --gold-soft:#3a2c19;
+      --shadow: 0 1px 2px rgba(0,0,0,.45), 0 14px 34px -16px rgba(0,0,0,.65);
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme: dark;
+    --ink:#eeeae1;
+    --ink-soft:#c7c2b8;
+    --muted:#93938c;
+    --paper:#15181a;
+    --paper-raised:#1d2124;
+    --line:#2c3134;
+    --teal:#5fb3a8;
+    --teal-ink:#052220;
+    --gold:#e2a25a;
+    --gold-ink:#1c1002;
+    --gold-soft:#3a2c19;
+    --shadow: 0 1px 2px rgba(0,0,0,.45), 0 14px 34px -16px rgba(0,0,0,.65);
+  }
+
+  *{box-sizing:border-box;}
+  body{ background:var(--paper); color:var(--ink); margin:0; }
+  .app{
+    font-family:var(--font-body);
+    color:var(--ink);
+    background:var(--paper);
+    padding:28px 20px 48px;
+    max-width:1180px;
+    margin:0 auto;
+  }
+  h1,h2,p{ margin:0; }
+  h1,h2{ text-wrap:balance; }
+
+  .topbar{ display:flex; flex-direction:column; gap:8px; margin-bottom:26px; }
+  .brand{ display:flex; align-items:baseline; gap:10px; }
+  .brand-mark{ font-size:1.4rem; color:var(--gold); }
+  .brand h1{ font-family:var(--font-display); font-style:italic; font-weight:400; font-size:clamp(2rem,4vw,2.7rem); letter-spacing:.01em; }
+  .tagline{ color:var(--ink-soft); max-width:52ch; font-size:.98rem; line-height:1.5; }
+  .privacy-badge{
+    display:inline-flex; align-self:flex-start; align-items:center; gap:6px;
+    font-family:var(--font-mono); font-size:.68rem; letter-spacing:.09em;
+    color:var(--muted); border:1px solid var(--line); border-radius:999px;
+    padding:4px 10px 4px 8px; margin-top:2px;
+  }
+  .privacy-badge::before{ content:'●'; color:var(--teal); font-size:.6rem; }
+
+  .bench{ display:grid; grid-template-columns:1fr 300px; gap:26px; align-items:start; }
+  @media (max-width:860px){ .bench{ grid-template-columns:1fr; } }
+
+  .stage{ display:flex; flex-direction:column; gap:12px; min-width:0; }
+  .stage-frame{
+    position:relative; width:100%; aspect-ratio:4/3;
+    background:var(--paper-raised); border-radius:var(--radius);
+    box-shadow:var(--shadow); overflow:hidden; border:1px solid var(--line);
+    touch-action:none;
+  }
+  #srcView,#outView{ position:absolute; inset:0; width:100%; height:100%; display:none; }
+  [data-state="loaded"] #srcView,[data-state="loaded"] #outView{ display:block; }
+  #outView{ clip-path:inset(0 0 0 50%); }
+
+  .dropzone{
+    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; gap:10px; text-align:center; padding:24px; cursor:pointer;
+    border:1.5px dashed var(--line); border-radius:var(--radius); background:var(--paper-raised);
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .dropzone.drag-over{ border-color:var(--gold); background:var(--gold-soft); }
+  [data-state="loaded"] .dropzone{ display:none; }
+  .dz-ring{ color:var(--muted); margin-bottom:2px; }
+  .dz-title{ font-family:var(--font-display); font-style:italic; font-size:1.4rem; }
+  .dz-sub{ color:var(--muted); font-size:.86rem; max-width:34ch; }
+
+  .reticle{
+    position:absolute; border:1.5px dashed var(--gold); border-radius:50%; cursor:move; display:none;
+  }
+  [data-state="loaded"] .reticle{ display:block; }
+  .app[data-whole="1"] .reticle{ display:none; }
+  .reticle::before,.reticle::after{ content:''; position:absolute; background:var(--gold); }
+  .reticle::before{ left:50%; top:50%; width:14px; height:1.5px; transform:translate(-50%,-50%); }
+  .reticle::after{ left:50%; top:50%; width:1.5px; height:14px; transform:translate(-50%,-50%); }
+  .reticle-label{
+    position:absolute; top:-22px; left:50%; transform:translateX(-50%);
+    font-family:var(--font-mono); font-size:.62rem; letter-spacing:.12em; color:var(--gold-ink);
+    background:var(--gold); padding:2px 7px; border-radius:3px; white-space:nowrap;
+  }
+  .handle{
+    position:absolute; right:-3%; bottom:-3%; width:15px; height:15px; border-radius:50%;
+    background:var(--gold); border:2px solid var(--paper-raised); cursor:nwse-resize;
+    box-shadow:0 1px 3px rgba(0,0,0,.3);
+  }
+
+  .divider{ position:absolute; top:0; bottom:0; left:50%; width:0; display:none; z-index:3; }
+  [data-state="loaded"] .divider{ display:block; }
+  .divider-line{ position:absolute; top:0; bottom:0; left:-1px; width:2px; background:var(--paper-raised); box-shadow:0 0 0 1px var(--line); }
+  .divider-grip{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    width:30px; height:30px; border-radius:50%; background:var(--paper-raised);
+    border:1px solid var(--line); display:flex; align-items:center; justify-content:center;
+    font-size:.8rem; box-shadow:var(--shadow); cursor:ew-resize;
+  }
+
+  .compare-tags{ position:absolute; inset:10px auto auto 10px; display:none; gap:6px; z-index:2; }
+  [data-state="loaded"] .compare-tags{ display:flex; }
+  .compare-tags{ right:10px; display:flex; justify-content:space-between; left:10px; }
+  .tag{ font-family:var(--font-mono); font-size:.62rem; letter-spacing:.1em; padding:3px 8px; border-radius:4px; }
+  .tag-teal{ background:var(--teal); color:var(--teal-ink); }
+  .tag-gold{ background:var(--gold); color:var(--gold-ink); }
+
+  .status{ display:none; font-family:var(--font-mono); font-size:.78rem; color:var(--muted); }
+  .status.visible{ display:block; }
+
+  .stage-controls{ display:none; flex-wrap:wrap; align-items:center; gap:14px 18px; }
+  [data-state="loaded"] .stage-controls{ display:flex; }
+  .save-hint{ display:none; font-size:.82rem; color:var(--muted); }
+  [data-state="loaded"] .save-hint{ display:block; }
+  .save-hint em{ color:var(--ink-soft); font-style:normal; border-bottom:1px dotted var(--line); }
+
+  .btn{
+    font-family:var(--font-body); font-weight:600; font-size:.85rem; letter-spacing:.01em;
+    padding:9px 16px; border-radius:9px; cursor:pointer; border:1px solid transparent;
+  }
+  .btn-gold{ background:var(--gold); color:var(--gold-ink); }
+  .btn-gold:hover{ filter:brightness(1.06); }
+  .btn-ghost{ background:transparent; color:var(--ink); border-color:var(--line); }
+  .btn-ghost:hover{ background:var(--paper-raised); }
+  .btn:focus-visible,.check input:focus-visible,input[type=range]:focus-visible{
+    outline:2px solid var(--teal); outline-offset:2px;
+  }
+
+  .check{ display:inline-flex; align-items:center; gap:7px; font-size:.85rem; color:var(--ink-soft); cursor:pointer; }
+
+  .rack{
+    background:var(--paper-raised); border:1px solid var(--line); border-radius:var(--radius);
+    padding:18px 18px 16px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:20px;
+  }
+  [data-state="empty"] .rack .control{ opacity:.5; pointer-events:none; }
+  .rack-group{ display:flex; flex-direction:column; gap:12px; }
+  .rack-group h2{
+    font-family:var(--font-mono); font-size:.68rem; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--muted); border-bottom:1px solid var(--line); padding-bottom:8px;
+  }
+  .control{ display:grid; grid-template-columns:1fr auto; align-items:center; gap:2px 10px; }
+  .control label{ font-size:.83rem; color:var(--ink-soft); grid-column:1/2; }
+  .control .value{ font-family:var(--font-mono); font-size:.78rem; color:var(--ink); font-variant-numeric:tabular-nums; grid-column:2/3; text-align:right; }
+  .control input[type=range]{ grid-column:1/3; }
+
+  input[type=range]{ -webkit-appearance:none; appearance:none; width:100%; height:20px; background:transparent; margin:4px 0 0; }
+  input[type=range]::-webkit-slider-runnable-track{ height:3px; background:var(--line); border-radius:2px; }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; appearance:none; width:14px; height:14px; border-radius:50%;
+    background:var(--gold); border:2px solid var(--paper-raised); margin-top:-6px;
+    box-shadow:0 1px 3px rgba(0,0,0,.28); cursor:pointer;
+  }
+  input[type=range]::-moz-range-track{ height:3px; background:var(--line); border-radius:2px; }
+  input[type=range]::-moz-range-thumb{ width:14px; height:14px; border-radius:50%; background:var(--gold); border:2px solid var(--paper-raised); cursor:pointer; }
+
+  .rack-note{ font-size:.78rem; line-height:1.55; color:var(--muted); border-top:1px solid var(--line); padding-top:14px; }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ transition:none !important; animation:none !important; }
+  }
+</style>
+
+<div class="app" data-state="empty" data-whole="0" id="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">&#9680;</span>
+      <h1>Softlight</h1>
+    </div>
+    <p class="tagline">A portrait retoucher built on darkroom fundamentals &mdash; smooth, warm and lift a face the way a print retoucher would, one stage at a time.</p>
+    <span class="privacy-badge">CLIENT-SIDE &middot; YOUR PHOTO NEVER LEAVES THIS TAB</span>
+  </header>
+
+  <main class="bench">
+    <section class="stage">
+      <div class="stage-frame" id="stageFrame">
+        <div class="dropzone" id="dropzone">
+          <svg class="dz-ring" width="46" height="46" viewBox="0 0 46 46" fill="none" aria-hidden="true">
+            <circle cx="23" cy="17" r="8" stroke="currentColor" stroke-width="1.4"/>
+            <path d="M6 40c2-9 9-14 17-14s15 5 17 14" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>
+          <p class="dz-title">Drop a portrait here</p>
+          <p class="dz-sub">or choose a JPG or PNG &mdash; it's processed entirely on your device</p>
+          <button class="btn btn-gold" id="pickBtn" type="button">Choose Photo</button>
+          <input type="file" id="fileInput" accept="image/*" hidden>
+        </div>
+
+        <canvas id="srcView"></canvas>
+        <canvas id="outView"></canvas>
+
+        <div class="reticle" id="reticle">
+          <span class="reticle-label">FOCUS</span>
+          <span class="handle" id="reticleHandle" aria-hidden="true"></span>
+        </div>
+
+        <div class="divider" id="divider">
+          <span class="divider-line"></span>
+          <span class="divider-grip" aria-hidden="true">&#8596;</span>
+        </div>
+
+        <div class="compare-tags" id="compareTags">
+          <span class="tag tag-teal">BEFORE</span>
+          <span class="tag tag-gold">AFTER</span>
+        </div>
+      </div>
+
+      <p class="status" id="status" role="status" aria-live="polite"></p>
+
+      <div class="stage-controls" id="stageControls">
+        <button class="btn btn-ghost" id="changeBtn" type="button">Change Photo</button>
+        <button class="btn btn-ghost" id="resetBtn" type="button">Reset Adjustments</button>
+        <label class="check">
+          <input type="checkbox" id="wholeImageToggle">
+          <span>Apply across full frame</span>
+        </label>
+      </div>
+      <p class="save-hint">Right-click (or long-press) the photo above and choose <em>Save Image</em> to keep your result.</p>
+    </section>
+
+    <aside class="rack" aria-label="Retouching controls">
+      <div class="rack-group">
+        <h2>Stage 01 &mdash; Skin</h2>
+        <div class="control">
+          <label for="smoothing">Skin Smoothing</label>
+          <span class="value" id="smoothingOut">72%</span>
+          <input type="range" id="smoothing" min="0" max="100" value="72">
+        </div>
+        <div class="control">
+          <label for="detail">Detail Retention</label>
+          <span class="value" id="detailOut">28%</span>
+          <input type="range" id="detail" min="0" max="100" value="28">
+        </div>
+      </div>
+
+      <div class="rack-group">
+        <h2>Stage 02 &mdash; Tone</h2>
+        <div class="control">
+          <label for="exposure">Exposure</label>
+          <span class="value" id="exposureOut">+14</span>
+          <input type="range" id="exposure" min="-40" max="40" value="14">
+        </div>
+        <div class="control">
+          <label for="warmth">Warmth</label>
+          <span class="value" id="warmthOut">+10</span>
+          <input type="range" id="warmth" min="-40" max="40" value="10">
+        </div>
+        <div class="control">
+          <label for="vibrance">Vibrance</label>
+          <span class="value" id="vibranceOut">+8</span>
+          <input type="range" id="vibrance" min="-40" max="40" value="8">
+        </div>
+      </div>
+
+      <div class="rack-group">
+        <h2>Stage 03 &mdash; Light</h2>
+        <div class="control">
+          <label for="highlight">Highlight &amp; Shadow Lift</label>
+          <span class="value" id="highlightOut">45%</span>
+          <input type="range" id="highlight" min="0" max="100" value="45">
+        </div>
+      </div>
+
+      <div class="rack-group">
+        <h2>Stage 04 &mdash; Sculpt</h2>
+        <div class="control">
+          <label for="eyeSize">Eye Size</label>
+          <span class="value" id="eyeSizeOut">30%</span>
+          <input type="range" id="eyeSize" min="0" max="100" value="30">
+        </div>
+        <div class="control">
+          <label for="jawSlim">Jaw Slimming</label>
+          <span class="value" id="jawSlimOut">25%</span>
+          <input type="range" id="jawSlim" min="0" max="100" value="25">
+        </div>
+      </div>
+
+      <p class="rack-note">Softlight layers frequency-separated skin smoothing, shadow lift under the eyes, and a subtle eye/jaw reshape on top of tonal grading &mdash; a retoucher's full pass, run entirely as pixels in your browser. Drag the gold oval on the photo to aim it at a face; nothing is ever uploaded.</p>
+    </aside>
+  </main>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var app = document.getElementById('app');
+  var dropzone = document.getElementById('dropzone');
+  var fileInput = document.getElementById('fileInput');
+  var pickBtn = document.getElementById('pickBtn');
+  var changeBtn = document.getElementById('changeBtn');
+  var resetBtn = document.getElementById('resetBtn');
+  var wholeImageToggle = document.getElementById('wholeImageToggle');
+  var stageFrame = document.getElementById('stageFrame');
+  var srcView = document.getElementById('srcView');
+  var outView = document.getElementById('outView');
+  var reticle = document.getElementById('reticle');
+  var divider = document.getElementById('divider');
+  var statusEl = document.getElementById('status');
+
+  var sourceCanvas = document.createElement('canvas');
+  var outCtx = null;
+  var srcImageData = null;
+  var edgeMap = null;
+  var hasImage = false;
+  var cachedBlur = { radius: null, data: null };
+
+  var state = {
+    smoothing: 72, detail: 28, exposure: 14, warmth: 10, vibrance: 8, highlight: 45,
+    eyeSize: 30, jawSlim: 25,
+    wholeImage: false,
+    focus: { x: 0.5, y: 0.42, rw: 0.42, rh: 0.5 }
+  };
+  var DEFAULTS = { smoothing: 72, detail: 28, exposure: 14, warmth: 10, vibrance: 8, highlight: 45, eyeSize: 30, jawSlim: 25 };
+
+  function clamp(v, a, b){ return v < a ? a : (v > b ? b : v); }
+
+  // ---------- status ----------
+  function setStatus(msg){
+    statusEl.textContent = msg || '';
+    statusEl.classList.toggle('visible', !!msg);
+  }
+
+  // ---------- file loading ----------
+  function loadImageFile(file){
+    if(!file || file.type.indexOf('image/') !== 0) return;
+    var url = URL.createObjectURL(file);
+    var img = new Image();
+    img.onload = function(){
+      URL.revokeObjectURL(url);
+      initFromImage(img);
+    };
+    img.onerror = function(){
+      URL.revokeObjectURL(url);
+      setStatus('That file could not be read as an image.');
+    };
+    img.src = url;
+  }
+
+  function initFromImage(img){
+    var maxDim = 1000;
+    var w = img.naturalWidth, h = img.naturalHeight;
+    var scale = Math.min(1, maxDim / Math.max(w, h));
+    w = Math.max(1, Math.round(w * scale));
+    h = Math.max(1, Math.round(h * scale));
+
+    sourceCanvas.width = w; sourceCanvas.height = h;
+    var sctx = sourceCanvas.getContext('2d');
+    sctx.drawImage(img, 0, 0, w, h);
+    srcImageData = sctx.getImageData(0, 0, w, h);
+
+    srcView.width = w; srcView.height = h;
+    outView.width = w; outView.height = h;
+    srcView.getContext('2d').drawImage(sourceCanvas, 0, 0);
+    outCtx = outView.getContext('2d');
+
+    stageFrame.style.aspectRatio = w + ' / ' + h;
+
+    state.focus = { x: 0.5, y: 0.42, rw: 0.42, rh: 0.5 };
+    cachedBlur = { radius: null, data: null };
+    hasImage = false;
+
+    setStatus('Analyzing image…');
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        edgeMap = computeEdgeMap(srcImageData.data, w, h);
+        hasImage = true;
+        app.setAttribute('data-state', 'loaded');
+        setDivider(50);
+        positionReticle();
+        scheduleRecompute();
+        setStatus('');
+        tryAutoFace(img, w, h);
+      });
+    });
+  }
+
+  // ---------- edge map (Sobel, once per image) ----------
+  function computeEdgeMap(data, w, h){
+    var gray = new Float32Array(w * h);
+    for(var i = 0, p = 0; i < data.length; i += 4, p++){
+      gray[p] = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+    }
+    var edge = new Float32Array(w * h);
+    for(var y = 1; y < h - 1; y++){
+      var row = y * w;
+      for(var x = 1; x < w - 1; x++){
+        var i00 = row - w + x - 1, i01 = row - w + x, i02 = row - w + x + 1;
+        var i10 = row + x - 1,             i12 = row + x + 1;
+        var i20 = row + w + x - 1, i21 = row + w + x, i22 = row + w + x + 1;
+        var gx = (gray[i02] + 2*gray[i12] + gray[i22]) - (gray[i00] + 2*gray[i10] + gray[i20]);
+        var gy = (gray[i20] + 2*gray[i21] + gray[i22]) - (gray[i00] + 2*gray[i01] + gray[i02]);
+        var mag = Math.sqrt(gx*gx + gy*gy);
+        edge[row + x] = mag > 300 ? 1 : mag / 300;
+      }
+    }
+    return edge;
+  }
+
+  // ---------- blur (native canvas filter, cached by radius) ----------
+  function getBlurredData(radius){
+    var r = Math.round(radius * 10) / 10;
+    if(cachedBlur.radius === r) return cachedBlur.data;
+    var w = sourceCanvas.width, h = sourceCanvas.height;
+    var c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    var cx = c.getContext('2d');
+    cx.filter = 'blur(' + r + 'px)';
+    cx.drawImage(sourceCanvas, 0, 0);
+    var data = cx.getImageData(0, 0, w, h).data;
+    cachedBlur = { radius: r, data: data };
+    return data;
+  }
+
+  // ---------- main pipeline ----------
+  var pending = false;
+  function scheduleRecompute(){
+    if(pending || !hasImage) return;
+    pending = true;
+    requestAnimationFrame(function(){ pending = false; recompute(); });
+  }
+
+  function recompute(){
+    var w = sourceCanvas.width, h = sourceCanvas.height;
+    var src = srcImageData.data;
+    var blurRadius = 0.5 + (state.smoothing / 100) * 13 * (w / 900);
+    var blurred = getBlurredData(blurRadius);
+
+    var out = outCtx.createImageData(w, h);
+    var od = out.data;
+
+    var smoothing = state.smoothing / 100;
+    var detailProtect = 1 - (state.detail / 100) * 0.7;
+    var exposure = state.exposure * 1.2;
+    var warmth = state.warmth * 0.9;
+    var vib = state.vibrance / 100;
+    var hlAmt = state.highlight / 100;
+
+    var f = state.focus;
+    var cx = f.x * w, cy = f.y * h;
+    var rx = Math.max(4, f.rw * w / 2), ry = Math.max(4, f.rh * h / 2);
+    var feather = 0.35;
+    var wholeImage = state.wholeImage;
+
+    for(var y = 0; y < h; y++){
+      var dyv0 = y - cy;
+      var rowBase = y * w;
+      for(var x = 0; x < w; x++){
+        var i = rowBase + x, o = i * 4;
+        var maskA;
+        if(wholeImage){
+          maskA = 1;
+        } else {
+          var dx = (x - cx) / rx, dy = dyv0 / ry;
+          var d = Math.sqrt(dx*dx + dy*dy);
+          maskA = d <= 1 - feather ? 1 : (d >= 1 + feather ? 0 : 1 - ((d - (1 - feather)) / (2 * feather)));
+        }
+        var edgeProtect = edgeMap[i];
+        var blend = smoothing * maskA * (1 - edgeProtect) * detailProtect;
+
+        var r = src[o]   + (blurred[o]   - src[o])   * blend + exposure + warmth;
+        var g = src[o+1] + (blurred[o+1] - src[o+1]) * blend + exposure;
+        var b = src[o+2] + (blurred[o+2] - src[o+2]) * blend + exposure - warmth;
+
+        var lum = 0.299*r + 0.587*g + 0.114*b;
+        r = lum + (r - lum) * (1 + vib);
+        g = lum + (g - lum) * (1 + vib);
+        b = lum + (b - lum) * (1 + vib);
+
+        var th = 200;
+        if(lum > th){
+          var t = Math.min(1, (lum - th) / (255 - th)) * hlAmt;
+          r += (255 - r) * t * 0.6;
+          g += (255 - g) * t * 0.6;
+          b += (255 - b) * t * 0.6;
+        } else if(lum < 95){
+          var t2 = Math.min(1, (95 - lum) / 95) * hlAmt * maskA * 0.55;
+          r += (128 - r) * t2;
+          g += (128 - g) * t2;
+          b += (128 - b) * t2;
+        }
+
+        od[o]   = clamp(r, 0, 255);
+        od[o+1] = clamp(g, 0, 255);
+        od[o+2] = clamp(b, 0, 255);
+        od[o+3] = 255;
+      }
+    }
+    if(state.eyeSize > 0 || state.jawSlim > 0){
+      applyWarp(out, w, h, f, state.eyeSize, state.jawSlim);
+    }
+    outCtx.putImageData(out, 0, 0);
+  }
+
+  // ---------- geometric sculpt (liquify-style local warp) ----------
+  function sampleBilinear(data, w, h, fx, fy){
+    fx = clamp(fx, 0, w - 1.001);
+    fy = clamp(fy, 0, h - 1.001);
+    var x0 = Math.floor(fx), y0 = Math.floor(fy), x1 = x0 + 1, y1 = y0 + 1;
+    var tx = fx - x0, ty = fy - y0;
+    var i00 = (y0*w + x0) * 4, i10 = (y0*w + x1) * 4, i01 = (y1*w + x0) * 4, i11 = (y1*w + x1) * 4;
+    var out = [0, 0, 0];
+    for(var c = 0; c < 3; c++){
+      var top = data[i00+c]*(1-tx) + data[i10+c]*tx;
+      var bot = data[i01+c]*(1-tx) + data[i11+c]*tx;
+      out[c] = top*(1-ty) + bot*ty;
+    }
+    return out;
+  }
+
+  function applyWarp(imageData, w, h, focus, eyeAmt, jawAmt){
+    var src = new Uint8ClampedArray(imageData.data);
+    var dst = imageData.data;
+    var cx = focus.x * w, cy = focus.y * h;
+    var rx = focus.rw * w / 2, ry = focus.rh * h / 2;
+
+    var eyeDX = rx * 0.42, eyeY = cy - ry * 0.08, eyeR = rx * 0.30;
+    var jawDX = rx * 0.70, jawY = cy + ry * 0.52, jawR = rx * 0.46;
+    var eStr = (eyeAmt / 100) * 0.32;
+    var jStr = (jawAmt / 100) * 0.38;
+
+    var points = [];
+    if(eyeAmt > 0){
+      points.push({ x: cx - eyeDX, y: eyeY, r: eyeR, mode: 'bulge', s: eStr });
+      points.push({ x: cx + eyeDX, y: eyeY, r: eyeR, mode: 'bulge', s: eStr });
+    }
+    if(jawAmt > 0){
+      points.push({ x: cx - jawDX, y: jawY, r: jawR, mode: 'pinch', s: jStr });
+      points.push({ x: cx + jawDX, y: jawY, r: jawR, mode: 'pinch', s: jStr });
+    }
+    if(!points.length) return;
+
+    for(var y = 0; y < h; y++){
+      for(var x = 0; x < w; x++){
+        var sx = x, sy = y;
+        for(var p = 0; p < points.length; p++){
+          var pt = points[p];
+          var dx = x - pt.x, dy = y - pt.y;
+          var dist = Math.sqrt(dx*dx + dy*dy);
+          if(dist < pt.r){
+            var n = 1 - dist / pt.r;
+            var factor = pt.mode === 'bulge' ? (1 - pt.s * n * n) : (1 + pt.s * n * n);
+            sx = pt.x + dx * factor;
+            sy = pt.y + dy * factor;
+          }
+        }
+        var di = (y * w + x) * 4;
+        if(sx === x && sy === y){
+          dst[di] = src[di]; dst[di+1] = src[di+1]; dst[di+2] = src[di+2];
+        } else {
+          var rgb = sampleBilinear(src, w, h, sx, sy);
+          dst[di] = rgb[0]; dst[di+1] = rgb[1]; dst[di+2] = rgb[2];
+        }
+      }
+    }
+  }
+
+  // ---------- optional progressive face detection ----------
+  function tryAutoFace(img, w, h){
+    if(!('FaceDetector' in window)) return;
+    try{
+      var fd = new window.FaceDetector({ maxDetectedFaces: 1 });
+      fd.detect(img).then(function(faces){
+        if(!faces || !faces[0] || !hasImage) return;
+        var box = faces[0].boundingBox;
+        var sx = w / img.naturalWidth, sy = h / img.naturalHeight;
+        var bx = box.x * sx, by = box.y * sy, bw = box.width * sx, bh = box.height * sy;
+        var rw = Math.min(0.9, (bw / w) * 1.7);
+        var rh = Math.min(0.95, (bh / h) * 2.0);
+        var cx = (bx + bw / 2) / w;
+        var cy = (by + bh / 2) / h - rh * 0.08;
+        state.focus = { x: clamp(cx, rw/2, 1-rw/2), y: clamp(cy, rh/2, 1-rh/2), rw: rw, rh: rh };
+        positionReticle();
+        scheduleRecompute();
+      }).catch(function(){ /* silently keep default centered focus */ });
+    }catch(e){ /* FaceDetector unsupported in this browser */ }
+  }
+
+  // ---------- reticle / divider UI ----------
+  function positionReticle(){
+    var f = state.focus;
+    reticle.style.left = ((f.x - f.rw/2) * 100) + '%';
+    reticle.style.top = ((f.y - f.rh/2) * 100) + '%';
+    reticle.style.width = (f.rw * 100) + '%';
+    reticle.style.height = (f.rh * 100) + '%';
+  }
+
+  function setDivider(pct){
+    pct = clamp(pct, 4, 96);
+    divider.style.left = pct + '%';
+    outView.style.clipPath = 'inset(0 0 0 ' + pct + '%)';
+  }
+
+  function fracFromEvent(e){
+    var rect = stageFrame.getBoundingClientRect();
+    return {
+      x: clamp((e.clientX - rect.left) / rect.width, 0, 1),
+      y: clamp((e.clientY - rect.top) / rect.height, 0, 1)
+    };
+  }
+
+  var dragMode = null;
+  var grabOffset = { x: 0, y: 0 };
+
+  stageFrame.addEventListener('pointerdown', function(e){
+    if(!hasImage) return;
+    var onHandle = e.target.closest && e.target.closest('#reticleHandle');
+    var onReticle = e.target.closest && e.target.closest('#reticle');
+    var onDivider = e.target.closest && e.target.closest('#divider');
+    if(onHandle){
+      dragMode = 'resize';
+    } else if(onReticle && !state.wholeImage){
+      dragMode = 'move';
+      var f0 = fracFromEvent(e);
+      grabOffset.x = f0.x - state.focus.x;
+      grabOffset.y = f0.y - state.focus.y;
+    } else if(onDivider){
+      dragMode = 'divider';
+    } else {
+      return;
+    }
+    try{ e.target.setPointerCapture(e.pointerId); }catch(err){}
+    e.preventDefault();
+  });
+
+  stageFrame.addEventListener('pointermove', function(e){
+    if(!dragMode) return;
+    var f = fracFromEvent(e);
+    if(dragMode === 'move'){
+      var fo = state.focus;
+      fo.x = clamp(f.x - grabOffset.x, fo.rw/2, 1 - fo.rw/2);
+      fo.y = clamp(f.y - grabOffset.y, fo.rh/2, 1 - fo.rh/2);
+      positionReticle();
+      scheduleRecompute();
+    } else if(dragMode === 'resize'){
+      var fc = state.focus;
+      fc.rw = clamp(Math.abs(f.x - fc.x) * 2, 0.12, 0.95);
+      fc.rh = clamp(Math.abs(f.y - fc.y) * 2, 0.12, 0.95);
+      positionReticle();
+      scheduleRecompute();
+    } else if(dragMode === 'divider'){
+      setDivider(f.x * 100);
+    }
+  });
+
+  window.addEventListener('pointerup', function(){ dragMode = null; });
+  window.addEventListener('pointercancel', function(){ dragMode = null; });
+
+  // ---------- controls ----------
+  var CONTROLS = [
+    { id: 'smoothing', key: 'smoothing', fmt: function(v){ return v + '%'; } },
+    { id: 'detail',    key: 'detail',    fmt: function(v){ return v + '%'; } },
+    { id: 'exposure',  key: 'exposure',  fmt: function(v){ return (v > 0 ? '+' : '') + v; } },
+    { id: 'warmth',    key: 'warmth',    fmt: function(v){ return (v > 0 ? '+' : '') + v; } },
+    { id: 'vibrance',  key: 'vibrance',  fmt: function(v){ return (v > 0 ? '+' : '') + v; } },
+    { id: 'highlight', key: 'highlight', fmt: function(v){ return v + '%'; } },
+    { id: 'eyeSize',   key: 'eyeSize',   fmt: function(v){ return v + '%'; } },
+    { id: 'jawSlim',   key: 'jawSlim',   fmt: function(v){ return v + '%'; } }
+  ];
+
+  CONTROLS.forEach(function(c){
+    var el = document.getElementById(c.id);
+    var out = document.getElementById(c.id + 'Out');
+    el.addEventListener('input', function(){
+      var v = Number(el.value);
+      state[c.key] = v;
+      out.textContent = c.fmt(v);
+      scheduleRecompute();
+    });
+  });
+
+  wholeImageToggle.addEventListener('change', function(e){
+    state.wholeImage = e.target.checked;
+    app.setAttribute('data-whole', state.wholeImage ? '1' : '0');
+    scheduleRecompute();
+  });
+
+  resetBtn.addEventListener('click', function(){
+    Object.keys(DEFAULTS).forEach(function(key){ state[key] = DEFAULTS[key]; });
+    CONTROLS.forEach(function(c){
+      var el = document.getElementById(c.id);
+      var out = document.getElementById(c.id + 'Out');
+      el.value = DEFAULTS[c.key];
+      out.textContent = c.fmt(DEFAULTS[c.key]);
+    });
+    wholeImageToggle.checked = false;
+    state.wholeImage = false;
+    app.setAttribute('data-whole', '0');
+    state.focus = { x: 0.5, y: 0.42, rw: 0.42, rh: 0.5 };
+    positionReticle();
+    scheduleRecompute();
+  });
+
+  // ---------- file input plumbing ----------
+  function openPicker(){ fileInput.click(); }
+  dropzone.addEventListener('click', openPicker);
+  pickBtn.addEventListener('click', function(e){ e.stopPropagation(); openPicker(); });
+  changeBtn.addEventListener('click', openPicker);
+  fileInput.addEventListener('change', function(e){
+    if(e.target.files && e.target.files[0]) loadImageFile(e.target.files[0]);
+  });
+
+  ['dragenter','dragover'].forEach(function(evt){
+    dropzone.addEventListener(evt, function(e){ e.preventDefault(); dropzone.classList.add('drag-over'); });
+  });
+  ['dragleave','drop'].forEach(function(evt){
+    dropzone.addEventListener(evt, function(e){ e.preventDefault(); dropzone.classList.remove('drag-over'); });
+  });
+  dropzone.addEventListener('drop', function(e){
+    if(e.dataTransfer.files && e.dataTransfer.files[0]) loadImageFile(e.dataTransfer.files[0]);
+  });
+  stageFrame.addEventListener('dragover', function(e){ if(hasImage) e.preventDefault(); });
+  stageFrame.addEventListener('drop', function(e){
+    if(hasImage && e.dataTransfer.files && e.dataTransfer.files[0]){
+      e.preventDefault();
+      loadImageFile(e.dataTransfer.files[0]);
+    }
+  });
+})();
+</script>
