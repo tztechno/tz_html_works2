@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Maison Cadran</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Jost:wght@400;500&display=swap">
+<style>
+  :root{
+    --noir:#0c0a08;
+    --walnut:#2e1c10;
+    --brass:#c9a15b;
+    --gold:#e3c284;
+    --velvet:#4a1420;
+    --ivory:#f3e9d6;
+  }
+  html,body{
+    margin:0;
+    padding:0;
+    width:100%;
+    height:100%;
+    background:var(--noir);
+    overflow:hidden;
+    overscroll-behavior:none;
+  }
+  body{
+    font-family:'Jost', 'Helvetica Neue', sans-serif;
+    color:var(--gold);
+  }
+  canvas{
+    display:block;
+    touch-action:none;
+  }
+  #stage{
+    position:fixed;
+    inset:0;
+    width:100%;
+    height:100%;
+    cursor:grab;
+  }
+  #stage.dragging{ cursor:grabbing; }
+  .vignette{
+    position:fixed;
+    inset:0;
+    z-index:4;
+    pointer-events:none;
+    background:radial-gradient(ellipse at center, rgba(0,0,0,0) 45%, rgba(0,0,0,0.55) 100%);
+  }
+  .hud{
+    position:fixed;
+    inset:0;
+    z-index:5;
+    pointer-events:none;
+    display:flex;
+    flex-direction:column;
+    justify-content:flex-end;
+    align-items:center;
+    padding:clamp(16px,4vw,36px);
+    box-sizing:border-box;
+  }
+  .hint{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-size:11px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:rgba(227,194,132,0.75);
+    background:rgba(12,10,8,0.5);
+    border:1px solid rgba(227,194,132,0.25);
+    border-radius:999px;
+    padding:8px 18px;
+    -webkit-backdrop-filter:blur(6px);
+    backdrop-filter:blur(6px);
+    transition:opacity 0.6s ease;
+    text-align:center;
+  }
+  .hint.hidden{ opacity:0; }
+  #loading{
+    position:fixed;
+    inset:0;
+    z-index:10;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+    gap:14px;
+    background:var(--noir);
+    transition:opacity 0.7s ease;
+  }
+  #loading .mark{
+    font-family:'Cormorant Garamond', serif;
+    font-weight:600;
+    font-size:clamp(18px,3vw,24px);
+    letter-spacing:0.06em;
+    color:var(--gold);
+  }
+  #loading .bar{
+    width:150px;
+    height:1px;
+    background:rgba(227,194,132,0.2);
+    overflow:hidden;
+  }
+  #loading .bar::after{
+    content:"";
+    display:block;
+    width:36%;
+    height:100%;
+    background:var(--gold);
+    animation:sweep 1.2s ease-in-out infinite;
+  }
+  @keyframes sweep{
+    0%{ transform:translateX(-140%); }
+    100%{ transform:translateX(380%); }
+  }
+  #loading.gone{ opacity:0; pointer-events:none; }
+  #fallback{
+    position:fixed;
+    inset:0;
+    z-index:20;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:24px;
+    background:var(--noir);
+  }
+  #fallback p{
+    max-width:34ch;
+    color:rgba(227,194,132,0.8);
+    font-size:14px;
+    line-height:1.7;
+  }
+  @media (prefers-reduced-motion: reduce){
+    #loading .bar::after{ animation:none; }
+  }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div class="vignette"></div>
+
+<div class="hud">
+  <div class="hint" id="hint">Drag to look closer · Scroll or pinch to zoom</div>
+</div>
+
+<div id="loading">
+  <div class="mark">Winding the display…</div>
+  <div class="bar"></div>
+</div>
+
+<div id="fallback">
+  <p>The window display failed to load. Please check your connection and try reloading the page.</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  function boot(){
+  if (typeof THREE === "undefined"){
+    document.getElementById("loading").classList.add("gone");
+    document.getElementById("fallback").style.display = "flex";
+    return;
+  }
+
+  var stage = document.getElementById("stage");
+  var loadingEl = document.getElementById("loading");
+  var hintEl = document.getElementById("hint");
+
+  // ---------- renderer / scene / camera ----------
+  var scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x0c0a08, 0.09);
+
+  var TARGET = new THREE.Vector3(0, 0.95, 0);
+  var camera = new THREE.PerspectiveCamera(38, window.innerWidth/window.innerHeight, 0.1, 30);
+
+  var renderer = new THREE.WebGLRenderer({ antialias:true, powerPreference:"high-performance" });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  if (renderer.outputEncoding !== undefined) renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+  stage.appendChild(renderer.domElement);
+
+  // ---------- procedural textures ----------
+  function makeCanvas(w,h){
+    var c = document.createElement("canvas");
+    c.width = w; c.height = h;
+    return c;
+  }
+
+  function fabricTexture(base, w, h){
+    var c = makeCanvas(w,h);
+    var ctx = c.getContext("2d");
+    ctx.fillStyle = base;
+    ctx.fillRect(0,0,w,h);
+    for (var i=0;i<9000;i++){
+      var x = Math.random()*w, y = Math.random()*h;
+      var shade = Math.random() > 0.5 ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.05)";
+      ctx.fillStyle = shade;
+      ctx.fillRect(x,y,1,1);
+    }
+    // faint pile direction streaks
+    ctx.strokeStyle = "rgba(0,0,0,0.05)";
+    for (var j=0;j<60;j++){
+      var yy = Math.random()*h;
+      ctx.beginPath();
+      ctx.moveTo(0,yy);
+      ctx.lineTo(w,yy+(Math.random()*10-5));
+      ctx.stroke();
+    }
+    var tex = new THREE.CanvasTexture(c);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+  }
+
+  function woodTexture(base, stripe, w, h){
+    var c = makeCanvas(w,h);
+    var ctx = c.getContext("2d");
+    ctx.fillStyle = base; ctx.fillRect(0,0,w,h);
+    for (var i=0;i<24;i++){
+      var x = (i/24)*w + Math.sin(i*8.2)*3;
+      ctx.fillStyle = stripe;
+      ctx.globalAlpha = 0.08 + (i%4)*0.05;
+      ctx.fillRect(x,0,2+(i%3),h);
+    }
+    ctx.globalAlpha = 1;
+    var tex = new THREE.CanvasTexture(c);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+  }
+
+  function glassOverlayTexture(){
+    var w = 1024, h = 768;
+    var c = makeCanvas(w,h);
+    var ctx = c.getContext("2d");
+    ctx.clearRect(0,0,w,h);
+    // faint reflected street bokeh, low alpha so the watch stays legible
+    var colors = ["#f2c879","#e8895a","#c98bd9"];
+    for (var i=0;i<14;i++){
+      var x = Math.random()*w, y = Math.random()*h*0.5;
+      var r = 20 + Math.random()*70;
+      var g = ctx.createRadialGradient(x,y,0,x,y,r);
+      g.addColorStop(0, colors[i%colors.length]);
+      g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.globalAlpha = 0.10;
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    // diagonal soft sheen streak
+    var sheen = ctx.createLinearGradient(0,0,w,h*0.6);
+    sheen.addColorStop(0, "rgba(255,255,255,0.10)");
+    sheen.addColorStop(0.4, "rgba(255,255,255,0.0)");
+    sheen.addColorStop(1, "rgba(255,255,255,0.0)");
+    ctx.fillStyle = sheen;
+    ctx.fillRect(0,0,w,h);
+    // gold-leaf signage, painted on the inside of the glass
+    ctx.textAlign = "center";
+    ctx.fillStyle = "rgba(227,194,132,0.92)";
+    ctx.strokeStyle = "rgba(20,14,6,0.6)";
+    ctx.lineWidth = 1.5;
+    ctx.font = "600 64px 'Cormorant Garamond', serif";
+    ctx.fillText("Maison Cadran", w/2, h*0.14);
+    ctx.strokeText("Maison Cadran", w/2, h*0.14);
+    ctx.font = "400 20px 'Jost', sans-serif";
+    ctx.fillStyle = "rgba(227,194,132,0.7)";
+    ctx.fillText("H O R L O G E R S   ·   É T A B L I   1 8 9 3", w/2, h*0.14 + 34);
+    // thin gilded rule beneath the wordmark
+    ctx.strokeStyle = "rgba(227,194,132,0.5)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(w*0.32, h*0.19);
+    ctx.lineTo(w*0.68, h*0.19);
+    ctx.stroke();
+    return new THREE.CanvasTexture(c);
+  }
+
+  function plaqueTexture(){
+    var w = 512, h = 320;
+    var c = makeCanvas(w,h);
+    var ctx = c.getContext("2d");
+    ctx.fillStyle = "#120b06";
+    ctx.fillRect(0,0,w,h);
+    ctx.strokeStyle = "rgba(227,194,132,0.5)";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(10,10,w-20,h-20);
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#e3c284";
+    ctx.font = "600 40px 'Cormorant Garamond', serif";
+    ctx.fillText("Grande Complication", w/2, h*0.4);
+    ctx.font = "400 22px 'Jost', sans-serif";
+    ctx.fillStyle = "rgba(227,194,132,0.8)";
+    ctx.fillText("Édition Limitée  ·  No. 07 / 50", w/2, h*0.58);
+    ctx.font = "400 18px 'Jost', sans-serif";
+    ctx.fillStyle = "rgba(227,194,132,0.55)";
+    ctx.fillText("18k gold  ·  hand-wound", w/2, h*0.74);
+    return new THREE.CanvasTexture(c);
+  }
+
+  // ---------- materials ----------
+  var brassMat = new THREE.MeshStandardMaterial({ color:0xc9a15b, roughness:0.3, metalness:0.85 });
+  var brightGoldMat = new THREE.MeshStandardMaterial({ color:0xe3c284, roughness:0.18, metalness:0.9 });
+  var ivoryDialMat = new THREE.MeshStandardMaterial({ color:0xf3e9d6, roughness:0.35, metalness:0.05 });
+  var leatherMat = new THREE.MeshStandardMaterial({ color:0x2a180f, roughness:0.6, metalness:0.05 });
+  var velvetTex = fabricTexture("#4a1420", 256, 256);
+  var velvetMat = new THREE.MeshStandardMaterial({ map:velvetTex, color:0x8a4a58, roughness:0.95, metalness:0.0 });
+  var walnutTex = woodTexture("#2e1c10", "#160d06", 512, 512);
+  var walnutMat = new THREE.MeshStandardMaterial({ map:walnutTex, color:0x8a6a45, roughness:0.55, metalness:0.05 });
+  var floorMat = new THREE.MeshStandardMaterial({ color:0x1c1108, roughness:0.28, metalness:0.1 });
+  var crystalMat = new THREE.MeshPhysicalMaterial({ color:0xffffff, roughness:0.05, transmission:0.94, transparent:true, opacity:0.35, thickness:0.05 });
+  var windowGlassMat = new THREE.MeshPhysicalMaterial({ color:0xdce8ea, roughness:0.04, transmission:0.92, transparent:true, opacity:0.22, thickness:0.05 });
+
+  // ---------- window box shell (frame, backdrop, floor) ----------
+  var BOX_W = 2.6, BOX_H = 2.2, BOX_D = 2.8;
+
+  var backdrop = new THREE.Mesh(new THREE.PlaneGeometry(BOX_W, BOX_H), velvetMat);
+  backdrop.position.set(0, BOX_H/2 - 0.15, -BOX_D/2);
+  backdrop.receiveShadow = true;
+  scene.add(backdrop);
+
+  var floor = new THREE.Mesh(new THREE.PlaneGeometry(BOX_W, BOX_D), floorMat);
+  floor.rotation.x = -Math.PI/2;
+  floor.position.set(0, 0, -BOX_D/2 + BOX_D/2);
+  floor.receiveShadow = true;
+  scene.add(floor);
+
+  var sideMat = walnutMat;
+  var leftWall = new THREE.Mesh(new THREE.PlaneGeometry(BOX_D, BOX_H), sideMat);
+  leftWall.position.set(-BOX_W/2, BOX_H/2 - 0.15, 0);
+  leftWall.rotation.y = Math.PI/2;
+  scene.add(leftWall);
+  var rightWall = new THREE.Mesh(new THREE.PlaneGeometry(BOX_D, BOX_H), sideMat);
+  rightWall.position.set(BOX_W/2, BOX_H/2 - 0.15, 0);
+  rightWall.rotation.y = -Math.PI/2;
+  scene.add(rightWall);
+  var ceilingPanel = new THREE.Mesh(new THREE.PlaneGeometry(BOX_W, BOX_D), walnutMat);
+  ceilingPanel.rotation.x = Math.PI/2;
+  ceilingPanel.position.set(0, BOX_H - 0.15, 0);
+  scene.add(ceilingPanel);
+
+  // shop window glass + gilded frame, fixed between the display and the viewer
+  var GLASS_Z = 1.3;
+  var glass = new THREE.Mesh(new THREE.PlaneGeometry(BOX_W-0.1, BOX_H-0.25), windowGlassMat);
+  glass.position.set(0, BOX_H/2 - 0.15, GLASS_Z);
+  scene.add(glass);
+
+  var overlayTex = glassOverlayTexture();
+  var overlay = new THREE.Mesh(new THREE.PlaneGeometry(BOX_W-0.1, BOX_H-0.25), new THREE.MeshBasicMaterial({ map: overlayTex, transparent:true }));
+  overlay.position.set(0, BOX_H/2 - 0.15, GLASS_Z + 0.01);
+  scene.add(overlay);
+
+  function frameBeam(w,h,d,x,y,z){
+    var m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), walnutMat);
+    m.position.set(x,y,z);
+    scene.add(m);
+    return m;
+  }
+  frameBeam(BOX_W+0.14, 0.14, 0.14, 0, (BOX_H/2 - 0.15) + (BOX_H-0.25)/2, GLASS_Z);
+  frameBeam(BOX_W+0.14, 0.14, 0.14, 0, (BOX_H/2 - 0.15) - (BOX_H-0.25)/2, GLASS_Z);
+  frameBeam(0.14, BOX_H-0.1, 0.14, -(BOX_W-0.1)/2, BOX_H/2 - 0.15, GLASS_Z);
+  frameBeam(0.14, BOX_H-0.1, 0.14, (BOX_W-0.1)/2, BOX_H/2 - 0.15, GLASS_Z);
+
+  // ---------- the turntable (rotates the jewelry, not the camera) ----------
+  var turntable = new THREE.Group();
+  scene.add(turntable);
+
+  var turntableBase = new THREE.Mesh(new THREE.CylinderGeometry(0.62,0.66,0.05,32), brassMat);
+  turntableBase.position.y = 0.025;
+  turntableBase.castShadow = true;
+  turntableBase.receiveShadow = true;
+  turntable.add(turntableBase);
+  var turntableRim = new THREE.Mesh(new THREE.TorusGeometry(0.62,0.015,10,32), brightGoldMat);
+  turntableRim.rotation.x = Math.PI/2;
+  turntableRim.position.y = 0.05;
+  turntable.add(turntableRim);
+
+  // velvet cushion
+  var cushion = new THREE.Mesh(new THREE.SphereGeometry(0.34,20,14), velvetMat);
+  cushion.scale.set(1, 0.42, 0.8);
+  cushion.position.set(0, 0.24, 0);
+  cushion.castShadow = true;
+  cushion.receiveShadow = true;
+  turntable.add(cushion);
+
+  // ---------- the watch ----------
+  var watch = new THREE.Group();
+  watch.position.set(0.02, 0.5, 0.05);
+  watch.rotation.x = -0.55;
+  watch.rotation.z = 0.12;
+  turntable.add(watch);
+
+  var caseBack = new THREE.Mesh(new THREE.CylinderGeometry(0.34,0.34,0.1,40), brassMat);
+  caseBack.castShadow = true;
+  watch.add(caseBack);
+  var bezel = new THREE.Mesh(new THREE.TorusGeometry(0.34,0.035,14,40), brightGoldMat);
+  bezel.rotation.x = Math.PI/2;
+  bezel.position.y = 0.05;
+  watch.add(bezel);
+  var dial = new THREE.Mesh(new THREE.CylinderGeometry(0.305,0.305,0.02,40), ivoryDialMat);
+  dial.position.y = 0.06;
+  watch.add(dial);
+  var crystal = new THREE.Mesh(new THREE.CylinderGeometry(0.33,0.33,0.03,40), crystalMat);
+  crystal.position.y = 0.075;
+  watch.add(crystal);
+  var crown = new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,0.06,12), brassMat);
+  crown.rotation.z = Math.PI/2;
+  crown.position.set(0.36,0.05,0);
+  watch.add(crown);
+
+  // hour markers
+  for (var m=0; m<12; m++){
+    var ang = (m/12) * Math.PI * 2;
+    var marker = new THREE.Mesh(new THREE.BoxGeometry(0.018,0.01,0.07), brassMat);
+    marker.position.set(Math.sin(ang)*0.25, 0.072, Math.cos(ang)*0.25);
+    marker.rotation.y = ang;
+    watch.add(marker);
+  }
+  // small sub-dial for a "complication" look
+  var subDial = new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,0.012,24), new THREE.MeshStandardMaterial({ color:0xe6dcc4, roughness:0.4 }));
+  subDial.position.set(0,0.072,0.14);
+  watch.add(subDial);
+
+  // hands, classic ten-past-ten pose
+  var hourHand = new THREE.Mesh(new THREE.BoxGeometry(0.02,0.012,0.16), brassMat);
+  hourHand.position.set(0,0.078,0);
+  hourHand.rotation.y = THREE.MathUtils.degToRad(-55);
+  watch.add(hourHand);
+  var minuteHand = new THREE.Mesh(new THREE.BoxGeometry(0.016,0.012,0.24), brassMat);
+  minuteHand.position.set(0,0.083,0);
+  minuteHand.rotation.y = THREE.MathUtils.degToRad(62);
+  watch.add(minuteHand);
+  var secondHand = new THREE.Mesh(new THREE.BoxGeometry(0.006,0.012,0.26), brightGoldMat);
+  secondHand.position.set(0,0.087,0);
+  watch.add(secondHand);
+
+  // leather strap draped over the cushion
+  function strapSegment(x,y,z,rotX,len){
+    var seg = new THREE.Mesh(new THREE.BoxGeometry(0.16,0.02,len), leatherMat);
+    seg.position.set(x,y,z);
+    seg.rotation.x = rotX;
+    seg.castShadow = true;
+    watch.add(seg);
+  }
+  strapSegment(0, -0.02, 0.42, -0.35, 0.3);
+  strapSegment(0, -0.14, 0.62, -0.9, 0.22);
+  strapSegment(0, -0.02, -0.42, 0.35, 0.3);
+  strapSegment(0, -0.14, -0.62, 0.9, 0.22);
+
+  // ---------- pocket watch, set back on a mini brass easel ----------
+  var pocketGroup = new THREE.Group();
+  pocketGroup.position.set(-0.42, 0.34, -0.28);
+  pocketGroup.rotation.set(-0.2, 0.5, 0.1);
+  turntable.add(pocketGroup);
+  var pocketCase = new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.16,0.06,32), brassMat);
+  pocketCase.castShadow = true;
+  pocketGroup.add(pocketCase);
+  var pocketDial = new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.14,0.012,32), ivoryDialMat);
+  pocketDial.position.y = 0.04;
+  pocketGroup.add(pocketDial);
+  var pocketRing = new THREE.Mesh(new THREE.TorusGeometry(0.05,0.012,8,20), brightGoldMat);
+  pocketRing.position.y = 0.16;
+  pocketGroup.add(pocketRing);
+  var easelPole = new THREE.Mesh(new THREE.CylinderGeometry(0.01,0.01,0.28,8), brassMat);
+  easelPole.position.set(0,-0.14,0);
+  pocketGroup.add(easelPole);
+
+  // ---------- fixed props: gilded plaque + loupe, resting on the floor ----------
+  var plaqueTex = plaqueTexture();
+  var plaque = new THREE.Mesh(new THREE.PlaneGeometry(0.42,0.26), new THREE.MeshStandardMaterial({ map:plaqueTex, roughness:0.6 }));
+  plaque.position.set(0.55, 0.14, 0.55);
+  plaque.rotation.y = -0.5;
+  plaque.rotation.x = -0.15;
+  scene.add(plaque);
+  var plaqueStand = new THREE.Mesh(new THREE.BoxGeometry(0.44,0.02,0.1), brassMat);
+  plaqueStand.position.set(0.55, 0.01, 0.6);
+  plaqueStand.rotation.y = -0.5;
+  scene.add(plaqueStand);
+
+  var loupeGroup = new THREE.Group();
+  loupeGroup.position.set(0.34, 0.04, 0.82);
+  loupeGroup.rotation.set(1.4, 0.3, 0.2);
+  scene.add(loupeGroup);
+  var loupeRing = new THREE.Mesh(new THREE.TorusGeometry(0.055,0.012,10,24), brassMat);
+  loupeGroup.add(loupeRing);
+  var loupeGlass = new THREE.Mesh(new THREE.CircleGeometry(0.05,20), crystalMat);
+  loupeGroup.add(loupeGlass);
+  var loupeHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.012,0.14,10), leatherMat);
+  loupeHandle.position.set(0.09,-0.09,0);
+  loupeHandle.rotation.z = -0.7;
+  loupeGroup.add(loupeHandle);
+
+  // ---------- lighting ----------
+  var key = new THREE.SpotLight(0xffe3b0, 2.6, 6, Math.PI/7, 0.5, 1.2);
+  key.position.set(0.9, 2.0, 1.1);
+  key.target.position.copy(TARGET);
+  key.castShadow = true;
+  key.shadow.mapSize.set(1024,1024);
+  key.shadow.bias = -0.002;
+  scene.add(key);
+  scene.add(key.target);
+
+  var rim = new THREE.PointLight(0xb98a4a, 0.9, 4, 2);
+  rim.position.set(-0.6, 0.9, -1.0);
+  scene.add(rim);
+
+  var fill = new THREE.PointLight(0x6f7fae, 0.28, 4, 2);
+  fill.position.set(-0.8, 0.6, 0.9);
+  scene.add(fill);
+
+  var ambient = new THREE.AmbientLight(0x1a1108, 0.5);
+  scene.add(ambient);
+
+  // ---------- camera controller: limited orbit, no free-roam ----------
+  // The camera always stays on the street side of the glass, as though the
+  // viewer is leaning side to side and closer/further from a real shop
+  // window -- it never swings around behind the display.
+  var dom = renderer.domElement;
+  var YAW_LIMIT = 0.5;
+  var PITCH_MIN = -0.02, PITCH_MAX = 0.34;
+  var DIST_MIN = 1.7, DIST_MAX = 3.3;
+  var userYaw = 0, userPitch = 0.16, dist = 2.5;
+  var isPointerDown = false;
+  var lastX = 0, lastY = 0;
+  var hasInteracted = false;
+
+  function hideHint(){
+    if (!hasInteracted){
+      hasInteracted = true;
+      hintEl.classList.add("hidden");
+    }
+  }
+
+  dom.addEventListener("pointerdown", function(e){
+    isPointerDown = true;
+    lastX = e.clientX; lastY = e.clientY;
+    stage.classList.add("dragging");
+    hideHint();
+  });
+  window.addEventListener("pointerup", function(){
+    isPointerDown = false;
+    stage.classList.remove("dragging");
+  });
+  window.addEventListener("pointermove", function(e){
+    if (!isPointerDown) return;
+    var dx = e.clientX - lastX;
+    var dy = e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    userYaw = Math.max(-YAW_LIMIT, Math.min(YAW_LIMIT, userYaw - dx*0.0026));
+    userPitch = Math.max(PITCH_MIN, Math.min(PITCH_MAX, userPitch - dy*0.0018));
+  });
+  dom.addEventListener("wheel", function(e){
+    e.preventDefault();
+    dist = Math.max(DIST_MIN, Math.min(DIST_MAX, dist + e.deltaY*0.0022));
+    hideHint();
+  }, { passive:false });
+
+  // pinch-to-zoom for touch devices
+  var pinchStartDist = null, pinchStartZoom = 1;
+  dom.addEventListener("touchstart", function(e){
+    if (e.touches.length === 2){
+      var t0=e.touches[0], t1=e.touches[1];
+      pinchStartDist = Math.hypot(t0.clientX-t1.clientX, t0.clientY-t1.clientY);
+      pinchStartZoom = dist;
+    }
+  }, { passive:true });
+  dom.addEventListener("touchmove", function(e){
+    if (e.touches.length === 2 && pinchStartDist){
+      var t0=e.touches[0], t1=e.touches[1];
+      var d = Math.hypot(t0.clientX-t1.clientX, t0.clientY-t1.clientY);
+      var ratio = pinchStartDist / d;
+      dist = Math.max(DIST_MIN, Math.min(DIST_MAX, pinchStartZoom * ratio));
+      hideHint();
+    }
+  }, { passive:true });
+  dom.addEventListener("touchend", function(){ pinchStartDist = null; });
+
+  function updateCamera(time){
+    // a gentle idle sway plays until the viewer first interacts
+    var idleSway = hasInteracted ? 0 : Math.sin(time*0.35)*0.12;
+    var yaw = userYaw + idleSway;
+    var pitch = userPitch;
+    camera.position.set(
+      TARGET.x + dist * Math.sin(yaw) * Math.cos(pitch),
+      TARGET.y + dist * Math.sin(pitch) + 0.35,
+      TARGET.z + dist * Math.cos(yaw) * Math.cos(pitch)
+    );
+    camera.lookAt(TARGET);
+  }
+
+  // ---------- resize ----------
+  function onViewportResize(){
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+  window.addEventListener("resize", onViewportResize);
+  window.addEventListener("orientationchange", function(){ setTimeout(onViewportResize, 200); });
+
+  // ---------- render loop ----------
+  var clock = new THREE.Clock();
+  var elapsed = 0;
+  function tick(){
+    var dt = Math.min(clock.getDelta(), 0.05);
+    elapsed += dt;
+
+    turntable.rotation.y += dt * 0.22;
+    secondHand.rotation.y += dt * (Math.PI*2/24); // one slow, smooth sweep
+
+    var keyFlicker = 1.0 + Math.sin(elapsed*11.0)*0.02;
+    key.intensity = 2.6 * keyFlicker;
+
+    updateCamera(elapsed);
+    renderer.render(scene, camera);
+    requestAnimationFrame(tick);
+  }
+
+  requestAnimationFrame(function(){
+    tick();
+    setTimeout(function(){ loadingEl.classList.add("gone"); }, 260);
+  });
+  }
+
+  if (document.readyState === "complete" || document.readyState === "interactive"){
+    setTimeout(boot, 0);
+  } else {
+    window.addEventListener("DOMContentLoaded", boot);
+  }
+  window.addEventListener("load", function(){
+    if (typeof THREE === "undefined"){
+      document.getElementById("loading").classList.add("gone");
+      document.getElementById("fallback").style.display = "flex";
+    }
+  });
+})();
+</script>
+</body>
+</html>
