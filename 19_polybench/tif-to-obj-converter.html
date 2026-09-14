@@ -1,69 +1,724 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>GeoTIFF (DEM) → OBJ/STL Converter</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Terrain Mesh Converter</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <style>
-  body { font-family: -apple-system, "Segoe UI", "Hiragino Kaku Gothic ProN", sans-serif; max-width: 760px; margin: 40px auto; padding: 0 20px; color: #222; background: #fafafa; }
-  h1 { font-size: 22px; }
-  .drop-zone { border: 2px dashed #999; border-radius: 10px; padding: 40px 20px; text-align: center; color: #666; cursor: pointer; background: #fff; transition: border-color .15s, background .15s; }
-  .drop-zone.dragover { border-color: #3b82f6; background: #eff6ff; }
-  .row { margin: 14px 0; }
-  label { display: inline-block; min-width: 200px; }
-  input[type=number] { width: 100px; padding: 4px; }
-  button { padding: 8px 16px; font-size: 14px; border-radius: 6px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
-  button:disabled { opacity: .5; cursor: default; }
-  button.primary { background: #2563eb; color: #fff; border-color: #2563eb; }
-  #log { white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; background: #111; color: #0f0; padding: 12px; border-radius: 6px; min-height: 90px; max-height: 260px; overflow: auto; }
-  .stats { font-size: 14px; line-height: 1.7; background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 12px 16px; }
-  .footer-note { font-size: 12.5px; color: #777; margin-top: 24px; }
-  .hidden { display: none; }
+  :root {
+    --bg: #f5f4ee;
+    --surface: #ffffff;
+    --surface-alt: #edf0e8;
+    --border: #d9d7cb;
+    --text: #1f2420;
+    --text-muted: #5c6459;
+    --accent: #3d6b52;
+    --accent-strong: #2a4c3a;
+    --accent-soft: #e2ebe3;
+    --warn: #a75c1d;
+    --danger: #a8352b;
+    --code-bg: #10140f;
+    --code-text: #8fd6ab;
+    --code-text-dim: #4f7a63;
+    --shadow: 0 1px 2px rgba(31, 36, 32, 0.06), 0 8px 24px rgba(31, 36, 32, 0.05);
+
+    --font-sans: 'IBM Plex Sans', -apple-system, "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 20px;
+    --space-5: 32px;
+    --space-6: 48px;
+
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141814;
+      --surface: #1b201b;
+      --surface-alt: #202620;
+      --border: #333a32;
+      --text: #e8ece5;
+      --text-muted: #9aa79b;
+      --accent: #74b593;
+      --accent-strong: #97cdb0;
+      --accent-soft: #223328;
+      --warn: #d99a52;
+      --danger: #e08477;
+      --code-bg: #0c0f0b;
+      --code-text: #86d1a5;
+      --code-text-dim: #3f5c4c;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141814;
+    --surface: #1b201b;
+    --surface-alt: #202620;
+    --border: #333a32;
+    --text: #e8ece5;
+    --text-muted: #9aa79b;
+    --accent: #74b593;
+    --accent-strong: #97cdb0;
+    --accent-soft: #223328;
+    --warn: #d99a52;
+    --danger: #e08477;
+    --code-bg: #0c0f0b;
+    --code-text: #86d1a5;
+    --code-text-dim: #3f5c4c;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  .page-shell {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: var(--space-6) 20px var(--space-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+  }
+
+  .masthead {
+    position: relative;
+    padding-top: var(--space-3);
+    overflow: hidden;
+  }
+
+  .ridge {
+    position: absolute;
+    inset: 0 -20px auto -20px;
+    height: 84px;
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
+  .masthead-top {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+  }
+
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 var(--space-2);
+  }
+  .eyebrow::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 2px;
+    background: var(--accent);
+    transform: rotate(45deg);
+    flex: none;
+  }
+
+  .lang-switch {
+    display: inline-flex;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 3px;
+    background: var(--surface);
+    gap: 2px;
+    flex: none;
+  }
+  .lang-btn {
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 999px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease;
+  }
+  .lang-btn:hover { color: var(--text); }
+  .lang-btn.active {
+    background: var(--accent);
+    color: #fdfdfb;
+  }
+  .lang-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  h1 {
+    position: relative;
+    font-size: 27px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0 0 var(--space-2);
+    text-wrap: balance;
+  }
+
+  .lede {
+    position: relative;
+    margin: 0;
+    max-width: 62ch;
+    color: var(--text-muted);
+    font-size: 14.5px;
+  }
+  .lede code {
+    font-family: var(--font-mono);
+    font-size: 0.92em;
+    background: var(--surface-alt);
+    padding: 0.1em 0.4em;
+    border-radius: 4px;
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    padding: var(--space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .section-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 0;
+  }
+
+  .drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-md);
+    padding: 36px 20px;
+    text-align: center;
+    color: var(--text-muted);
+    background: var(--surface-alt);
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+    font-size: 14px;
+  }
+  .drop-zone strong {
+    display: block;
+    color: var(--text);
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: var(--space-1);
+  }
+  .drop-zone.dragover {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent-strong);
+  }
+  .drop-zone.has-file {
+    text-align: left;
+    cursor: pointer;
+  }
+  .drop-zone .file-name {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    color: var(--text);
+  }
+  .hidden { display: none !important; }
+
+  .field-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: var(--space-4);
+  }
+
+  .field label {
+    display: block;
+    font-size: 13.5px;
+    font-weight: 600;
+    margin-bottom: var(--space-1);
+  }
+  .field .field-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .field input[type="number"] {
+    width: 100px;
+    padding: 7px 10px;
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+  }
+  .field input[type="number"]:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+  .field .hint {
+    display: block;
+    margin-top: var(--space-1);
+    font-size: 12.5px;
+    color: var(--text-muted);
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  button {
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 600;
+    padding: 10px 18px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    transition: background 0.12s ease, border-color 0.12s ease, transform 0.05s ease;
+  }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:active:not(:disabled) { transform: translateY(1px); }
+  button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  button:disabled { opacity: 0.45; cursor: default; }
+  button.primary {
+    background: var(--accent);
+    color: #fdfdfb;
+    border-color: var(--accent);
+  }
+  button.primary:hover:not(:disabled) { background: var(--accent-strong); border-color: var(--accent-strong); }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: var(--space-2);
+  }
+  .stat-card {
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: var(--space-3) var(--space-3);
+  }
+  .stat-card .stat-label {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 0 0 4px;
+  }
+  .stat-card .stat-value {
+    font-family: var(--font-mono);
+    font-size: 15px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+    margin: 0;
+  }
+  .stat-card.wide { grid-column: 1 / -1; }
+
+  .log-panel {
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .log-titlebar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: #1a1f18;
+  }
+  .log-titlebar .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #3a4239;
+  }
+  .log-titlebar .label {
+    margin-left: 6px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: #6f7d6c;
+    letter-spacing: 0.04em;
+  }
+  #log {
+    white-space: pre-wrap;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    line-height: 1.65;
+    background: var(--code-bg);
+    color: var(--code-text);
+    padding: 14px 16px;
+    min-height: 90px;
+    max-height: 280px;
+    overflow: auto;
+  }
+
+  .note {
+    margin: 0;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--text-muted);
+  }
+  .note a { color: var(--accent); }
+
+  /* Preview modal */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 12, 10, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 100;
+  }
+  .modal {
+    width: min(92vw, 720px);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+  .modal-header h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+  }
+  .modal-close {
+    padding: 4px 10px;
+    font-size: 18px;
+    line-height: 1;
+    border-radius: var(--radius-sm);
+  }
+  .modal-canvas-wrap {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    width: 100%;
+    background: var(--code-bg);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    touch-action: none;
+  }
+  .modal-canvas-wrap canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    cursor: grab;
+  }
+  .modal-canvas-wrap canvas:active { cursor: grabbing; }
+  .modal-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-4);
+    text-align: center;
+    color: var(--code-text-dim);
+    font-size: 13px;
+  }
+  .modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .legend {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+  }
+  .legend-gradient {
+    width: 64px;
+    height: 8px;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #3f7a5c, #a98c4c, #f2efe6);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+
+  @media (max-width: 480px) {
+    .masthead-top { flex-direction: row; }
+  }
 </style>
 </head>
 <body>
 
-<h1>GeoTIFF (DEM) → OBJ / STL Converter</h1>
-<p>SRTM等のGeoTIFF標高データ（.tif / .tiff）をブラウザ上だけで地形メッシュ（OBJまたはSTL）に変換します。サーバーへのアップロードはありません。変換後のファイルはPolyBench 3D Converterなどにそのまま読み込めます。</p>
+<div class="page-shell">
 
-<div id="dropZone" class="drop-zone">
-  ここに .tif ファイルをドラッグ＆ドロップ、またはクリックして選択
-  <input type="file" id="fileInput" accept=".tif,.tiff" class="hidden">
+  <header class="masthead">
+    <svg class="ridge" viewBox="0 0 800 84" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0,70 L60,52 L110,64 L170,30 L230,58 L300,20 L360,50 L430,12 L500,46 L560,26 L630,56 L700,38 L760,60 L800,48 L800,84 L0,84 Z"
+            fill="var(--accent-soft)" />
+      <path d="M0,70 L60,52 L110,64 L170,30 L230,58 L300,20 L360,50 L430,12 L500,46 L560,26 L630,56 L700,38 L760,60 L800,48"
+            fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-opacity="0.55" />
+    </svg>
+    <div class="masthead-top">
+      <p class="eyebrow" data-i18n="eyebrow"></p>
+      <div class="lang-switch" role="group" aria-label="Language / 言語">
+        <button type="button" class="lang-btn" data-lang="en">EN</button>
+        <button type="button" class="lang-btn" data-lang="ja">日本語</button>
+      </div>
+    </div>
+    <h1 data-i18n="pageHeading"></h1>
+    <p class="lede" data-i18n-html="lede"></p>
+  </header>
+
+  <section class="panel">
+    <p class="section-label" data-i18n="sectionSource"></p>
+    <input type="file" id="fileInput" accept=".tif,.tiff" class="hidden">
+    <div id="dropZone" class="drop-zone"></div>
+  </section>
+
+  <section class="panel">
+    <p class="section-label" data-i18n="sectionParams"></p>
+    <div class="field-grid">
+      <div class="field">
+        <label for="maxDim" data-i18n="maxDimLabel"></label>
+        <div class="field-row">
+          <input type="number" id="maxDim" value="400" min="20" max="2000" step="10">
+          <span data-i18n="maxDimUnit"></span>
+        </div>
+        <span class="hint" data-i18n="maxDimHint"></span>
+      </div>
+      <div class="field">
+        <label for="vertExag" data-i18n="vertExagLabel"></label>
+        <div class="field-row">
+          <input type="number" id="vertExag" value="1" min="0.1" max="20" step="0.1">
+          <span data-i18n="vertExagUnit"></span>
+        </div>
+        <span class="hint" data-i18n="vertExagHint"></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <p class="section-label" data-i18n="sectionConvert"></p>
+    <div class="actions">
+      <button id="previewBtn" disabled data-i18n="previewBtn"></button>
+      <button id="convertBtn" class="primary" disabled data-i18n="convertBtn"></button>
+      <button id="downloadObjBtn" disabled data-i18n="downloadObjBtn"></button>
+      <button id="downloadStlBtn" disabled data-i18n="downloadStlBtn"></button>
+    </div>
+
+    <div class="row stats-grid hidden" id="statsBox"></div>
+
+    <div class="log-panel">
+      <div class="log-titlebar">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="label" data-i18n="logPanelLabel"></span>
+      </div>
+      <div id="log" data-i18n="logInitial"></div>
+    </div>
+  </section>
+
+  <p class="note" data-i18n-html="note"></p>
+
 </div>
 
-<div class="row">
-  <label for="maxDim">最大グリッド解像度 (辺の最大セル数)</label>
-  <input type="number" id="maxDim" value="400" min="20" max="2000" step="10">
-  <span style="font-size:12.5px;color:#777;">大きいほど精細だがファイルも重くなります</span>
+<div class="modal-overlay hidden" id="previewOverlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="previewTitleEl">
+    <div class="modal-header">
+      <h2 id="previewTitleEl" data-i18n="previewTitle"></h2>
+      <button type="button" class="modal-close" id="previewCloseBtn" aria-label="Close">&times;</button>
+    </div>
+    <div class="modal-canvas-wrap" id="previewCanvasWrap">
+      <canvas id="previewCanvas"></canvas>
+      <div class="modal-empty hidden" id="previewEmpty" data-i18n="previewNoWebgl"></div>
+    </div>
+    <div class="modal-footer">
+      <span data-i18n="previewHint"></span>
+      <span class="legend">
+        <span data-i18n="previewLow"></span>
+        <span class="legend-gradient"></span>
+        <span data-i18n="previewHigh"></span>
+      </span>
+    </div>
+  </div>
 </div>
-
-<div class="row">
-  <label for="vertExag">垂直誇張倍率</label>
-  <input type="number" id="vertExag" value="1" min="0.1" max="20" step="0.1">
-  <span style="font-size:12.5px;color:#777;">1 = 実寸。地形を強調したい場合は2〜4程度</span>
-</div>
-
-<div class="row">
-  <button id="convertBtn" class="primary" disabled>変換する</button>
-  <button id="downloadObjBtn" disabled>OBJをダウンロード</button>
-  <button id="downloadStlBtn" disabled>STL(バイナリ)をダウンロード</button>
-</div>
-
-<div class="row stats hidden" id="statsBox"></div>
-
-<div class="row">
-  <div id="log">ファイルを選択すると、ここに処理ログが表示されます。</div>
-</div>
-
-<p class="footer-note">
-  GeoTIFFの読み込みには <a href="https://github.com/geotiffjs/geotiff.js" target="_blank" rel="noopener">geotiff.js</a> をCDNから読み込んで使用しています（インターネット接続が必要です）。
-  緯度経度（EPSG:4326、度単位）で記録されたGeoTIFFの場合、簡易的な正距円筒図法で実距離（メートル）に投影します。投影座標系のGeoTIFFの場合は、そのままの単位でXY座標を使います。
-</p>
 
 <script src="https://cdn.jsdelivr.net/npm/geotiff@2.1.3/dist-browser/geotiff.js"></script>
 <script>
 (function () {
+  // ---------------------------------------------------------------------
+  // i18n
+  // ---------------------------------------------------------------------
+  const STRINGS = {
+    appTitle:        { en: 'Terrain Mesh Converter', ja: '地形メッシュコンバーター' },
+    eyebrow:         { en: 'Geospatial · DEM to mesh', ja: '地理空間 ・ DEMをメッシュに変換' },
+    pageHeading:     { en: 'GeoTIFF (DEM) → OBJ / STL Converter', ja: 'GeoTIFF (DEM) → OBJ / STL コンバーター' },
+    lede: {
+      en: 'Converts GeoTIFF elevation data — SRTM and similar sources, <code>.tif</code> / <code>.tiff</code> — into a terrain mesh (OBJ or STL) entirely in your browser. Nothing is uploaded to a server. The converted file loads directly into PolyBench 3D Converter and similar tools.',
+      ja: 'SRTM等のGeoTIFF標高データ（<code>.tif</code> / <code>.tiff</code>）をブラウザ上だけで地形メッシュ（OBJまたはSTL）に変換します。サーバーへのアップロードはありません。変換後のファイルはPolyBench 3D Converterなどにそのまま読み込めます。'
+    },
+    sectionSource:   { en: '01 · Source file', ja: '01・入力ファイル' },
+    dropTitle:       { en: 'Drop a .tif file here', ja: 'ここに .tif ファイルをドロップ' },
+    dropSub:         { en: 'or click to choose one from your computer', ja: 'またはクリックしてファイルを選択' },
+    dropSelectedSuffix: {
+      en: ' ({size} MB) — click again to change',
+      ja: '（{size} MB）— もう一度クリックで変更'
+    },
+    sectionParams:   { en: '02 · Parameters', ja: '02・パラメータ' },
+    maxDimLabel:     { en: 'Max grid resolution', ja: '最大グリッド解像度' },
+    maxDimUnit:      { en: 'cells per side', ja: 'セル（辺あたり）' },
+    maxDimHint:      { en: 'Higher = more detail, but a heavier file', ja: '大きいほど精細だがファイルも重くなります' },
+    vertExagLabel:   { en: 'Vertical exaggeration', ja: '垂直誇張倍率' },
+    vertExagUnit:    { en: '× true height', ja: '× 実際の高さ' },
+    vertExagHint:    { en: '1 = true scale. Try 2–4 to emphasize relief', ja: '1 = 実寸。地形を強調したい場合は2〜4程度' },
+    sectionConvert:  { en: '03 · Convert & export', ja: '03・変換 & 書き出し' },
+    previewBtn:      { en: 'Preview', ja: 'プレビュー' },
+    convertBtn:      { en: 'Convert', ja: '変換する' },
+    downloadObjBtn:  { en: 'Download OBJ', ja: 'OBJをダウンロード' },
+    downloadStlBtn:  { en: 'Download STL (binary)', ja: 'STL(バイナリ)をダウンロード' },
+    logPanelLabel:   { en: 'processing log', ja: '処理ログ' },
+    logInitial:      { en: 'Select a file to see the processing log here.', ja: 'ファイルを選択すると、ここに処理ログが表示されます。' },
+    note: {
+      en: 'GeoTIFF files are parsed with <a href="https://github.com/geotiffjs/geotiff.js" target="_blank" rel="noopener">geotiff.js</a>, loaded from a CDN (an internet connection is required). GeoTIFFs recorded in latitude/longitude (EPSG:4326, degrees) are projected to real-world meters using a simple equirectangular approximation. GeoTIFFs already in a projected coordinate system are used in their native linear units.',
+      ja: 'GeoTIFFの読み込みには <a href="https://github.com/geotiffjs/geotiff.js" target="_blank" rel="noopener">geotiff.js</a> をCDNから読み込んで使用しています（インターネット接続が必要です）。緯度経度（EPSG:4326、度単位）で記録されたGeoTIFFの場合、簡易的な正距円筒図法で実距離（メートル）に投影します。投影座標系のGeoTIFFの場合は、そのままの単位でXY座標を使います。'
+    },
+
+    statVertices:    { en: 'Vertices', ja: '頂点数' },
+    statTriangles:   { en: 'Triangles', ja: '三角形数' },
+    statObjSize:     { en: 'OBJ size', ja: 'OBJサイズ' },
+    statStlSize:     { en: 'STL size', ja: 'STLサイズ' },
+    statElevRange:   { en: 'Elevation range (vertical exaggeration ×{vx})', ja: '標高範囲（垂直誇張 x{vx}）' },
+
+    logFileSelected: { en: 'File selected: {name}', ja: 'ファイルを選択しました: {name}' },
+    logStarting:     { en: 'Starting conversion...', ja: '変換を開始します...' },
+    logError:        { en: 'Error: {msg}', ja: 'エラー: {msg}' },
+    logReading:      { en: 'Reading file...', ja: 'ファイルを読み込み中...' },
+    logParsing:      { en: 'Parsing GeoTIFF...', ja: 'GeoTIFFを解析中...' },
+    logGridSize:     { en: 'Grid size: {w} x {h}', ja: 'グリッドサイズ: {w} x {h}' },
+    logExtent:       { en: 'Extent (CRS units): west={w}, south={s}, east={e}, north={n}', ja: '範囲 (CRS単位): west={w}, south={s}, east={e}, north={n}' },
+    logNoData:       { en: 'NoData value: {v}', ja: 'nodata値: {v}' },
+    logReadingRaster:{ en: 'Reading raster data (large files may take a while)...', ja: 'ラスターデータを読み込み中（大きいファイルは時間がかかります）...' },
+    logDownsampled:  { en: 'Downsampled grid: {c} x {r} (stride stepX={sx}, stepY={sy})', ja: 'ダウンサンプル後グリッド: {c} x {r} (間引き stepX={sx}, stepY={sy})' },
+    logProjDeg:      { en: 'Detected geographic coordinates (degrees) → projecting to meters using an equirectangular approximation', ja: '緯度経度(度)と判定 → 正距円筒図法でメートルに投影します' },
+    logProjLinear:   { en: 'Detected a projected coordinate system (linear units) → using units as-is', ja: '投影座標系(線形単位)と判定 → そのままの単位を使用します' },
+    logElevRange:    { en: 'Elevation range: {min} – {max} (vertical exaggeration x{vx})', ja: '標高範囲: {min} - {max} (垂直誇張 x{vx})' },
+    logGenObj:       { en: 'Generating OBJ...', ja: 'OBJを生成中...' },
+    logGenStl:       { en: 'Generating STL (binary)...', ja: 'STL(バイナリ)を生成中...' },
+    logDone:         { en: 'Done. Use the download buttons to save the OBJ/STL.', ja: '完了しました。ダウンロードボタンからOBJ/STLを保存してください。' },
+
+    logPreviewLoadingLib: { en: 'Loading 3D viewer library...', ja: '3Dビューアライブラリを読み込み中...' },
+    logPreviewBuilding:   { en: 'Building 3D preview...', ja: '3Dプレビューを生成中...' },
+    logPreviewCapped:     { en: 'Preview grid capped at {n} cells per side for smooth interaction (export still uses {full}).', ja: '快適に操作できるよう、プレビューのグリッドは{n}セルに制限されています（書き出しは{full}のまま行われます）。' },
+    logPreviewReady:      { en: 'Preview ready.', ja: 'プレビューの準備ができました。' },
+
+    previewTitle:    { en: 'Terrain preview', ja: '地形プレビュー' },
+    previewHint:     { en: 'Drag to rotate · scroll to zoom', ja: 'ドラッグで回転 ・ スクロールでズーム' },
+    previewLow:      { en: 'Low', ja: '低' },
+    previewHigh:     { en: 'High', ja: '高' },
+    previewNoWebgl:  { en: 'WebGL is not available in this browser, so the 3D preview cannot be shown.', ja: 'このブラウザではWebGLが利用できないため、3Dプレビューを表示できません。' }
+  };
+
+  let lang = (navigator.language || 'en').toLowerCase().startsWith('ja') ? 'ja' : 'en';
+
+  function t(key, vars) {
+    const entry = STRINGS[key];
+    let str = entry ? (entry[lang] || entry.en || '') : '';
+    if (vars) {
+      Object.keys(vars).forEach((k) => {
+        str = str.split('{' + k + '}').join(vars[k]);
+      });
+    }
+    return str;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+
+  function applyStaticI18n() {
+    document.documentElement.lang = lang;
+    document.title = t('appTitle');
+    document.querySelectorAll('[data-i18n]').forEach((el) => {
+      const key = el.getAttribute('data-i18n');
+      // #log is special-cased once real content has been written (see log()/resetLog())
+      if (el.id === 'log' && el.dataset.hasContent === '1') return;
+      el.textContent = t(key);
+    });
+    document.querySelectorAll('[data-i18n-html]').forEach((el) => {
+      const key = el.getAttribute('data-i18n-html');
+      el.innerHTML = t(key);
+    });
+    document.querySelectorAll('.lang-btn').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.lang === lang);
+    });
+    renderDropZone();
+    renderStats();
+  }
+
+  function setLang(newLang) {
+    if (newLang !== 'en' && newLang !== 'ja') return;
+    lang = newLang;
+    applyStaticI18n();
+  }
+
+  document.querySelectorAll('.lang-btn').forEach((btn) => {
+    btn.addEventListener('click', () => setLang(btn.dataset.lang));
+  });
+
+  // ---------------------------------------------------------------------
+  // Element refs
+  // ---------------------------------------------------------------------
   const dropZone = document.getElementById('dropZone');
   const fileInput = document.getElementById('fileInput');
+  const previewBtn = document.getElementById('previewBtn');
   const convertBtn = document.getElementById('convertBtn');
   const downloadObjBtn = document.getElementById('downloadObjBtn');
   const downloadStlBtn = document.getElementById('downloadStlBtn');
@@ -76,14 +731,69 @@
   let objBlob = null;
   let stlBlob = null;
   let baseName = 'terrain';
+  let lastStats = null; // { rows, cols, triCount, objSizeMB, stlSizeMB, minZ, maxZ, vertExag }
+  let busy = false;
 
   function log(msg) {
-    logEl.textContent += '\n' + msg;
+    logEl.dataset.hasContent = '1';
+    logEl.removeAttribute('data-i18n');
+    logEl.textContent += (logEl.textContent ? '\n' : '') + msg;
     logEl.scrollTop = logEl.scrollHeight;
   }
 
   function resetLog(msg) {
+    logEl.dataset.hasContent = '1';
+    logEl.removeAttribute('data-i18n');
     logEl.textContent = msg;
+  }
+
+  function renderDropZone() {
+    if (!currentFile) {
+      dropZone.classList.remove('has-file');
+      dropZone.innerHTML = `<strong>${t('dropTitle')}</strong>${t('dropSub')}`;
+      return;
+    }
+    dropZone.classList.add('has-file');
+    const sizeStr = (currentFile.size / 1e6).toFixed(2);
+    dropZone.innerHTML = `<span class="file-name">${escapeHtml(currentFile.name)}</span>` +
+      t('dropSelectedSuffix', { size: sizeStr });
+  }
+
+  function renderStats() {
+    if (!lastStats) {
+      statsBox.classList.add('hidden');
+      return;
+    }
+    const s = lastStats;
+    statsBox.classList.remove('hidden');
+    statsBox.innerHTML = `
+      <div class="stat-card">
+        <p class="stat-label">${t('statVertices')}</p>
+        <p class="stat-value">${(s.rows * s.cols).toLocaleString()}</p>
+      </div>
+      <div class="stat-card">
+        <p class="stat-label">${t('statTriangles')}</p>
+        <p class="stat-value">${s.triCount.toLocaleString()}</p>
+      </div>
+      <div class="stat-card">
+        <p class="stat-label">${t('statObjSize')}</p>
+        <p class="stat-value">${s.objSizeMB} MB</p>
+      </div>
+      <div class="stat-card">
+        <p class="stat-label">${t('statStlSize')}</p>
+        <p class="stat-value">${s.stlSizeMB} MB</p>
+      </div>
+      <div class="stat-card wide">
+        <p class="stat-label">${t('statElevRange', { vx: s.vertExag })}</p>
+        <p class="stat-value">${s.minZ.toFixed(1)} – ${s.maxZ.toFixed(1)}</p>
+      </div>
+    `;
+  }
+
+  function setBusy(v) {
+    busy = v;
+    previewBtn.disabled = v || !currentFile;
+    convertBtn.disabled = v || !currentFile;
   }
 
   dropZone.addEventListener('click', () => fileInput.click());
@@ -103,39 +813,24 @@
   function setFile(file) {
     currentFile = file;
     baseName = file.name.replace(/\.[^.]+$/, '');
-    dropZone.textContent = `選択中: ${file.name} (${(file.size / 1e6).toFixed(2)} MB)  — もう一度クリックで変更`;
+    renderDropZone();
+    previewBtn.disabled = false;
     convertBtn.disabled = false;
     downloadObjBtn.disabled = true;
     downloadStlBtn.disabled = true;
-    statsBox.classList.add('hidden');
-    resetLog(`ファイルを選択しました: ${file.name}`);
+    lastStats = null;
+    renderStats();
+    resetLog(t('logFileSelected', { name: file.name }));
   }
 
-  convertBtn.addEventListener('click', async () => {
-    if (!currentFile) return;
-    convertBtn.disabled = true;
-    downloadObjBtn.disabled = true;
-    downloadStlBtn.disabled = true;
-    statsBox.classList.add('hidden');
-    resetLog('変換を開始します...');
-    try {
-      await convert(currentFile);
-    } catch (err) {
-      log('エラー: ' + (err && err.message ? err.message : String(err)));
-      console.error(err);
-    } finally {
-      convertBtn.disabled = false;
-    }
-  });
-
-  async function convert(file) {
-    const maxDim = Math.max(2, parseInt(maxDimInput.value, 10) || 400);
-    const vertExag = parseFloat(vertExagInput.value) || 1;
-
-    log('ファイルを読み込み中...');
+  // ---------------------------------------------------------------------
+  // Shared GeoTIFF -> elevation grid reader (used by both Convert and Preview)
+  // ---------------------------------------------------------------------
+  async function readElevationGrid(file, maxDim) {
+    log(t('logReading'));
     const buffer = await file.arrayBuffer();
 
-    log('GeoTIFFを解析中...');
+    log(t('logParsing'));
     const tiff = await GeoTIFF.fromArrayBuffer(buffer);
     const image = await tiff.getImage();
 
@@ -145,11 +840,13 @@
     let noDataStr = image.getGDALNoData ? image.getGDALNoData() : null;
     const noData = (noDataStr !== null && noDataStr !== undefined) ? parseFloat(noDataStr) : null;
 
-    log(`グリッドサイズ: ${width} x ${height}`);
-    log(`範囲 (CRS単位): west=${bbox[0].toFixed(6)}, south=${bbox[1].toFixed(6)}, east=${bbox[2].toFixed(6)}, north=${bbox[3].toFixed(6)}`);
-    if (noData !== null) log(`nodata値: ${noData}`);
+    log(t('logGridSize', { w: width, h: height }));
+    log(t('logExtent', {
+      w: bbox[0].toFixed(6), s: bbox[1].toFixed(6), e: bbox[2].toFixed(6), n: bbox[3].toFixed(6)
+    }));
+    if (noData !== null) log(t('logNoData', { v: noData }));
 
-    log('ラスターデータを読み込み中（大きいファイルは時間がかかります）...');
+    log(t('logReadingRaster'));
     const rasters = await image.readRasters({ interleave: false });
     const band = rasters[0]; // elevation band
 
@@ -158,7 +855,7 @@
     const stepX = Math.max(1, Math.floor(width / maxDim));
     const rows = Math.ceil(height / stepY);
     const cols = Math.ceil(width / stepX);
-    log(`ダウンサンプル後グリッド: ${cols} x ${rows} (間引き stepX=${stepX}, stepY=${stepY})`);
+    log(t('logDownsampled', { c: cols, r: rows, sx: stepX, sy: stepY }));
 
     // Sample elevation grid
     const elev = new Float64Array(rows * cols);
@@ -201,9 +898,7 @@
       return [lonOrX - centerLon, latOrY - centerLat];
     }
 
-    log(looksLikeDegrees
-      ? '緯度経度(度)と判定 → 正距円筒図法でメートルに投影します'
-      : '投影座標系(線形単位)と判定 → そのままの単位を使用します');
+    log(looksLikeDegrees ? t('logProjDeg') : t('logProjLinear'));
 
     // Build vertex grid coordinates
     const xs = new Float64Array(cols);
@@ -223,10 +918,41 @@
       maxZ = Math.max(maxZ, elev[i]);
     }
 
-    log(`標高範囲: ${minZ.toFixed(1)} - ${maxZ.toFixed(1)} (垂直誇張 x${vertExag})`);
+    log(t('logElevRange', { min: minZ.toFixed(1), max: maxZ.toFixed(1), vx: vertExagInput.value }));
+
+    return { rows, cols, xs, ys, elev, minZ, maxZ };
+  }
+
+  // ---------------------------------------------------------------------
+  // Convert (OBJ / STL export)
+  // ---------------------------------------------------------------------
+  convertBtn.addEventListener('click', async () => {
+    if (!currentFile || busy) return;
+    setBusy(true);
+    downloadObjBtn.disabled = true;
+    downloadStlBtn.disabled = true;
+    lastStats = null;
+    renderStats();
+    resetLog(t('logStarting'));
+    try {
+      await convert(currentFile);
+    } catch (err) {
+      log(t('logError', { msg: (err && err.message) ? err.message : String(err) }));
+      console.error(err);
+    } finally {
+      setBusy(false);
+    }
+  });
+
+  async function convert(file) {
+    const maxDim = Math.max(2, parseInt(maxDimInput.value, 10) || 400);
+    const vertExag = parseFloat(vertExagInput.value) || 1;
+
+    const grid = await readElevationGrid(file, maxDim);
+    const { rows, cols, xs, ys, elev, minZ, maxZ } = grid;
 
     // Build OBJ text directly (memory-efficient string building via array + join)
-    log('OBJを生成中...');
+    log(t('logGenObj'));
     const objLines = [];
     objLines.push(`# Converted from ${file.name} via GeoTIFF-to-OBJ browser tool`);
     objLines.push(`# Grid: ${cols} x ${rows}, elevation ${minZ.toFixed(1)} - ${maxZ.toFixed(1)}, vertical exaggeration x${vertExag}`);
@@ -253,21 +979,21 @@
     const objText = objLines.join('\n') + '\n';
     objBlob = new Blob([objText], { type: 'text/plain' });
 
-    log('STL(バイナリ)を生成中...');
+    log(t('logGenStl'));
     stlBlob = buildBinarySTL(xs, ys, elev, vertExag, rows, cols);
 
     const triCount = (rows - 1) * (cols - 1) * 2;
-    statsBox.classList.remove('hidden');
-    statsBox.innerHTML =
-      `頂点数: ${(rows * cols).toLocaleString()}<br>` +
-      `三角形数: ${triCount.toLocaleString()}<br>` +
-      `標高範囲: ${minZ.toFixed(1)} 〜 ${maxZ.toFixed(1)} (垂直誇張 x${vertExag})<br>` +
-      `OBJサイズ: ${(objBlob.size / 1e6).toFixed(2)} MB<br>` +
-      `STLサイズ: ${(stlBlob.size / 1e6).toFixed(2)} MB`;
+    lastStats = {
+      rows, cols, triCount,
+      objSizeMB: (objBlob.size / 1e6).toFixed(2),
+      stlSizeMB: (stlBlob.size / 1e6).toFixed(2),
+      minZ, maxZ, vertExag
+    };
+    renderStats();
 
     downloadObjBtn.disabled = false;
     downloadStlBtn.disabled = false;
-    log('完了しました。ダウンロードボタンからOBJ/STLを保存してください。');
+    log(t('logDone'));
   }
 
   function buildBinarySTL(xs, ys, elev, vertExag, rows, cols) {
@@ -321,8 +1047,252 @@
   downloadStlBtn.addEventListener('click', () => {
     if (stlBlob) download(stlBlob, baseName + '.stl');
   });
+
+  // ---------------------------------------------------------------------
+  // 3D Preview (Three.js, loaded lazily, no OBJ/STL export needed)
+  // ---------------------------------------------------------------------
+  const PREVIEW_MAX_DIM = 300; // cap for smooth in-browser interaction
+  const previewOverlay = document.getElementById('previewOverlay');
+  const previewCanvasWrap = document.getElementById('previewCanvasWrap');
+  const previewCanvas = document.getElementById('previewCanvas');
+  const previewEmpty = document.getElementById('previewEmpty');
+  const previewCloseBtn = document.getElementById('previewCloseBtn');
+
+  let threeLoadPromise = null;
+  function loadThree() {
+    if (window.THREE) return Promise.resolve();
+    if (threeLoadPromise) return threeLoadPromise;
+    threeLoadPromise = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js';
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error('Failed to load three.js from CDN'));
+      document.head.appendChild(s);
+    });
+    return threeLoadPromise;
+  }
+
+  let previewState = null; // { renderer, scene, camera, geometry, material, mesh, theta, phi, radius, target }
+
+  function elevationColor(t01) {
+    // 3-stop hypsometric ramp: low (green) -> mid (tan) -> high (near white)
+    const stops = [
+      [0.00, 0x3f, 0x7a, 0x5c],
+      [0.55, 0xa9, 0x8c, 0x4c],
+      [1.00, 0xf2, 0xef, 0xe6]
+    ];
+    let a = stops[0], b = stops[stops.length - 1];
+    for (let i = 0; i < stops.length - 1; i++) {
+      if (t01 >= stops[i][0] && t01 <= stops[i + 1][0]) { a = stops[i]; b = stops[i + 1]; break; }
+    }
+    const span = (b[0] - a[0]) || 1;
+    const f = (t01 - a[0]) / span;
+    return [
+      (a[1] + (b[1] - a[1]) * f) / 255,
+      (a[2] + (b[2] - a[2]) * f) / 255,
+      (a[3] + (b[3] - a[3]) * f) / 255
+    ];
+  }
+
+  function buildPreviewScene(grid) {
+    const THREE = window.THREE;
+    const { rows, cols, xs, ys, elev, minZ, maxZ } = grid;
+    const vertExag = parseFloat(vertExagInput.value) || 1;
+    const zRange = (maxZ - minZ) || 1;
+
+    const positions = new Float32Array(rows * cols * 3);
+    const colors = new Float32Array(rows * cols * 3);
+    let p = 0, cIdx = 0;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const e = elev[r * cols + c];
+        // Three.js convention: Y up. X = easting, Y = elevation, Z = -northing.
+        positions[p++] = xs[c];
+        positions[p++] = (e - minZ) * vertExag; // relative height, exaggerated
+        positions[p++] = -ys[r];
+        const col = elevationColor((e - minZ) / zRange);
+        colors[cIdx++] = col[0];
+        colors[cIdx++] = col[1];
+        colors[cIdx++] = col[2];
+      }
+    }
+
+    const indices = [];
+    for (let r = 0; r < rows - 1; r++) {
+      for (let c = 0; c < cols - 1; c++) {
+        const i00 = r * cols + c;
+        const i01 = r * cols + (c + 1);
+        const i10 = (r + 1) * cols + c;
+        const i11 = (r + 1) * cols + (c + 1);
+        indices.push(i00, i10, i01);
+        indices.push(i01, i10, i11);
+      }
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+    geometry.computeBoundingSphere();
+
+    const material = new THREE.MeshStandardMaterial({
+      vertexColors: true, side: THREE.DoubleSide, flatShading: false, roughness: 0.9, metalness: 0.0
+    });
+    const mesh = new THREE.Mesh(geometry, material);
+
+    const scene = new THREE.Scene();
+    scene.add(mesh);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+    dirLight.position.set(1, 1.5, 1);
+    scene.add(dirLight);
+    const dirLight2 = new THREE.DirectionalLight(0xffffff, 0.25);
+    dirLight2.position.set(-1, 0.5, -1);
+    scene.add(dirLight2);
+
+    const renderer = new THREE.WebGLRenderer({ canvas: previewCanvas, antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+
+    const sphere = geometry.boundingSphere;
+    const target = sphere.center.clone();
+    const radius0 = Math.max(sphere.radius * 2.4, 1);
+
+    const camera = new THREE.PerspectiveCamera(45, 1, radius0 / 500, radius0 * 50);
+
+    previewState = {
+      renderer, scene, camera, geometry, material, mesh,
+      theta: Math.PI / 4, phi: 1.05, radius: radius0, target,
+      minRadius: radius0 * 0.15, maxRadius: radius0 * 4
+    };
+
+    resizePreview();
+    renderPreviewFrame();
+  }
+
+  function updatePreviewCamera() {
+    const s = previewState;
+    if (!s) return;
+    const { theta, phi, radius, target, camera } = s;
+    camera.position.set(
+      target.x + radius * Math.sin(phi) * Math.sin(theta),
+      target.y + radius * Math.cos(phi),
+      target.z + radius * Math.sin(phi) * Math.cos(theta)
+    );
+    camera.lookAt(target);
+  }
+
+  function renderPreviewFrame() {
+    if (!previewState) return;
+    updatePreviewCamera();
+    previewState.renderer.render(previewState.scene, previewState.camera);
+  }
+
+  function resizePreview() {
+    if (!previewState) return;
+    const rect = previewCanvasWrap.getBoundingClientRect();
+    const w = Math.max(1, Math.round(rect.width));
+    const h = Math.max(1, Math.round(rect.height));
+    previewState.renderer.setSize(w, h, false);
+    previewState.camera.aspect = w / h;
+    previewState.camera.updateProjectionMatrix();
+    renderPreviewFrame();
+  }
+
+  let dragging = false, lastX = 0, lastY = 0;
+  previewCanvas.addEventListener('pointerdown', (e) => {
+    dragging = true; lastX = e.clientX; lastY = e.clientY;
+    previewCanvas.setPointerCapture(e.pointerId);
+  });
+  previewCanvas.addEventListener('pointermove', (e) => {
+    if (!dragging || !previewState) return;
+    const dx = e.clientX - lastX, dy = e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    previewState.theta -= dx * 0.006;
+    previewState.phi = Math.min(Math.PI - 0.12, Math.max(0.12, previewState.phi - dy * 0.006));
+    renderPreviewFrame();
+  });
+  previewCanvas.addEventListener('pointerup', (e) => {
+    dragging = false;
+    try { previewCanvas.releasePointerCapture(e.pointerId); } catch (err) {}
+  });
+  previewCanvas.addEventListener('pointerleave', () => { dragging = false; });
+  previewCanvas.addEventListener('wheel', (e) => {
+    if (!previewState) return;
+    e.preventDefault();
+    const s = previewState;
+    s.radius = Math.min(s.maxRadius, Math.max(s.minRadius, s.radius * (1 + e.deltaY * 0.001)));
+    renderPreviewFrame();
+  }, { passive: false });
+
+  window.addEventListener('resize', resizePreview);
+
+  function disposePreview() {
+    if (!previewState) return;
+    previewState.geometry.dispose();
+    previewState.material.dispose();
+    previewState.renderer.dispose();
+    previewState = null;
+  }
+
+  function closePreview() {
+    previewOverlay.classList.add('hidden');
+    disposePreview();
+  }
+  previewCloseBtn.addEventListener('click', closePreview);
+  previewOverlay.addEventListener('click', (e) => { if (e.target === previewOverlay) closePreview(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !previewOverlay.classList.contains('hidden')) closePreview();
+  });
+
+  previewBtn.addEventListener('click', async () => {
+    if (!currentFile || busy) return;
+    setBusy(true);
+    resetLog(t('logFileSelected', { name: currentFile.name }));
+    previewEmpty.classList.add('hidden');
+    previewCanvas.classList.remove('hidden');
+    try {
+      log(t('logPreviewLoadingLib'));
+      await loadThree();
+
+      const requestedMaxDim = Math.max(2, parseInt(maxDimInput.value, 10) || 400);
+      const previewMaxDim = Math.min(requestedMaxDim, PREVIEW_MAX_DIM);
+      if (previewMaxDim < requestedMaxDim) {
+        log(t('logPreviewCapped', { n: previewMaxDim, full: requestedMaxDim }));
+      }
+
+      log(t('logPreviewBuilding'));
+      const grid = await readElevationGrid(currentFile, previewMaxDim);
+
+      previewOverlay.classList.remove('hidden');
+      disposePreview();
+
+      let hasWebgl = true;
+      try {
+        const testCtx = previewCanvas.getContext('webgl') || previewCanvas.getContext('experimental-webgl');
+        if (!testCtx) hasWebgl = false;
+      } catch (err) { hasWebgl = false; }
+
+      if (!hasWebgl) {
+        previewCanvas.classList.add('hidden');
+        previewEmpty.classList.remove('hidden');
+      } else {
+        buildPreviewScene(grid);
+      }
+      log(t('logPreviewReady'));
+    } catch (err) {
+      log(t('logError', { msg: (err && err.message) ? err.message : String(err) }));
+      console.error(err);
+    } finally {
+      setBusy(false);
+    }
+  });
+
+  // ---------------------------------------------------------------------
+  // Init
+  // ---------------------------------------------------------------------
+  applyStaticI18n();
 })();
 </script>
-
 </body>
 </html>
