@@ -1,0 +1,1573 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+  :root { color-scheme: light; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  body { margin: 0; background: #fff; font: 14px -apple-system, sans-serif; }
+  img { max-width: 100%; }
+  [hidden] { display: none !important; }
+</style>
+<style id="leaflet-base-css">
+/* required styles */
+
+.leaflet-pane,
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-tile-container,
+.leaflet-pane > svg,
+.leaflet-pane > canvas,
+.leaflet-zoom-box,
+.leaflet-image-layer,
+.leaflet-layer {
+	position: absolute;
+	left: 0;
+	top: 0;
+	}
+.leaflet-container {
+	overflow: hidden;
+	}
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow {
+	-webkit-user-select: none;
+	   -moz-user-select: none;
+	        user-select: none;
+	  -webkit-user-drag: none;
+	}
+/* Prevents IE11 from highlighting tiles in blue */
+.leaflet-tile::selection {
+	background: transparent;
+}
+/* Safari renders non-retina tile on retina better with this, but Chrome is worse */
+.leaflet-safari .leaflet-tile {
+	image-rendering: -webkit-optimize-contrast;
+	}
+/* hack that prevents hw layers "stretching" when loading new tiles */
+.leaflet-safari .leaflet-tile-container {
+	width: 1600px;
+	height: 1600px;
+	-webkit-transform-origin: 0 0;
+	}
+.leaflet-marker-icon,
+.leaflet-marker-shadow {
+	display: block;
+	}
+/* .leaflet-container svg: reset svg max-width decleration shipped in Joomla! (joomla.org) 3.x */
+/* .leaflet-container img: map is broken in FF if you have max-width: 100% on tiles */
+.leaflet-container .leaflet-overlay-pane svg {
+	max-width: none !important;
+	max-height: none !important;
+	}
+.leaflet-container .leaflet-marker-pane img,
+.leaflet-container .leaflet-shadow-pane img,
+.leaflet-container .leaflet-tile-pane img,
+.leaflet-container img.leaflet-image-layer,
+.leaflet-container .leaflet-tile {
+	max-width: none !important;
+	max-height: none !important;
+	width: auto;
+	padding: 0;
+	}
+
+.leaflet-container img.leaflet-tile {
+	/* See: https://bugs.chromium.org/p/chromium/issues/detail?id=600120 */
+	mix-blend-mode: plus-lighter;
+}
+
+.leaflet-container.leaflet-touch-zoom {
+	-ms-touch-action: pan-x pan-y;
+	touch-action: pan-x pan-y;
+	}
+.leaflet-container.leaflet-touch-drag {
+	-ms-touch-action: pinch-zoom;
+	/* Fallback for FF which doesn't support pinch-zoom */
+	touch-action: none;
+	touch-action: pinch-zoom;
+}
+.leaflet-container.leaflet-touch-drag.leaflet-touch-zoom {
+	-ms-touch-action: none;
+	touch-action: none;
+}
+.leaflet-container {
+	-webkit-tap-highlight-color: transparent;
+}
+.leaflet-container a {
+	-webkit-tap-highlight-color: rgba(51, 181, 229, 0.4);
+}
+.leaflet-tile {
+	filter: inherit;
+	visibility: hidden;
+	}
+.leaflet-tile-loaded {
+	visibility: inherit;
+	}
+.leaflet-zoom-box {
+	width: 0;
+	height: 0;
+	-moz-box-sizing: border-box;
+	     box-sizing: border-box;
+	z-index: 800;
+	}
+/* workaround for https://bugzilla.mozilla.org/show_bug.cgi?id=888319 */
+.leaflet-overlay-pane svg {
+	-moz-user-select: none;
+	}
+
+.leaflet-pane         { z-index: 400; }
+
+.leaflet-tile-pane    { z-index: 200; }
+.leaflet-overlay-pane { z-index: 400; }
+.leaflet-shadow-pane  { z-index: 500; }
+.leaflet-marker-pane  { z-index: 600; }
+.leaflet-tooltip-pane   { z-index: 650; }
+.leaflet-popup-pane   { z-index: 700; }
+
+.leaflet-map-pane canvas { z-index: 100; }
+.leaflet-map-pane svg    { z-index: 200; }
+
+.leaflet-vml-shape {
+	width: 1px;
+	height: 1px;
+	}
+.lvml {
+	behavior: url(#default#VML);
+	display: inline-block;
+	position: absolute;
+	}
+
+
+/* control positioning */
+
+.leaflet-control {
+	position: relative;
+	z-index: 800;
+	pointer-events: visiblePainted; /* IE 9-10 doesn't have auto */
+	pointer-events: auto;
+	}
+.leaflet-top,
+.leaflet-bottom {
+	position: absolute;
+	z-index: 1000;
+	pointer-events: none;
+	}
+.leaflet-top {
+	top: 0;
+	}
+.leaflet-right {
+	right: 0;
+	}
+.leaflet-bottom {
+	bottom: 0;
+	}
+.leaflet-left {
+	left: 0;
+	}
+.leaflet-control {
+	float: left;
+	clear: both;
+	}
+.leaflet-right .leaflet-control {
+	float: right;
+	}
+.leaflet-top .leaflet-control {
+	margin-top: 10px;
+	}
+.leaflet-bottom .leaflet-control {
+	margin-bottom: 10px;
+	}
+.leaflet-left .leaflet-control {
+	margin-left: 10px;
+	}
+.leaflet-right .leaflet-control {
+	margin-right: 10px;
+	}
+
+
+/* zoom and fade animations */
+
+.leaflet-fade-anim .leaflet-popup {
+	opacity: 0;
+	-webkit-transition: opacity 0.2s linear;
+	   -moz-transition: opacity 0.2s linear;
+	        transition: opacity 0.2s linear;
+	}
+.leaflet-fade-anim .leaflet-map-pane .leaflet-popup {
+	opacity: 1;
+	}
+.leaflet-zoom-animated {
+	-webkit-transform-origin: 0 0;
+	    -ms-transform-origin: 0 0;
+	        transform-origin: 0 0;
+	}
+svg.leaflet-zoom-animated {
+	will-change: transform;
+}
+
+.leaflet-zoom-anim .leaflet-zoom-animated {
+	-webkit-transition: -webkit-transform 0.25s cubic-bezier(0,0,0.25,1);
+	   -moz-transition:    -moz-transform 0.25s cubic-bezier(0,0,0.25,1);
+	        transition:         transform 0.25s cubic-bezier(0,0,0.25,1);
+	}
+.leaflet-zoom-anim .leaflet-tile,
+.leaflet-pan-anim .leaflet-tile {
+	-webkit-transition: none;
+	   -moz-transition: none;
+	        transition: none;
+	}
+
+.leaflet-zoom-anim .leaflet-zoom-hide {
+	visibility: hidden;
+	}
+
+
+/* cursors */
+
+.leaflet-interactive {
+	cursor: pointer;
+	}
+.leaflet-grab {
+	cursor: -webkit-grab;
+	cursor:    -moz-grab;
+	cursor:         grab;
+	}
+.leaflet-crosshair,
+.leaflet-crosshair .leaflet-interactive {
+	cursor: crosshair;
+	}
+.leaflet-popup-pane,
+.leaflet-control {
+	cursor: auto;
+	}
+.leaflet-dragging .leaflet-grab,
+.leaflet-dragging .leaflet-grab .leaflet-interactive,
+.leaflet-dragging .leaflet-marker-draggable {
+	cursor: move;
+	cursor: -webkit-grabbing;
+	cursor:    -moz-grabbing;
+	cursor:         grabbing;
+	}
+
+/* marker & overlays interactivity */
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-image-layer,
+.leaflet-pane > svg path,
+.leaflet-tile-container {
+	pointer-events: none;
+	}
+
+.leaflet-marker-icon.leaflet-interactive,
+.leaflet-image-layer.leaflet-interactive,
+.leaflet-pane > svg path.leaflet-interactive,
+svg.leaflet-image-layer.leaflet-interactive path {
+	pointer-events: visiblePainted; /* IE 9-10 doesn't have auto */
+	pointer-events: auto;
+	}
+
+/* visual tweaks */
+
+.leaflet-container {
+	background: #ddd;
+	outline-offset: 1px;
+	}
+.leaflet-container a {
+	color: #0078A8;
+	}
+.leaflet-zoom-box {
+	border: 2px dotted #38f;
+	background: rgba(255,255,255,0.5);
+	}
+
+
+/* general typography */
+.leaflet-container {
+	font-family: "Helvetica Neue", Arial, Helvetica, sans-serif;
+	font-size: 12px;
+	font-size: 0.75rem;
+	line-height: 1.5;
+	}
+
+
+/* general toolbar styles */
+
+.leaflet-bar {
+	box-shadow: 0 1px 5px rgba(0,0,0,0.65);
+	border-radius: 4px;
+	}
+.leaflet-bar a {
+	background-color: #fff;
+	border-bottom: 1px solid #ccc;
+	width: 26px;
+	height: 26px;
+	line-height: 26px;
+	display: block;
+	text-align: center;
+	text-decoration: none;
+	color: black;
+	}
+.leaflet-bar a,
+.leaflet-control-layers-toggle {
+	background-position: 50% 50%;
+	background-repeat: no-repeat;
+	display: block;
+	}
+.leaflet-bar a:hover,
+.leaflet-bar a:focus {
+	background-color: #f4f4f4;
+	}
+.leaflet-bar a:first-child {
+	border-top-left-radius: 4px;
+	border-top-right-radius: 4px;
+	}
+.leaflet-bar a:last-child {
+	border-bottom-left-radius: 4px;
+	border-bottom-right-radius: 4px;
+	border-bottom: none;
+	}
+.leaflet-bar a.leaflet-disabled {
+	cursor: default;
+	background-color: #f4f4f4;
+	color: #bbb;
+	}
+
+.leaflet-touch .leaflet-bar a {
+	width: 30px;
+	height: 30px;
+	line-height: 30px;
+	}
+.leaflet-touch .leaflet-bar a:first-child {
+	border-top-left-radius: 2px;
+	border-top-right-radius: 2px;
+	}
+.leaflet-touch .leaflet-bar a:last-child {
+	border-bottom-left-radius: 2px;
+	border-bottom-right-radius: 2px;
+	}
+
+/* zoom control */
+
+.leaflet-control-zoom-in,
+.leaflet-control-zoom-out {
+	font: bold 18px 'Lucida Console', Monaco, monospace;
+	text-indent: 1px;
+	}
+
+.leaflet-touch .leaflet-control-zoom-in, .leaflet-touch .leaflet-control-zoom-out  {
+	font-size: 22px;
+	}
+
+
+/* layers control */
+
+.leaflet-control-layers {
+	box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+	background: #fff;
+	border-radius: 5px;
+	}
+.leaflet-control-layers-toggle {
+	background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABoAAAAaCAQAAAADQ4RFAAACf0lEQVR4AY1UM3gkARTePdvdoTxXKc+qTl3aU5U6b2Kbkz3Gtq3Zw6ziLGNPzrYx7946Tr6/ee/XeCQ4D3ykPtL5tHno4n0d/h3+xfuWHGLX81cn7r0iTNzjr7LrlxCqPtkbTQEHeqOrTy4Yyt3VCi/IOB0v7rVC7q45Q3Gr5K6jt+3Gl5nCoDD4MtO+j96Wu8atmhGqcNGHObuf8OM/x3AMx38+4Z2sPqzCxRFK2aF2e5Jol56XTLyggAMTL56XOMoS1W4pOyjUcGGQdZxU6qRh7B9Zp+PfpOFlqt0zyDZckPi1ttmIp03jX8gyJ8a/PG2yutpS/Vol7peZIbZcKBAEEheEIAgFbDkz5H6Zrkm2hVWGiXKiF4Ycw0RWKdtC16Q7qe3X4iOMxruonzegJzWaXFrU9utOSsLUmrc0YjeWYjCW4PDMADElpJSSQ0vQvA1Tm6/JlKnqFs1EGyZiFCqnRZTEJJJiKRYzVYzJck2Rm6P4iH+cmSY0YzimYa8l0EtTODFWhcMIMVqdsI2uiTvKmTisIDHJ3od5GILVhBCarCfVRmo4uTjkhrhzkiBV7SsaqS+TzrzM1qpGGUFt28pIySQHR6h7F6KSwGWm97ay+Z+ZqMcEjEWebE7wxCSQwpkhJqoZA5ivCdZDjJepuJ9IQjGGUmuXJdBFUygxVqVsxFsLMbDe8ZbDYVCGKxs+W080max1hFCarCfV+C1KATwcnvE9gRRuMP2prdbWGowm1KB1y+zwMMENkM755cJ2yPDtqhTI6ED1M/82yIDtC/4j4BijjeObflpO9I9MwXTCsSX8jWAFeHr05WoLTJ5G8IQVS/7vwR6ohirYM7f6HzYpogfS3R2OAAAAAElFTkSuQmCC);
+	width: 36px;
+	height: 36px;
+	}
+.leaflet-retina .leaflet-control-layers-toggle {
+	background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADQAAAA0CAQAAABvcdNgAAAEsklEQVR4AWL4TydIhpZK1kpWOlg0w3ZXP6D2soBtG42jeI6ZmQTHzAxiTbSJsYLjO9HhP+WOmcuhciVnmHVQcJnp7DFvScowZorad/+V/fVzMdMT2g9Cv9guXGv/7pYOrXh2U+RRR3dSd9JRx6bIFc/ekqHI29JC6pJ5ZEh1yWkhkbcFeSjxgx3L2m1cb1C7bceyxA+CNjT/Ifff+/kDk2u/w/33/IeCMOSaWZ4glosqT3DNnNZQ7Cs58/3Ce5HL78iZH/vKVIaYlqzfdLu8Vi7dnvUbEza5Idt36tquZFldl6N5Z/POLof0XLK61mZCmJSWjVF9tEjUluu74IUXvgttuVIHE7YxSkaYhJZam7yiM9Pv82JYfl9nptxZaxMJE4YSPty+vF0+Y2up9d3wwijfjZbabqm/3bZ9ecKHsiGmRflnn1MW4pjHf9oLufyn2z3y1D6n8g8TZhxyzipLNPnAUpsOiuWimg52psrTZYnOWYNDTMuWBWa0tJb4rgq1UvmutpaYEbZlwU3CLJm/ayYjHW5/h7xWLn9Hh1vepDkyf7dE7MtT5LR4e7yYpHrkhOUpEfssBLq2pPhAqoSWKUkk7EDqkmK6RrCEzqDjhNDWNE+XSMvkJRDWlZTmCW0l0PHQGRZY5t1L83kT0Y3l2SItk5JAWHl2dCOBm+fPu3fo5/3v61RMCO9Jx2EEYYhb0rmNQMX/vm7gqOEJLcXTGw3CAuRNeyaPWwjR8PRqKQ1PDA/dpv+on9Shox52WFnx0KY8onHayrJzm87i5h9xGw/tfkev0jGsQizqezUKjk12hBMKJ4kbCqGPVNXudyyrShovGw5CgxsRICxF6aRmSjlBnHRzg7Gx8fKqEubI2rahQYdR1YgDIRQO7JvQyD52hoIQx0mxa0ODtW2Iozn1le2iIRdzwWewedyZzewidueOGqlsn1MvcnQpuVwLGG3/IR1hIKxCjelIDZ8ldqWz25jWAsnldEnK0Zxro19TGVb2ffIZEsIO89EIEDvKMPrzmBOQcKQ+rroye6NgRRxqR4U8EAkz0CL6uSGOm6KQCdWjvjRiSP1BPalCRS5iQYiEIvxuBMJEWgzSoHADcVMuN7IuqqTeyUPq22qFimFtxDyBBJEwNyt6TM88blFHao/6tWWhuuOM4SAK4EI4QmFHA+SEyWlp4EQoJ13cYGzMu7yszEIBOm2rVmHUNqwAIQabISNMRstmdhNWcFLsSm+0tjJH1MdRxO5Nx0WDMhCtgD6OKgZeljJqJKc9po8juskR9XN0Y1lZ3mWjLR9JCO1jRDMd0fpYC2VnvjBSEFg7wBENc0R9HFlb0xvF1+TBEpF68d+DHR6IOWVv2BECtxo46hOFUBd/APU57WIoEwJhIi2CdpyZX0m93BZicktMj1AS9dClteUFAUNUIEygRZCtik5zSxI9MubTBH1GOiHsiLJ3OCoSZkILa9PxiN0EbvhsAo8tdAf9Seepd36lGWHmtNANTv5Jd0z4QYyeo/UEJqxKRpg5LZx6btLPsOaEmdMyxYdlc8LMaJnikDlhclqmPiQnTEpLUIZEwkRagjYkEibQErwhkTAKCLQEbUgkzJQWc/0PstHHcfEdQ+UAAAAASUVORK5CYII=);
+	background-size: 26px 26px;
+	}
+.leaflet-touch .leaflet-control-layers-toggle {
+	width: 44px;
+	height: 44px;
+	}
+.leaflet-control-layers .leaflet-control-layers-list,
+.leaflet-control-layers-expanded .leaflet-control-layers-toggle {
+	display: none;
+	}
+.leaflet-control-layers-expanded .leaflet-control-layers-list {
+	display: block;
+	position: relative;
+	}
+.leaflet-control-layers-expanded {
+	padding: 6px 10px 6px 6px;
+	color: #333;
+	background: #fff;
+	}
+.leaflet-control-layers-scrollbar {
+	overflow-y: scroll;
+	overflow-x: hidden;
+	padding-right: 5px;
+	}
+.leaflet-control-layers-selector {
+	margin-top: 2px;
+	position: relative;
+	top: 1px;
+	}
+.leaflet-control-layers label {
+	display: block;
+	font-size: 13px;
+	font-size: 1.08333em;
+	}
+.leaflet-control-layers-separator {
+	height: 0;
+	border-top: 1px solid #ddd;
+	margin: 5px -10px 5px -6px;
+	}
+
+/* attribution and scale controls */
+
+.leaflet-container .leaflet-control-attribution {
+	background: #fff;
+	background: rgba(255, 255, 255, 0.8);
+	margin: 0;
+	}
+.leaflet-control-attribution,
+.leaflet-control-scale-line {
+	padding: 0 5px;
+	color: #333;
+	line-height: 1.4;
+	}
+.leaflet-control-attribution a {
+	text-decoration: none;
+	}
+.leaflet-control-attribution a:hover,
+.leaflet-control-attribution a:focus {
+	text-decoration: underline;
+	}
+.leaflet-attribution-flag {
+	display: inline !important;
+	vertical-align: baseline !important;
+	width: 1em;
+	height: 0.6669em;
+	}
+.leaflet-left .leaflet-control-scale {
+	margin-left: 5px;
+	}
+.leaflet-bottom .leaflet-control-scale {
+	margin-bottom: 5px;
+	}
+.leaflet-control-scale-line {
+	border: 2px solid #777;
+	border-top: none;
+	line-height: 1.1;
+	padding: 2px 5px 1px;
+	white-space: nowrap;
+	-moz-box-sizing: border-box;
+	     box-sizing: border-box;
+	background: rgba(255, 255, 255, 0.8);
+	text-shadow: 1px 1px #fff;
+	}
+.leaflet-control-scale-line:not(:first-child) {
+	border-top: 2px solid #777;
+	border-bottom: none;
+	margin-top: -2px;
+	}
+.leaflet-control-scale-line:not(:first-child):not(:last-child) {
+	border-bottom: 2px solid #777;
+	}
+
+.leaflet-touch .leaflet-control-attribution,
+.leaflet-touch .leaflet-control-layers,
+.leaflet-touch .leaflet-bar {
+	box-shadow: none;
+	}
+.leaflet-touch .leaflet-control-layers,
+.leaflet-touch .leaflet-bar {
+	border: 2px solid rgba(0,0,0,0.2);
+	background-clip: padding-box;
+	}
+
+
+/* popup */
+
+.leaflet-popup {
+	position: absolute;
+	text-align: center;
+	margin-bottom: 20px;
+	}
+.leaflet-popup-content-wrapper {
+	padding: 1px;
+	text-align: left;
+	border-radius: 12px;
+	}
+.leaflet-popup-content {
+	margin: 13px 24px 13px 20px;
+	line-height: 1.3;
+	font-size: 13px;
+	font-size: 1.08333em;
+	min-height: 1px;
+	}
+.leaflet-popup-content p {
+	margin: 17px 0;
+	margin: 1.3em 0;
+	}
+.leaflet-popup-tip-container {
+	width: 40px;
+	height: 20px;
+	position: absolute;
+	left: 50%;
+	margin-top: -1px;
+	margin-left: -20px;
+	overflow: hidden;
+	pointer-events: none;
+	}
+.leaflet-popup-tip {
+	width: 17px;
+	height: 17px;
+	padding: 1px;
+
+	margin: -10px auto 0;
+	pointer-events: auto;
+
+	-webkit-transform: rotate(45deg);
+	   -moz-transform: rotate(45deg);
+	    -ms-transform: rotate(45deg);
+	        transform: rotate(45deg);
+	}
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+	background: white;
+	color: #333;
+	box-shadow: 0 3px 14px rgba(0,0,0,0.4);
+	}
+.leaflet-container a.leaflet-popup-close-button {
+	position: absolute;
+	top: 0;
+	right: 0;
+	border: none;
+	text-align: center;
+	width: 24px;
+	height: 24px;
+	font: 16px/24px Tahoma, Verdana, sans-serif;
+	color: #757575;
+	text-decoration: none;
+	background: transparent;
+	}
+.leaflet-container a.leaflet-popup-close-button:hover,
+.leaflet-container a.leaflet-popup-close-button:focus {
+	color: #585858;
+	}
+.leaflet-popup-scrolled {
+	overflow: auto;
+	}
+
+.leaflet-oldie .leaflet-popup-content-wrapper {
+	-ms-zoom: 1;
+	}
+.leaflet-oldie .leaflet-popup-tip {
+	width: 24px;
+	margin: 0 auto;
+
+	-ms-filter: "progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678)";
+	filter: progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678);
+	}
+
+.leaflet-oldie .leaflet-control-zoom,
+.leaflet-oldie .leaflet-control-layers,
+.leaflet-oldie .leaflet-popup-content-wrapper,
+.leaflet-oldie .leaflet-popup-tip {
+	border: 1px solid #999;
+	}
+
+
+/* div icon */
+
+.leaflet-div-icon {
+	background: #fff;
+	border: 1px solid #666;
+	}
+
+
+/* Tooltip */
+/* Base styles for the element that has a tooltip */
+.leaflet-tooltip {
+	position: absolute;
+	padding: 6px;
+	background-color: #fff;
+	border: 1px solid #fff;
+	border-radius: 3px;
+	color: #222;
+	white-space: nowrap;
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+	pointer-events: none;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+	}
+.leaflet-tooltip.leaflet-interactive {
+	cursor: pointer;
+	pointer-events: auto;
+	}
+.leaflet-tooltip-top:before,
+.leaflet-tooltip-bottom:before,
+.leaflet-tooltip-left:before,
+.leaflet-tooltip-right:before {
+	position: absolute;
+	pointer-events: none;
+	border: 6px solid transparent;
+	background: transparent;
+	content: "";
+	}
+
+/* Directions */
+
+.leaflet-tooltip-bottom {
+	margin-top: 6px;
+}
+.leaflet-tooltip-top {
+	margin-top: -6px;
+}
+.leaflet-tooltip-bottom:before,
+.leaflet-tooltip-top:before {
+	left: 50%;
+	margin-left: -6px;
+	}
+.leaflet-tooltip-top:before {
+	bottom: 0;
+	margin-bottom: -12px;
+	border-top-color: #fff;
+	}
+.leaflet-tooltip-bottom:before {
+	top: 0;
+	margin-top: -12px;
+	margin-left: -6px;
+	border-bottom-color: #fff;
+	}
+.leaflet-tooltip-left {
+	margin-left: -6px;
+}
+.leaflet-tooltip-right {
+	margin-left: 6px;
+}
+.leaflet-tooltip-left:before,
+.leaflet-tooltip-right:before {
+	top: 50%;
+	margin-top: -6px;
+	}
+.leaflet-tooltip-left:before {
+	right: 0;
+	margin-right: -12px;
+	border-left-color: #fff;
+	}
+.leaflet-tooltip-right:before {
+	left: 0;
+	margin-left: -12px;
+	border-right-color: #fff;
+	}
+
+/* Printing */
+
+@media print {
+	/* Prevent printers from removing background-images of controls. */
+	.leaflet-control {
+		-webkit-print-color-adjust: exact;
+		print-color-adjust: exact;
+		}
+	}
+
+</style>
+<title>地形図GeoTIFF位置確認</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    color-scheme: light;
+    --bg:#f4efe0; --panel:#fffdf6; --panel-2:#faf5e7; --ink:#292416; --muted:#7d7458;
+    --line:#e3d9bd; --accent:#4c7a4f; --accent-ink:#fbfaf3; --accent-soft:#e4ecdd;
+    --contour:#a15a34; --danger:#a1473b; --shadow: 0 2px 14px rgba(60,50,20,.08);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      color-scheme: dark;
+      --bg:#14170f; --panel:#1b1f15; --panel-2:#1f2418; --ink:#eae4d0; --muted:#a39c85;
+      --line:#333726; --accent:#8bb37c; --accent-ink:#0f1309; --accent-soft:#26301f;
+      --contour:#d98a63; --danger:#e08a7d; --shadow: 0 2px 18px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme: dark;
+    --bg:#14170f; --panel:#1b1f15; --panel-2:#1f2418; --ink:#eae4d0; --muted:#a39c85;
+    --line:#333726; --accent:#8bb37c; --accent-ink:#0f1309; --accent-soft:#26301f;
+    --contour:#d98a63; --danger:#e08a7d; --shadow: 0 2px 18px rgba(0,0,0,.35);
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:"Noto Sans JP",-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
+    padding-inline: 20px; padding-block: 18px 28px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{ font-family:"IBM Plex Mono","SFMono-Regular",Menlo,Consolas,monospace; font-variant-numeric: tabular-nums; }
+
+  header{ max-width: 1180px; margin: 0 auto 16px; display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+  .header-text{ flex:1; min-width:240px; }
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:6px; font-size:11px; letter-spacing:.09em;
+    text-transform:uppercase; color:var(--accent); font-weight:600; margin-bottom:6px;
+  }
+  .eyebrow svg{ width:13px; height:13px; }
+  header h1{ font-size: 20px; margin:0 0 4px; font-weight:700; letter-spacing:-.01em; }
+  header p{ margin:0; color:var(--muted); font-size:13px; max-width: 62ch; line-height:1.6; }
+
+  .lang-switch{
+    display:inline-flex; align-items:center; background:var(--panel); border:1px solid var(--line);
+    border-radius:99px; padding:3px; gap:2px; flex-shrink:0; box-shadow:var(--shadow); margin-top:2px;
+  }
+  .lang-switch button{
+    font:inherit; font-size:12px; font-weight:600; padding:5px 12px; border-radius:99px; border:none;
+    background:transparent; color:var(--muted); cursor:pointer; transition:background .15s, color .15s;
+  }
+  .lang-switch button.active{ background:var(--accent); color:var(--accent-ink); }
+  .lang-switch button:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
+
+  .wrap{ max-width:1180px; margin:0 auto; display:grid; grid-template-columns: 372px 1fr; gap:16px; align-items:start; }
+  @media (max-width: 860px){ .wrap{ grid-template-columns:1fr; } }
+
+  .panel{ background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; box-shadow:var(--shadow); }
+
+  .drop{
+    border:1.5px dashed var(--line); border-radius:11px; padding:22px 14px; text-align:center;
+    color:var(--muted); font-size:13px; cursor:pointer; transition:border-color .15s, background .15s;
+    background: var(--panel-2);
+  }
+  .drop.drag{ border-color:var(--accent); background:var(--accent-soft); }
+  .drop input{ display:none; }
+  .drop b{ color:var(--ink); }
+  .drop .sub{ margin-top:4px; font-size:11.5px; }
+
+  .sample-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:10px; font-size:12px; color:var(--muted); }
+  .sample-badge{
+    display:none; align-items:center; gap:5px; font-size:11px; font-weight:600; color:var(--accent);
+    background:var(--accent-soft); padding:3px 8px; border-radius:99px;
+  }
+  .sample-badge.show{ display:inline-flex; }
+
+  .status{ font-size:12.5px; color:var(--muted); margin-top:9px; min-height:16px; }
+  .status.err{ color:var(--danger); }
+
+  .thumb-wrap{ margin-top:12px; display:none; }
+  .thumb-wrap canvas{ width:100%; image-rendering:pixelated; border-radius:9px; border:1px solid var(--line); display:block; background:var(--panel-2); }
+  .meta{ font-size:11.5px; color:var(--muted); margin-top:7px; }
+
+  table.corners{ width:100%; border-collapse:collapse; margin-top:12px; font-size:12.5px; display:none; }
+  table.corners th, table.corners td{ padding:6px 4px; text-align:left; border-bottom:1px solid var(--line); }
+  table.corners th{ color:var(--muted); font-weight:500; font-size:11px; text-transform:uppercase; letter-spacing:.04em; }
+  table.corners td.label{ color:var(--muted); white-space:nowrap; }
+  table.corners td.num{ font-variant-numeric:tabular-nums; }
+
+  .section-title{ font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:18px 0 8px; }
+
+  .crs-row{ display:flex; align-items:center; gap:8px; font-size:12.5px; margin-top:8px; flex-wrap:wrap; }
+  select, .btn{
+    font:inherit; font-size:12.5px; padding:7px 10px; border-radius:8px; border:1px solid var(--line);
+    background:var(--panel); color:var(--ink);
+  }
+  select{ flex:1; min-width:0; }
+  .btn{ background:var(--accent); color:var(--accent-ink); border-color:transparent; cursor:pointer; font-weight:600; white-space:nowrap; }
+  .btn:hover{ filter:brightness(1.06); }
+  .btn:focus-visible, select:focus-visible, input:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
+  .btn.secondary{ background:transparent; color:var(--ink); border-color:var(--line); font-weight:500; }
+  .hint{ font-size:11.5px; color:var(--muted); margin-top:7px; line-height:1.55; }
+
+  .marker-inputs{ display:flex; gap:8px; margin-top:2px; }
+  .marker-inputs label{ flex:1; min-width:0; display:flex; flex-direction:column; gap:4px; font-size:11px; color:var(--muted); }
+  .marker-inputs input{
+    font-family:"IBM Plex Mono","SFMono-Regular",Menlo,Consolas,monospace; font-size:13px; padding:7px 9px;
+    border-radius:8px; border:1px solid var(--line); background:var(--panel); color:var(--ink); width:100%;
+  }
+  .marker-inputs input:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
+
+  .badge{ display:inline-block; padding:2px 8px; border-radius:99px; font-size:11px; font-weight:600; margin-right:5px; }
+  .badge.ok{ background:var(--accent-soft); color:var(--accent); }
+  .badge.warn{ background:color-mix(in srgb, var(--danger) 18%, transparent); color:var(--danger); }
+
+  .map-panel{ padding:0; overflow:hidden; height:min(74vh, 660px); min-height:380px; position:relative; }
+  #map{ width:100%; height:100%; background:var(--panel-2); }
+  .map-empty{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    color:var(--muted); font-size:13px; text-align:center; padding:20px; background:var(--panel-2);
+  }
+  .overlay-controls{
+    position:absolute; z-index:1000; bottom:10px; left:10px; background:var(--panel);
+    border:1px solid var(--line); border-radius:10px; padding:9px 11px; font-size:12px; display:none;
+    box-shadow:var(--shadow); color:var(--ink);
+  }
+  .overlay-controls label{ display:flex; align-items:center; gap:6px; }
+  .overlay-controls input[type=range]{ width:104px; accent-color:var(--accent); }
+  .overlay-controls input[type=checkbox]{ accent-color:var(--accent); }
+
+  .leaflet-popup-content-wrapper, .leaflet-popup-tip{ background:var(--panel); color:var(--ink); }
+  .leaflet-container{ font-family:"Noto Sans JP",sans-serif; }
+</style>
+</head>
+<body>
+
+
+
+
+<header>
+  <div class="header-text">
+    <div class="eyebrow">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+      <span id="t-eyebrow"></span>
+    </div>
+    <h1 id="t-h1"></h1>
+    <p id="t-desc"></p>
+  </div>
+  <div class="lang-switch" role="group" aria-label="Language / 言語">
+    <button type="button" id="langJa">日本語</button>
+    <button type="button" id="langEn">English</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="panel">
+    <div class="drop" id="drop">
+      <input type="file" id="fileInput" accept=".tif,.tiff,image/tiff" />
+      <div id="t-dropTitle"></div>
+      <div class="sub" id="t-dropSub"></div>
+    </div>
+    <div class="sample-row">
+      <span id="t-sampleLabel"></span>
+      <button class="btn secondary" id="loadSample" type="button"></button>
+    </div>
+    <div class="status" id="status"></div>
+
+    <div class="thumb-wrap" id="thumbWrap">
+      <canvas id="thumbCanvas"></canvas>
+    </div>
+    <div class="meta mono" id="meta"></div>
+
+    <table class="corners" id="cornersTable">
+      <thead><tr><th></th><th id="t-thLat"></th><th id="t-thLon"></th></tr></thead>
+      <tbody>
+        <tr><td class="label" id="t-nw"></td><td class="num mono" id="c-nw-lat"></td><td class="num mono" id="c-nw-lon"></td></tr>
+        <tr><td class="label" id="t-ne"></td><td class="num mono" id="c-ne-lat"></td><td class="num mono" id="c-ne-lon"></td></tr>
+        <tr><td class="label" id="t-sw"></td><td class="num mono" id="c-sw-lat"></td><td class="num mono" id="c-sw-lon"></td></tr>
+        <tr><td class="label" id="t-se"></td><td class="num mono" id="c-se-lat"></td><td class="num mono" id="c-se-lon"></td></tr>
+      </tbody>
+    </table>
+
+    <div id="crsSection" style="display:none;">
+      <div class="section-title" id="t-crsSectionTitle"></div>
+      <div id="crsAuto" class="hint"></div>
+      <div class="crs-row">
+        <select id="crsSelect"></select>
+        <button class="btn secondary" id="crsApply" type="button"></button>
+      </div>
+      <div class="hint" id="t-crsHint"></div>
+    </div>
+
+    <div class="section-title" id="t-markerSectionTitle"></div>
+    <div class="marker-inputs">
+      <label>
+        <span id="t-markerLatLabel"></span>
+        <input type="number" id="markerLat" step="any" min="-90" max="90" inputmode="decimal" placeholder="35.681236" />
+      </label>
+      <label>
+        <span id="t-markerLonLabel"></span>
+        <input type="number" id="markerLon" step="any" min="-180" max="180" inputmode="decimal" placeholder="139.767125" />
+      </label>
+    </div>
+    <div class="crs-row">
+      <button class="btn" id="markerAdd" type="button"></button>
+      <button class="btn secondary" id="markerClear" type="button" style="display:none;"></button>
+    </div>
+    <div class="status" id="markerStatus"></div>
+    <div class="hint" id="t-markerHint"></div>
+  </div>
+
+  <div class="panel map-panel">
+    <div id="map"></div>
+    <div class="map-empty" id="mapEmpty"></div>
+    <div class="overlay-controls" id="overlayControls">
+      <label id="t-overlayLabelWrap">
+        <input type="checkbox" id="overlayToggle" checked />
+      </label>
+      <label style="margin-top:6px;" id="t-opacityLabelWrap">
+        <input type="range" id="overlayOpacity" min="0" max="100" value="70" />
+      </label>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/geotiff@3.0.5/dist-browser/geotiff.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/proj4@2.22.0/dist/proj4.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const SAMPLE_TIF_B64 = "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";
+</script>
+<script>
+(() => {
+  "use strict";
+
+  // ---------- i18n ----------
+  const T = {
+    ja: {
+      eyebrow: "地図・測地ツール",
+      h1: "地形図GeoTIFF位置確認",
+      desc: "GeoTIFF形式の地形図ファイルを読み込むと、画像の四隅の緯度経度を自動計算し、対応する範囲を地図上に表示します。処理はすべてブラウザ内で完結し、ファイルは外部に送信されません。",
+      dropTitleHtml: "<b>クリックしてファイルを選択</b>、またはドラッグ＆ドロップ",
+      dropSub: ".tif / .tiff（GeoTIFF、投影・経緯度座標系に対応）",
+      sampleLabel: "試しに動作を見る場合は",
+      sampleBtn: "サンプル地形図を読み込む",
+      sampleBadge: "サンプル表示中",
+      thLat: "緯度", thLon: "経度",
+      cornerNW: "北西 (NW)", cornerNE: "北東 (NE)", cornerSW: "南西 (SW)", cornerSE: "南東 (SE)",
+      crsSectionTitle: "座標系 (CRS)",
+      crsApplyBtn: "適用",
+      crsHint: "EPSGコードが自動認識できない、または誤っている場合は手動で選択してください。UTMと平面直角座標系はWGS84楕円体、旧日本測地系は簡易的な7径数変換で近似しています。",
+      markerSectionTitle: "地点マーク",
+      markerLatLabel: "緯度",
+      markerLonLabel: "経度",
+      markerAddBtn: "地図に表示",
+      markerClearBtn: "削除",
+      markerHint: "WGS84の10進度で入力してください（例: 東京駅 35.681236, 139.767125）。",
+      markerInvalid: "緯度は-90〜90、経度は-180〜180の範囲で入力してください。",
+      markerPopupTitle: "指定地点",
+      mapEmpty: "ファイルを読み込むと、ここに範囲が表示されます",
+      overlayLabel: "画像を重ねる",
+      opacityLabel: "不透明度",
+      statusAnalyzing: "解析中…",
+      statusChooseCrs: "座標系を手動で選択してください。",
+      statusLoadFailed: (msg) => `読み込みに失敗しました: ${msg}`,
+      statusUnsupportedCrs: "この座標系は未対応です。",
+      badgeAuto: "自動認識",
+      badgeManual: "手動選択",
+      badgeUnsupported: "未対応のEPSG",
+      badgeNoCrs: "座標系情報なし",
+      msgUnsupported: (epsg) => `EPSG:${epsg} を認識できませんでした。下で座標系を選択してください。`,
+      msgNoCrs: "GeoTIFFにCRS情報が見つかりませんでした。下で座標系を選択してください。",
+      gsiLayerName: "地理院地図",
+      gsiPhotoLayerName: "地理院写真（航空写真）",
+      osmLayerName: "OpenStreetMap",
+      popupLat: "緯度", popupLon: "経度",
+      groupGeographic: "経緯度",
+      groupUtm: "UTM (WGS84)",
+      groupPlane2011: "平面直角座標系 (JGD2011)",
+      groupPlane2000: "平面直角座標系 (JGD2000)",
+      groupPlaneTokyo: "平面直角座標系 (旧日本測地系)",
+      zoneLabel: (name) => `第${name}系`,
+      crsLabels: {
+        wgs84geo: "WGS84 (経緯度)",
+        jgd2000geo: "JGD2000 (経緯度・WGS84近似)",
+        jgd2011geo: "JGD2011 (経緯度・WGS84近似)",
+        tokyogeo: "旧日本測地系 (Tokyo, 経緯度)",
+        utmN: (z) => `UTM ${z}N (WGS84)`,
+        utmS: (z) => `UTM ${z}S (WGS84)`,
+        plane2000: (zoneName) => `平面直角座標系 第${zoneName}系 (JGD2000)`,
+        plane2011: (zoneName) => `平面直角座標系 第${zoneName}系 (JGD2011)`,
+        planeTokyo: (zoneName) => `平面直角座標系 第${zoneName}系 (旧日本測地系)`,
+      },
+    },
+    en: {
+      eyebrow: "Map & Geodesy Tool",
+      h1: "Topo GeoTIFF Locator",
+      desc: "Load a GeoTIFF topographic map and this tool automatically computes the latitude/longitude of its four corners and plots the matching extent on a map. Everything runs in your browser — the file is never uploaded anywhere.",
+      dropTitleHtml: "<b>Click to choose a file</b>, or drag and drop",
+      dropSub: ".tif / .tiff (GeoTIFF, projected or geographic CRS)",
+      sampleLabel: "Want to see it in action?",
+      sampleBtn: "Load a sample map",
+      sampleBadge: "Showing sample data",
+      thLat: "Latitude", thLon: "Longitude",
+      cornerNW: "NW", cornerNE: "NE", cornerSW: "SW", cornerSE: "SE",
+      crsSectionTitle: "Coordinate system (CRS)",
+      crsApplyBtn: "Apply",
+      crsHint: "If the EPSG code can't be auto-detected, or looks wrong, choose the coordinate system manually. UTM and the Japan Plane Rectangular CS use the WGS84/GRS80 ellipsoid; the old Tokyo Datum is approximated with a simple 7-parameter shift.",
+      markerSectionTitle: "Custom marker",
+      markerLatLabel: "Latitude",
+      markerLonLabel: "Longitude",
+      markerAddBtn: "Show on map",
+      markerClearBtn: "Remove",
+      markerHint: "Enter WGS84 decimal degrees (e.g. Tokyo Station: 35.681236, 139.767125).",
+      markerInvalid: "Latitude must be between -90 and 90, and longitude between -180 and 180.",
+      markerPopupTitle: "Custom point",
+      mapEmpty: "Load a file to see its extent here",
+      overlayLabel: "Overlay image",
+      opacityLabel: "Opacity",
+      statusAnalyzing: "Analyzing…",
+      statusChooseCrs: "Please choose a coordinate system manually.",
+      statusLoadFailed: (msg) => `Failed to load file: ${msg}`,
+      statusUnsupportedCrs: "This coordinate system isn't supported.",
+      badgeAuto: "Auto-detected",
+      badgeManual: "Manually selected",
+      badgeUnsupported: "Unsupported EPSG",
+      badgeNoCrs: "No CRS info",
+      msgUnsupported: (epsg) => `Could not recognize EPSG:${epsg}. Please choose a coordinate system below.`,
+      msgNoCrs: "No CRS information was found in this GeoTIFF. Please choose a coordinate system below.",
+      gsiLayerName: "GSI Standard Map",
+      gsiPhotoLayerName: "GSI Aerial Photo",
+      osmLayerName: "OpenStreetMap",
+      popupLat: "Lat", popupLon: "Lon",
+      groupGeographic: "Geographic",
+      groupUtm: "UTM (WGS84)",
+      groupPlane2011: "Plane Rectangular CS (JGD2011)",
+      groupPlane2000: "Plane Rectangular CS (JGD2000)",
+      groupPlaneTokyo: "Plane Rectangular CS (Tokyo Datum)",
+      zoneLabel: (name) => `Zone ${name}`,
+      crsLabels: {
+        wgs84geo: "WGS84 (geographic)",
+        jgd2000geo: "JGD2000 (geographic, WGS84 approx.)",
+        jgd2011geo: "JGD2011 (geographic, WGS84 approx.)",
+        tokyogeo: "Old Tokyo Datum (geographic)",
+        utmN: (z) => `UTM ${z}N (WGS84)`,
+        utmS: (z) => `UTM ${z}S (WGS84)`,
+        plane2000: (zoneName) => `Plane Rectangular CS Zone ${zoneName} (JGD2000)`,
+        plane2011: (zoneName) => `Plane Rectangular CS Zone ${zoneName} (JGD2011)`,
+        planeTokyo: (zoneName) => `Plane Rectangular CS Zone ${zoneName} (Tokyo Datum)`,
+      },
+    },
+  };
+
+  const LANG_STORAGE_KEY = "topoGeotiffLang";
+  let lang = "ja";
+  try {
+    const saved = localStorage.getItem(LANG_STORAGE_KEY);
+    if (saved === "ja" || saved === "en") lang = saved;
+  } catch (e) {}
+
+  // ---------- Japan Plane Rectangular CS zone origins (GSI standard, JGD2000/2011 & Tokyo Datum) ----------
+  const JP_ZONES = [
+    { name: "I",    lat: 33,          lon: 129.5 },
+    { name: "II",   lat: 33,          lon: 131 },
+    { name: "III",  lat: 36,          lon: 132 + 10/60 },
+    { name: "IV",   lat: 33,          lon: 133.5 },
+    { name: "V",    lat: 36,          lon: 134 + 20/60 },
+    { name: "VI",   lat: 36,          lon: 136 },
+    { name: "VII",  lat: 36,          lon: 137 + 10/60 },
+    { name: "VIII", lat: 36,          lon: 138.5 },
+    { name: "IX",   lat: 36,          lon: 139 + 50/60 },
+    { name: "X",    lat: 40,          lon: 140 + 50/60 },
+    { name: "XI",   lat: 44,          lon: 140.25 },
+    { name: "XII",  lat: 44,          lon: 142.25 },
+    { name: "XIII", lat: 44,          lon: 144.25 },
+    { name: "XIV",  lat: 26,          lon: 142 },
+    { name: "XV",   lat: 26,          lon: 127.5 },
+    { name: "XVI",  lat: 26,          lon: 124 },
+    { name: "XVII", lat: 26,          lon: 131 },
+    { name: "XVIII",lat: 20,          lon: 136 },
+    { name: "XIX",  lat: 26,          lon: 154 },
+  ];
+  const TOKYO_TOWGS84 = "-146.414,507.337,680.507";
+
+  function jpZoneProj4(zoneIdx, ellps) {
+    const z = JP_ZONES[zoneIdx];
+    if (!z) return null;
+    if (ellps === "bessel") {
+      return `+proj=tmerc +lat_0=${z.lat} +lon_0=${z.lon} +k=0.9999 +x_0=0 +y_0=0 +ellps=bessel +towgs84=${TOKYO_TOWGS84} +units=m +no_defs`;
+    }
+    return `+proj=tmerc +lat_0=${z.lat} +lon_0=${z.lon} +k=0.9999 +x_0=0 +y_0=0 +ellps=GRS80 +units=m +no_defs`;
+  }
+
+  // Returns { def, geographic, kind, zone|zoneIdx } or null if unknown. No display text here (i18n'd separately).
+  function proj4DefForEpsg(epsg) {
+    const code = Number(epsg);
+    if (!code) return null;
+    if (code === 4326) return { def: "+proj=longlat +datum=WGS84 +no_defs", geographic: true, kind: "wgs84geo" };
+    if (code === 4612) return { def: "+proj=longlat +datum=WGS84 +no_defs", geographic: true, kind: "jgd2000geo" };
+    if (code === 6668) return { def: "+proj=longlat +datum=WGS84 +no_defs", geographic: true, kind: "jgd2011geo" };
+    if (code === 4301) return { def: `+proj=longlat +ellps=bessel +towgs84=${TOKYO_TOWGS84} +no_defs`, geographic: true, kind: "tokyogeo" };
+    if (code >= 32601 && code <= 32660) return { def: `+proj=utm +zone=${code - 32600} +datum=WGS84 +units=m +no_defs`, geographic: false, kind: "utmN", zone: code - 32600 };
+    if (code >= 32701 && code <= 32760) return { def: `+proj=utm +zone=${code - 32700} +south +datum=WGS84 +units=m +no_defs`, geographic: false, kind: "utmS", zone: code - 32700 };
+    if (code >= 2443 && code <= 2461) return { def: jpZoneProj4(code - 2443, "GRS80"), geographic: false, kind: "plane2000", zoneIdx: code - 2443 };
+    if (code >= 6669 && code <= 6687) return { def: jpZoneProj4(code - 6669, "GRS80"), geographic: false, kind: "plane2011", zoneIdx: code - 6669 };
+    if (code >= 30161 && code <= 30179) return { def: jpZoneProj4(code - 30161, "bessel"), geographic: false, kind: "planeTokyo", zoneIdx: code - 30161 };
+    return null;
+  }
+
+  function crsLabel(info, langCode) {
+    const t = T[langCode].crsLabels;
+    switch (info.kind) {
+      case "wgs84geo": return t.wgs84geo;
+      case "jgd2000geo": return t.jgd2000geo;
+      case "jgd2011geo": return t.jgd2011geo;
+      case "tokyogeo": return t.tokyogeo;
+      case "utmN": return t.utmN(info.zone);
+      case "utmS": return t.utmS(info.zone);
+      case "plane2000": return t.plane2000(JP_ZONES[info.zoneIdx].name);
+      case "plane2011": return t.plane2011(JP_ZONES[info.zoneIdx].name);
+      case "planeTokyo": return t.planeTokyo(JP_ZONES[info.zoneIdx].name);
+      default: return "";
+    }
+  }
+
+  function populateCrsSelect(selectEl, langCode) {
+    const t = T[langCode];
+    const groups = [
+      { label: t.groupGeographic, opts: [[4326, t.crsLabels.wgs84geo], [6668, t.crsLabels.jgd2011geo], [4612, t.crsLabels.jgd2000geo], [4301, t.crsLabels.tokyogeo]] },
+      { label: t.groupUtm, opts: Array.from({length: 8}, (_, i) => 51 + i).map(z => [32600+z, t.crsLabels.utmN(z)]) },
+      { label: t.groupPlane2011, opts: JP_ZONES.map((z, i) => [6669+i, t.zoneLabel(z.name)]) },
+      { label: t.groupPlane2000, opts: JP_ZONES.map((z, i) => [2443+i, t.zoneLabel(z.name)]) },
+      { label: t.groupPlaneTokyo, opts: JP_ZONES.map((z, i) => [30161+i, t.zoneLabel(z.name)]) },
+    ];
+    const prevValue = selectEl.value;
+    selectEl.innerHTML = "";
+    for (const g of groups) {
+      const og = document.createElement("optgroup");
+      og.label = g.label;
+      for (const [code, label] of g.opts) {
+        const o = document.createElement("option");
+        o.value = code;
+        o.textContent = `EPSG:${code} — ${label}`;
+        og.appendChild(o);
+      }
+      selectEl.appendChild(og);
+    }
+    if (prevValue) { try { selectEl.value = prevValue; } catch (e) {} }
+  }
+
+  // ---------- state ----------
+  let map = null;
+  let rectLayer = null, markerLayer = null, imageOverlay = null;
+  let lastCornersSource = null;
+  let lastImageDataUrl = null;
+  let lastImageBoundsSource = null;
+  let lastAppliedInfo = null;       // last CRS info object applied to the current file
+  let crsMessage = null;            // { type: 'auto'|'manual'|'unsupported'|'nocrs', epsg, info }
+  let gsiLayer = null, osmLayer = null, gsiPhotoLayer = null, layersControl = null;
+  let customPointMarker = null;
+  let customPointLatLng = null;     // [lat, lon] or null
+
+  const $ = (id) => document.getElementById(id);
+  const statusEl = $("status");
+  const metaEl = $("meta");
+
+  function setStatus(msgKeyOrText, isErr) {
+    statusEl.textContent = msgKeyOrText || "";
+    statusEl.classList.toggle("err", !!isErr);
+  }
+
+  function initMap() {
+    if (map) return;
+    map = L.map("map", { zoomControl: true });
+    gsiLayer = L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png", {
+      attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">国土地理院</a>',
+      maxZoom: 18,
+    });
+    osmLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 19,
+    });
+    gsiPhotoLayer = L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg", {
+      attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">国土地理院</a>',
+      maxZoom: 18,
+    });
+    gsiLayer.addTo(map);
+    layersControl = buildLayersControl().addTo(map);
+    map.setView([36.2, 138.2], 5);
+  }
+
+  function buildLayersControl() {
+    return L.control.layers({
+      [T[lang].gsiLayerName]: gsiLayer,
+      [T[lang].gsiPhotoLayerName]: gsiPhotoLayer,
+      [T[lang].osmLayerName]: osmLayer,
+    });
+  }
+
+  function refreshLayersControl() {
+    if (!layersControl) return;
+    map.removeControl(layersControl);
+    layersControl = buildLayersControl().addTo(map);
+  }
+
+  function renderOnMap(wgs84Corners) {
+    initMap();
+    $("mapEmpty").style.display = "none";
+    setTimeout(() => map.invalidateSize(), 30);
+
+    const { nw, ne, sw, se } = wgs84Corners;
+    const latlngs = [[nw[1], nw[0]], [ne[1], ne[0]], [se[1], se[0]], [sw[1], sw[0]]];
+
+    if (rectLayer) map.removeLayer(rectLayer);
+    if (markerLayer) map.removeLayer(markerLayer);
+
+    rectLayer = L.polygon(latlngs, { color: "#a15a34", weight: 2, fillOpacity: 0.07 }).addTo(map);
+
+    markerLayer = L.layerGroup();
+    const t = T[lang];
+    const labelFor = { nw: t.cornerNW, ne: t.cornerNE, sw: t.cornerSW, se: t.cornerSE };
+    for (const [key, pt] of Object.entries({ nw, ne, sw, se })) {
+      const [lon, lat] = pt;
+      L.circleMarker([lat, lon], { radius: 5, color: "#a15a34", weight: 1.5, fillColor: "#fff", fillOpacity: 1 })
+        .bindPopup(`<b>${labelFor[key]}</b><br>${t.popupLat}: ${lat.toFixed(6)}<br>${t.popupLon}: ${lon.toFixed(6)}`)
+        .addTo(markerLayer);
+    }
+    markerLayer.addTo(map);
+
+    map.fitBounds(rectLayer.getBounds(), { padding: [24, 24] });
+
+    const lats = [nw[1], ne[1], sw[1], se[1]];
+    const lons = [nw[0], ne[0], sw[0], se[0]];
+    lastImageBoundsSource = [[Math.min(...lats), Math.min(...lons)], [Math.max(...lats), Math.max(...lons)]];
+
+    updateOverlay();
+  }
+
+  function updateOverlay() {
+    if (imageOverlay) { map.removeLayer(imageOverlay); imageOverlay = null; }
+    const wantOverlay = $("overlayToggle").checked;
+    $("overlayControls").style.display = lastImageDataUrl ? "block" : "none";
+    if (!wantOverlay || !lastImageDataUrl || !lastImageBoundsSource) return;
+    const opacity = Number($("overlayOpacity").value) / 100;
+    imageOverlay = L.imageOverlay(lastImageDataUrl, lastImageBoundsSource, { opacity }).addTo(map);
+  }
+
+  $("overlayToggle").addEventListener("change", updateOverlay);
+  $("overlayOpacity").addEventListener("input", updateOverlay);
+
+  // ---------- custom point marker ----------
+
+  function customPointPopupHtml() {
+    const t = T[lang];
+    const [lat, lon] = customPointLatLng;
+    return `<b>${t.markerPopupTitle}</b><br>${t.popupLat}: ${lat.toFixed(6)}<br>${t.popupLon}: ${lon.toFixed(6)}`;
+  }
+
+  function renderCustomPointMarker(opts) {
+    opts = opts || {};
+    initMap();
+    if (customPointMarker) { map.removeLayer(customPointMarker); customPointMarker = null; }
+    if (!customPointLatLng) return;
+    const [lat, lon] = customPointLatLng;
+    customPointMarker = L.circleMarker([lat, lon], {
+      radius: 7, color: "#2f6fb0", weight: 2, fillColor: "#dcebfa", fillOpacity: 1,
+    }).bindPopup(customPointPopupHtml()).addTo(map);
+    if (opts.openPopup) customPointMarker.openPopup();
+  }
+
+  function focusCustomPoint() {
+    if (!customPointLatLng) return;
+    const [lat, lon] = customPointLatLng;
+    if (rectLayer) {
+      const bounds = rectLayer.getBounds().extend([lat, lon]);
+      map.fitBounds(bounds, { padding: [24, 24] });
+    } else {
+      $("mapEmpty").style.display = "none";
+      setTimeout(() => map.invalidateSize(), 30);
+      map.setView([lat, lon], Math.max(map.getZoom() || 5, 12));
+    }
+  }
+
+  function setMarkerStatus(msg, isErr) {
+    const el = $("markerStatus");
+    el.textContent = msg || "";
+    el.classList.toggle("err", !!isErr);
+  }
+
+  function addCustomMarkerFromInputs() {
+    const latStr = $("markerLat").value.trim();
+    const lonStr = $("markerLon").value.trim();
+    const lat = Number(latStr);
+    const lon = Number(lonStr);
+    if (latStr === "" || lonStr === "" || !Number.isFinite(lat) || !Number.isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+      setMarkerStatus(T[lang].markerInvalid, true);
+      return;
+    }
+    setMarkerStatus("");
+    customPointLatLng = [lat, lon];
+    renderCustomPointMarker({ openPopup: true });
+    focusCustomPoint();
+    $("markerClear").style.display = "";
+  }
+
+  function clearCustomMarker() {
+    customPointLatLng = null;
+    if (customPointMarker && map) { map.removeLayer(customPointMarker); }
+    customPointMarker = null;
+    $("markerLat").value = "";
+    $("markerLon").value = "";
+    $("markerClear").style.display = "none";
+    setMarkerStatus("");
+  }
+
+  $("markerAdd").addEventListener("click", addCustomMarkerFromInputs);
+  $("markerClear").addEventListener("click", clearCustomMarker);
+  for (const id of ["markerLat", "markerLon"]) {
+    $(id).addEventListener("keydown", (e) => { if (e.key === "Enter") addCustomMarkerFromInputs(); });
+  }
+
+  // ---------- GeoTIFF parsing ----------
+
+  async function drawThumbnail(image) {
+    const maxSize = 900;
+    const w0 = image.getWidth(), h0 = image.getHeight();
+    const scale = Math.min(1, maxSize / Math.max(w0, h0));
+    const outW = Math.max(1, Math.round(w0 * scale));
+    const outH = Math.max(1, Math.round(h0 * scale));
+
+    let raster;
+    try {
+      raster = await image.readRasters({ width: outW, height: outH, interleave: true });
+    } catch (e) {
+      raster = await image.readRasters({ interleave: true });
+    }
+    const rw = raster.width || outW, rh = raster.height || outH;
+    const spp = image.getSamplesPerPixel();
+
+    const canvas = $("thumbCanvas");
+    canvas.width = rw; canvas.height = rh;
+    const ctx = canvas.getContext("2d");
+    const imgData = ctx.createImageData(rw, rh);
+    const src = raster;
+    const n = rw * rh;
+    for (let i = 0; i < n; i++) {
+      let r, g, b, a = 255;
+      if (spp >= 3) {
+        r = src[i * spp]; g = src[i * spp + 1]; b = src[i * spp + 2];
+        if (spp >= 4) a = src[i * spp + 3];
+      } else {
+        r = g = b = src[i * spp];
+      }
+      imgData.data[i * 4] = r; imgData.data[i * 4 + 1] = g; imgData.data[i * 4 + 2] = b; imgData.data[i * 4 + 3] = a;
+    }
+    ctx.putImageData(imgData, 0, 0);
+    $("thumbWrap").style.display = "block";
+    return canvas.toDataURL("image/png");
+  }
+
+  function cornersInSourceCrs(image) {
+    const w = image.getWidth(), h = image.getHeight();
+    const origin = image.getOrigin();
+    const res = image.getResolution();
+    const x0 = origin[0], y0 = origin[1];
+    const dx = res[0], dy = res[1];
+    return {
+      nw: [x0, y0],
+      ne: [x0 + dx * w, y0],
+      sw: [x0, y0 + dy * h],
+      se: [x0 + dx * w, y0 + dy * h],
+      width: w, height: h,
+    };
+  }
+
+  function transformCorners(cornersSrc, proj4Def, geographic) {
+    const toWgs84 = (pt) => {
+      if (geographic) return [pt[0], pt[1]];
+      const [x, y] = proj4(proj4Def, "EPSG:4326", [pt[0], pt[1]]);
+      return [x, y];
+    };
+    return {
+      nw: toWgs84(cornersSrc.nw), ne: toWgs84(cornersSrc.ne),
+      sw: toWgs84(cornersSrc.sw), se: toWgs84(cornersSrc.se),
+    };
+  }
+
+  function showCorners(wgs84) {
+    const set = (id, v) => { $(id).textContent = v.toFixed(6); };
+    set("c-nw-lat", wgs84.nw[1]); set("c-nw-lon", wgs84.nw[0]);
+    set("c-ne-lat", wgs84.ne[1]); set("c-ne-lon", wgs84.ne[0]);
+    set("c-sw-lat", wgs84.sw[1]); set("c-sw-lon", wgs84.sw[0]);
+    set("c-se-lat", wgs84.se[1]); set("c-se-lon", wgs84.se[0]);
+    $("cornersTable").style.display = "table";
+  }
+
+  let lastFileOpts = null;
+
+  async function handleFile(file, opts) {
+    opts = opts || {};
+    lastFileOpts = opts;
+    setStatus(T[lang].statusAnalyzing);
+    $("cornersTable").style.display = "none";
+    $("crsSection").style.display = "none";
+    $("thumbWrap").style.display = "none";
+    lastImageDataUrl = null;
+    lastAppliedInfo = null;
+    crsMessage = null;
+
+    try {
+      const buf = await file.arrayBuffer();
+      const tiff = await GeoTIFF.fromArrayBuffer(buf);
+      const image = await tiff.getImage();
+      const geoKeys = image.getGeoKeys() || {};
+
+      const cornersSrc = cornersInSourceCrs(image);
+      lastCornersSource = cornersSrc;
+
+      metaEl.textContent = `${cornersSrc.width} × ${cornersSrc.height} px`;
+
+      try {
+        lastImageDataUrl = await drawThumbnail(image);
+      } catch (e) {
+        console.warn("thumbnail failed", e);
+      }
+
+      const modelType = geoKeys.GTModelTypeGeoKey;
+      const epsg = modelType === 2 ? geoKeys.GeographicTypeGeoKey : geoKeys.ProjectedCSTypeGeoKey;
+      const info = epsg ? proj4DefForEpsg(epsg) : null;
+
+      $("crsSection").style.display = "block";
+      populateCrsSelect($("crsSelect"), lang);
+
+      if (info) {
+        crsMessage = { type: "auto", epsg, info };
+        try { $("crsSelect").value = String(epsg); } catch (e) {}
+        applyCrs(info);
+        setStatus("");
+      } else if (epsg) {
+        crsMessage = { type: "unsupported", epsg };
+        setStatus(T[lang].statusChooseCrs, true);
+      } else {
+        crsMessage = { type: "nocrs" };
+        setStatus(T[lang].statusChooseCrs, true);
+      }
+      renderCrsMessage();
+
+      setSampleBadge(!!opts.sample);
+    } catch (e) {
+      console.error(e);
+      setStatus(T[lang].statusLoadFailed(e && e.message ? e.message : String(e)), true);
+    }
+  }
+
+  function renderCrsMessage() {
+    const el = $("crsAuto");
+    const t = T[lang];
+    if (!crsMessage) { el.innerHTML = ""; return; }
+    if (crsMessage.type === "auto") {
+      el.innerHTML = `<span class="badge ok">${t.badgeAuto}</span>EPSG:${crsMessage.epsg} — ${crsLabel(crsMessage.info, lang)}`;
+    } else if (crsMessage.type === "manual") {
+      el.innerHTML = `<span class="badge ok">${t.badgeManual}</span>EPSG:${crsMessage.epsg} — ${crsLabel(crsMessage.info, lang)}`;
+    } else if (crsMessage.type === "unsupported") {
+      el.innerHTML = `<span class="badge warn">${t.badgeUnsupported}</span>${t.msgUnsupported(crsMessage.epsg)}`;
+    } else if (crsMessage.type === "nocrs") {
+      el.innerHTML = `<span class="badge warn">${t.badgeNoCrs}</span>${t.msgNoCrs}`;
+    }
+  }
+
+  function applyCrs(info) {
+    if (!lastCornersSource) return;
+    lastAppliedInfo = info;
+    const wgs84 = transformCorners(lastCornersSource, info.def, info.geographic);
+    showCorners(wgs84);
+    renderOnMap(wgs84);
+  }
+
+  function setSampleBadge(isSample) {
+    let badge = $("sampleBadge");
+    if (!isSample) { if (badge) badge.classList.remove("show"); return; }
+    if (!badge) {
+      badge = document.createElement("span");
+      badge.id = "sampleBadge";
+      badge.className = "sample-badge";
+      $("meta").insertAdjacentElement("beforebegin", badge);
+    }
+    badge.textContent = T[lang].sampleBadge;
+    badge.classList.add("show");
+  }
+
+  $("crsApply").addEventListener("click", () => {
+    const epsg = Number($("crsSelect").value);
+    const info = proj4DefForEpsg(epsg);
+    if (!info) { setStatus(T[lang].statusUnsupportedCrs, true); return; }
+    crsMessage = { type: "manual", epsg, info };
+    renderCrsMessage();
+    setStatus("");
+    applyCrs(info);
+  });
+
+  // ---------- file input wiring ----------
+  const dropEl = $("drop"), fileInput = $("fileInput");
+  dropEl.addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", (e) => {
+    if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]);
+  });
+  ["dragenter", "dragover"].forEach(evt =>
+    dropEl.addEventListener(evt, (e) => { e.preventDefault(); dropEl.classList.add("drag"); })
+  );
+  ["dragleave", "drop"].forEach(evt =>
+    dropEl.addEventListener(evt, (e) => { e.preventDefault(); dropEl.classList.remove("drag"); })
+  );
+  dropEl.addEventListener("drop", (e) => {
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) handleFile(f);
+  });
+
+  function base64ToBlob(b64, mime) {
+    const bin = atob(b64);
+    const arr = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    return new Blob([arr], { type: mime });
+  }
+
+  function loadSample() {
+    if (typeof SAMPLE_TIF_B64 === "undefined") return;
+    const blob = base64ToBlob(SAMPLE_TIF_B64, "image/tiff");
+    blob.name = "sample_topo.tif";
+    handleFile(blob, { sample: true });
+  }
+  $("loadSample").addEventListener("click", loadSample);
+
+  // ---------- language switching ----------
+  function applyStaticText() {
+    const t = T[lang];
+    document.documentElement.lang = lang;
+    $("t-eyebrow").textContent = t.eyebrow;
+    $("t-h1").textContent = t.h1;
+    $("t-desc").textContent = t.desc;
+    $("t-dropTitle").innerHTML = t.dropTitleHtml;
+    $("t-dropSub").textContent = t.dropSub;
+    $("t-sampleLabel").textContent = t.sampleLabel;
+    $("loadSample").textContent = t.sampleBtn;
+    $("t-thLat").textContent = t.thLat;
+    $("t-thLon").textContent = t.thLon;
+    $("t-nw").textContent = t.cornerNW;
+    $("t-ne").textContent = t.cornerNE;
+    $("t-sw").textContent = t.cornerSW;
+    $("t-se").textContent = t.cornerSE;
+    $("t-crsSectionTitle").textContent = t.crsSectionTitle;
+    $("crsApply").textContent = t.crsApplyBtn;
+    $("crsSelect").setAttribute("aria-label", t.crsSectionTitle);
+    $("t-crsHint").textContent = t.crsHint;
+    $("t-markerSectionTitle").textContent = t.markerSectionTitle;
+    $("t-markerLatLabel").textContent = t.markerLatLabel;
+    $("t-markerLonLabel").textContent = t.markerLonLabel;
+    $("markerAdd").textContent = t.markerAddBtn;
+    $("markerClear").textContent = t.markerClearBtn;
+    $("t-markerHint").textContent = t.markerHint;
+    $("mapEmpty").textContent = t.mapEmpty;
+    $("t-overlayLabelWrap").childNodes[0].textContent = t.overlayLabel + " ";
+    $("t-opacityLabelWrap").childNodes[0].textContent = t.opacityLabel + " ";
+    const badge = $("sampleBadge");
+    if (badge) badge.textContent = t.sampleBadge;
+
+    document.title = lang === "ja" ? "地形図GeoTIFF位置確認" : "Topo GeoTIFF Locator";
+
+    $("langJa").classList.toggle("active", lang === "ja");
+    $("langEn").classList.toggle("active", lang === "en");
+    $("langJa").setAttribute("aria-pressed", String(lang === "ja"));
+    $("langEn").setAttribute("aria-pressed", String(lang === "en"));
+  }
+
+  function setLang(next) {
+    if (next !== "ja" && next !== "en") return;
+    if (next === lang) return;
+    lang = next;
+    try { localStorage.setItem(LANG_STORAGE_KEY, lang); } catch (e) {}
+    applyStaticText();
+    if (map) refreshLayersControl();
+    if ($("crsSection").style.display !== "none") {
+      populateCrsSelect($("crsSelect"), lang);
+      renderCrsMessage();
+    }
+    if (lastAppliedInfo && lastCornersSource) {
+      const wgs84 = transformCorners(lastCornersSource, lastAppliedInfo.def, lastAppliedInfo.geographic);
+      renderOnMap(wgs84);
+    }
+    if (customPointMarker && customPointLatLng) {
+      customPointMarker.setPopupContent(customPointPopupHtml());
+    }
+  }
+  $("langJa").addEventListener("click", () => setLang("ja"));
+  $("langEn").addEventListener("click", () => setLang("en"));
+
+  applyStaticText();
+  initMap();
+  // Show a realistic working state immediately.
+  loadSample();
+})();
+</script>
+
+</body>
+</html>
