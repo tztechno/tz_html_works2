@@ -770,6 +770,14 @@ svg.leaflet-image-layer.leaflet-interactive path {
   .btn.secondary{ background:transparent; color:var(--ink); border-color:var(--line); font-weight:500; }
   .hint{ font-size:11.5px; color:var(--muted); margin-top:7px; line-height:1.55; }
 
+  .marker-inputs{ display:flex; gap:8px; margin-top:2px; }
+  .marker-inputs label{ flex:1; min-width:0; display:flex; flex-direction:column; gap:4px; font-size:11px; color:var(--muted); }
+  .marker-inputs input{
+    font-family:"IBM Plex Mono","SFMono-Regular",Menlo,Consolas,monospace; font-size:13px; padding:7px 9px;
+    border-radius:8px; border:1px solid var(--line); background:var(--panel); color:var(--ink); width:100%;
+  }
+  .marker-inputs input:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
+
   .badge{ display:inline-block; padding:2px 8px; border-radius:99px; font-size:11px; font-weight:600; margin-right:5px; }
   .badge.ok{ background:var(--accent-soft); color:var(--accent); }
   .badge.warn{ background:color-mix(in srgb, var(--danger) 18%, transparent); color:var(--danger); }
@@ -850,6 +858,24 @@ svg.leaflet-image-layer.leaflet-interactive path {
       </div>
       <div class="hint" id="t-crsHint"></div>
     </div>
+
+    <div class="section-title" id="t-markerSectionTitle"></div>
+    <div class="marker-inputs">
+      <label>
+        <span id="t-markerLatLabel"></span>
+        <input type="number" id="markerLat" step="any" min="-90" max="90" inputmode="decimal" placeholder="35.681236" />
+      </label>
+      <label>
+        <span id="t-markerLonLabel"></span>
+        <input type="number" id="markerLon" step="any" min="-180" max="180" inputmode="decimal" placeholder="139.767125" />
+      </label>
+    </div>
+    <div class="crs-row">
+      <button class="btn" id="markerAdd" type="button"></button>
+      <button class="btn secondary" id="markerClear" type="button" style="display:none;"></button>
+    </div>
+    <div class="status" id="markerStatus"></div>
+    <div class="hint" id="t-markerHint"></div>
   </div>
 
   <div class="panel map-panel">
@@ -892,6 +918,14 @@ const SAMPLE_TIF_B64 = "SUkqAAgAAAASAAABBAABAAAA8AAAAAEBBAABAAAAoAAAAAIBAwADAAAA
       crsSectionTitle: "座標系 (CRS)",
       crsApplyBtn: "適用",
       crsHint: "EPSGコードが自動認識できない、または誤っている場合は手動で選択してください。UTMと平面直角座標系はWGS84楕円体、旧日本測地系は簡易的な7径数変換で近似しています。",
+      markerSectionTitle: "地点マーク",
+      markerLatLabel: "緯度",
+      markerLonLabel: "経度",
+      markerAddBtn: "地図に表示",
+      markerClearBtn: "削除",
+      markerHint: "WGS84の10進度で入力してください（例: 東京駅 35.681236, 139.767125）。",
+      markerInvalid: "緯度は-90〜90、経度は-180〜180の範囲で入力してください。",
+      markerPopupTitle: "指定地点",
       mapEmpty: "ファイルを読み込むと、ここに範囲が表示されます",
       overlayLabel: "画像を重ねる",
       opacityLabel: "不透明度",
@@ -940,6 +974,14 @@ const SAMPLE_TIF_B64 = "SUkqAAgAAAASAAABBAABAAAA8AAAAAEBBAABAAAAoAAAAAIBAwADAAAA
       crsSectionTitle: "Coordinate system (CRS)",
       crsApplyBtn: "Apply",
       crsHint: "If the EPSG code can't be auto-detected, or looks wrong, choose the coordinate system manually. UTM and the Japan Plane Rectangular CS use the WGS84/GRS80 ellipsoid; the old Tokyo Datum is approximated with a simple 7-parameter shift.",
+      markerSectionTitle: "Custom marker",
+      markerLatLabel: "Latitude",
+      markerLonLabel: "Longitude",
+      markerAddBtn: "Show on map",
+      markerClearBtn: "Remove",
+      markerHint: "Enter WGS84 decimal degrees (e.g. Tokyo Station: 35.681236, 139.767125).",
+      markerInvalid: "Latitude must be between -90 and 90, and longitude between -180 and 180.",
+      markerPopupTitle: "Custom point",
       mapEmpty: "Load a file to see its extent here",
       overlayLabel: "Overlay image",
       opacityLabel: "Opacity",
@@ -1082,6 +1124,8 @@ const SAMPLE_TIF_B64 = "SUkqAAgAAAASAAABBAABAAAA8AAAAAEBBAABAAAAoAAAAAIBAwADAAAA
   let lastAppliedInfo = null;       // last CRS info object applied to the current file
   let crsMessage = null;            // { type: 'auto'|'manual'|'unsupported'|'nocrs', epsg, info }
   let gsiLayer = null, osmLayer = null, layersControl = null;
+  let customPointMarker = null;
+  let customPointLatLng = null;     // [lat, lon] or null
 
   const $ = (id) => document.getElementById(id);
   const statusEl = $("status");
@@ -1158,6 +1202,77 @@ const SAMPLE_TIF_B64 = "SUkqAAgAAAASAAABBAABAAAA8AAAAAEBBAABAAAAoAAAAAIBAwADAAAA
 
   $("overlayToggle").addEventListener("change", updateOverlay);
   $("overlayOpacity").addEventListener("input", updateOverlay);
+
+  // ---------- custom point marker ----------
+
+  function customPointPopupHtml() {
+    const t = T[lang];
+    const [lat, lon] = customPointLatLng;
+    return `<b>${t.markerPopupTitle}</b><br>${t.popupLat}: ${lat.toFixed(6)}<br>${t.popupLon}: ${lon.toFixed(6)}`;
+  }
+
+  function renderCustomPointMarker(opts) {
+    opts = opts || {};
+    initMap();
+    if (customPointMarker) { map.removeLayer(customPointMarker); customPointMarker = null; }
+    if (!customPointLatLng) return;
+    const [lat, lon] = customPointLatLng;
+    customPointMarker = L.circleMarker([lat, lon], {
+      radius: 7, color: "#2f6fb0", weight: 2, fillColor: "#dcebfa", fillOpacity: 1,
+    }).bindPopup(customPointPopupHtml()).addTo(map);
+    if (opts.openPopup) customPointMarker.openPopup();
+  }
+
+  function focusCustomPoint() {
+    if (!customPointLatLng) return;
+    const [lat, lon] = customPointLatLng;
+    if (rectLayer) {
+      const bounds = rectLayer.getBounds().extend([lat, lon]);
+      map.fitBounds(bounds, { padding: [24, 24] });
+    } else {
+      $("mapEmpty").style.display = "none";
+      setTimeout(() => map.invalidateSize(), 30);
+      map.setView([lat, lon], Math.max(map.getZoom() || 5, 12));
+    }
+  }
+
+  function setMarkerStatus(msg, isErr) {
+    const el = $("markerStatus");
+    el.textContent = msg || "";
+    el.classList.toggle("err", !!isErr);
+  }
+
+  function addCustomMarkerFromInputs() {
+    const latStr = $("markerLat").value.trim();
+    const lonStr = $("markerLon").value.trim();
+    const lat = Number(latStr);
+    const lon = Number(lonStr);
+    if (latStr === "" || lonStr === "" || !Number.isFinite(lat) || !Number.isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+      setMarkerStatus(T[lang].markerInvalid, true);
+      return;
+    }
+    setMarkerStatus("");
+    customPointLatLng = [lat, lon];
+    renderCustomPointMarker({ openPopup: true });
+    focusCustomPoint();
+    $("markerClear").style.display = "";
+  }
+
+  function clearCustomMarker() {
+    customPointLatLng = null;
+    if (customPointMarker && map) { map.removeLayer(customPointMarker); }
+    customPointMarker = null;
+    $("markerLat").value = "";
+    $("markerLon").value = "";
+    $("markerClear").style.display = "none";
+    setMarkerStatus("");
+  }
+
+  $("markerAdd").addEventListener("click", addCustomMarkerFromInputs);
+  $("markerClear").addEventListener("click", clearCustomMarker);
+  for (const id of ["markerLat", "markerLon"]) {
+    $(id).addEventListener("keydown", (e) => { if (e.key === "Enter") addCustomMarkerFromInputs(); });
+  }
 
   // ---------- GeoTIFF parsing ----------
 
@@ -1391,6 +1506,12 @@ const SAMPLE_TIF_B64 = "SUkqAAgAAAASAAABBAABAAAA8AAAAAEBBAABAAAAoAAAAAIBAwADAAAA
     $("crsApply").textContent = t.crsApplyBtn;
     $("crsSelect").setAttribute("aria-label", t.crsSectionTitle);
     $("t-crsHint").textContent = t.crsHint;
+    $("t-markerSectionTitle").textContent = t.markerSectionTitle;
+    $("t-markerLatLabel").textContent = t.markerLatLabel;
+    $("t-markerLonLabel").textContent = t.markerLonLabel;
+    $("markerAdd").textContent = t.markerAddBtn;
+    $("markerClear").textContent = t.markerClearBtn;
+    $("t-markerHint").textContent = t.markerHint;
     $("mapEmpty").textContent = t.mapEmpty;
     $("t-overlayLabelWrap").childNodes[0].textContent = t.overlayLabel + " ";
     $("t-opacityLabelWrap").childNodes[0].textContent = t.opacityLabel + " ";
@@ -1419,6 +1540,9 @@ const SAMPLE_TIF_B64 = "SUkqAAgAAAASAAABBAABAAAA8AAAAAEBBAABAAAAoAAAAAIBAwADAAAA
     if (lastAppliedInfo && lastCornersSource) {
       const wgs84 = transformCorners(lastCornersSource, lastAppliedInfo.def, lastAppliedInfo.geographic);
       renderOnMap(wgs84);
+    }
+    if (customPointMarker && customPointLatLng) {
+      customPointMarker.setPopupContent(customPointPopupHtml());
     }
   }
   $("langJa").addEventListener("click", () => setLang("ja"));
