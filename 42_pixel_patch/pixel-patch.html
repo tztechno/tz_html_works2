@@ -1,0 +1,950 @@
+<title>Pixel Patch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink: #201d1a;
+    --surface: #2b2622;
+    --surface-2: #35302a;
+    --line: #4a4239;
+    --paper: #f2ece2;
+    --mute: #a89b8c;
+    --pigment: #d4a24e;
+    --pigment-ink: #241a08;
+    --danger: #c9705a;
+    --font-sans: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  }
+
+  *{ box-sizing: border-box; }
+
+  body{
+    background: var(--ink);
+    color: var(--paper);
+    font-family: var(--font-sans);
+  }
+
+  .app{
+    max-width: 980px;
+    margin: 0 auto;
+    padding-inline: 16px;
+    padding-block: 28px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  /* ---------- header ---------- */
+  .topbar{
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .langswitch{ flex: none; }
+  .brand{ display: flex; gap: 14px; align-items: flex-start; }
+  .brand-mark{
+    font-size: 1.6rem;
+    line-height: 1;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    width: 46px; height: 46px;
+    display: flex; align-items: center; justify-content: center;
+    flex: none;
+  }
+  .brand-text h1{
+    margin: 0 0 2px;
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .brand-text p{
+    margin: 0;
+    color: var(--mute);
+    font-size: 0.88rem;
+    max-width: 46ch;
+  }
+
+  /* ---------- toolbar ---------- */
+  .toolbar{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px 26px;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+  }
+  .tgroup{
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: flex-start;
+  }
+  .tgroup-end{ margin-left: auto; }
+  .tgroup-label{
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--mute);
+  }
+
+  .btn{
+    font-family: var(--font-sans);
+    font-size: 0.86rem;
+    font-weight: 600;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: filter 0.12s ease, transform 0.05s ease;
+  }
+  .btn:active{ transform: translateY(1px); }
+  .btn:disabled{ opacity: 0.45; cursor: not-allowed; transform: none; }
+  .btn-primary{
+    background: var(--pigment);
+    color: var(--pigment-ink);
+  }
+  .btn-primary:hover:not(:disabled){ filter: brightness(1.08); }
+  .btn-ghost{
+    background: var(--surface-2);
+    color: var(--paper);
+    border-color: var(--line);
+  }
+  .btn-ghost:hover:not(:disabled){ background: #3c362f; }
+
+  .meta{
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--mute);
+  }
+
+  .segmented{
+    display: flex;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .seg-btn{
+    font-family: var(--font-sans);
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 8px 12px;
+    background: var(--surface-2);
+    color: var(--mute);
+    border: none;
+    border-right: 1px solid var(--line);
+    cursor: pointer;
+  }
+  .seg-btn:last-child{ border-right: none; }
+  .seg-btn:hover{ color: var(--paper); }
+  .seg-btn.active{
+    background: var(--pigment);
+    color: var(--pigment-ink);
+  }
+
+  .colorctl{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .swatch{
+    width: 30px; height: 30px;
+    border-radius: 7px;
+    border: 1px solid var(--line);
+    background: #000;
+    flex: none;
+  }
+  .color-readout{ display: flex; flex-direction: column; line-height: 1.25; }
+  .hex{ font-family: var(--font-mono); font-size: 0.86rem; font-weight: 600; }
+  .source{ font-family: var(--font-mono); font-size: 0.66rem; color: var(--mute); }
+  .fine-tune{
+    width: 26px; height: 26px;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    display: block;
+    cursor: pointer;
+  }
+  .fine-tune input[type="color"]{
+    width: 40px; height: 40px;
+    margin: -6px;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  /* ---------- hint line ---------- */
+  .hint{
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--mute);
+    text-align: center;
+  }
+  .hint strong{ color: var(--paper); }
+
+  /* ---------- stage ---------- */
+  .stage-wrap{
+    position: relative;
+    width: 100%;
+    max-width: 820px;
+    margin: 0 auto;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+    background: #14120f;
+    touch-action: none;
+    cursor: crosshair;
+  }
+  .stage-wrap.dragover{
+    outline: 2px dashed var(--pigment);
+    outline-offset: -6px;
+  }
+  #stage{
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  #overlay{
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+  #overlay .sel{
+    fill: rgba(242, 236, 226, 0.16);
+    stroke: var(--paper);
+    stroke-width: 2;
+    stroke-dasharray: 7 5;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .badge{
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(20, 18, 15, 0.78);
+    border: 1px solid var(--line);
+    color: var(--mute);
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 4px 9px;
+    border-radius: 999px;
+  }
+
+  #pickPreview{
+    position: fixed;
+    z-index: 50;
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    border: 2px solid var(--paper);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.45);
+    pointer-events: none;
+    transform: translate(-50%, -140%);
+  }
+
+  /* ---------- status bar ---------- */
+  .statusbar{
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--mute);
+  }
+  .statusbar span::before{ content: ""; }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 560px){
+    .tgroup-end{ margin-left: 0; }
+    .toolbar{ padding: 12px; gap: 14px 20px; }
+    .brand-text p{ display: none; }
+  }
+</style>
+
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">&#129905;</span>
+      <div class="brand-text">
+        <h1>Pixel Patch</h1>
+        <p id="tagline">Select a region and erase it with a color lifted straight from the photo.</p>
+      </div>
+    </div>
+    <div class="segmented langswitch" id="langSwitch" role="radiogroup" aria-label="Language / 言語">
+      <button class="seg-btn lang-btn active" data-lang="en" type="button">EN</button>
+      <button class="seg-btn lang-btn" data-lang="ja" type="button">日本語</button>
+    </div>
+  </header>
+
+  <div class="toolbar" id="toolbar" role="toolbar" aria-label="Editing tools">
+    <div class="tgroup">
+      <span class="tgroup-label" id="groupImageLabel">Image</span>
+      <button id="loadBtn" class="btn btn-primary" type="button">Load image</button>
+      <input type="file" id="fileInput" accept="image/*" hidden>
+      <span class="meta" id="fileMeta">example — 900 &times; 600</span>
+    </div>
+
+    <div class="tgroup">
+      <span class="tgroup-label" id="groupToolLabel">Tool</span>
+      <div class="segmented" id="toolSwitch" role="radiogroup" aria-label="Tool">
+        <button class="seg-btn active" data-tool="rect" aria-pressed="true" type="button">&#9646; Rectangle</button>
+        <button class="seg-btn" data-tool="lasso" aria-pressed="false" type="button">&#9998; Lasso</button>
+        <button class="seg-btn" data-tool="pick" aria-pressed="false" type="button">&#8857; Eyedropper</button>
+      </div>
+    </div>
+
+    <div class="tgroup">
+      <span class="tgroup-label" id="groupColorLabel">Fill color</span>
+      <div class="colorctl">
+        <span class="swatch" id="swatch"></span>
+        <div class="color-readout">
+          <span class="hex" id="hexLabel">#000000</span>
+          <span class="source" id="sourceLabel">&mdash;</span>
+        </div>
+        <label class="fine-tune" id="fineTuneLabel" title="Fine-tune the fill color">
+          <input type="color" id="colorInput" value="#000000">
+        </label>
+        <button id="autoBtn" class="btn btn-ghost" type="button" title="Sample the background automatically">Auto</button>
+      </div>
+    </div>
+
+    <div class="tgroup">
+      <span class="tgroup-label" id="groupHistoryLabel">History</span>
+      <button id="undoBtn" class="btn btn-ghost" type="button" disabled>Undo</button>
+      <button id="resetBtn" class="btn btn-ghost" type="button" disabled>Reset</button>
+    </div>
+
+    <div class="tgroup tgroup-end">
+      <span class="tgroup-label" id="groupExportLabel">Export</span>
+      <button id="downloadBtn" class="btn btn-primary" type="button">Download PNG</button>
+    </div>
+  </div>
+
+  <p class="hint" id="hintText">Drag a rectangle over the area you want to erase.</p>
+
+  <div class="stage-wrap" id="stageWrap">
+    <span class="badge" id="sampleBadge">Example image</span>
+    <canvas id="stage"></canvas>
+    <svg id="overlay" xmlns="http://www.w3.org/2000/svg"></svg>
+  </div>
+
+  <div class="statusbar">
+    <span id="dimsStatus">900 &times; 600 px</span>
+    <span id="posStatus">x: &mdash; y: &mdash;</span>
+    <span id="toolStatus">Tool: Rectangle</span>
+  </div>
+</div>
+
+<div id="pickPreview" hidden></div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- element refs ----------
+  var canvas = document.getElementById('stage');
+  var ctx = canvas.getContext('2d', { willReadFrequently: true });
+  var overlay = document.getElementById('overlay');
+  var stageWrap = document.getElementById('stageWrap');
+  var fileInput = document.getElementById('fileInput');
+  var loadBtn = document.getElementById('loadBtn');
+  var fileMeta = document.getElementById('fileMeta');
+  var swatch = document.getElementById('swatch');
+  var hexLabel = document.getElementById('hexLabel');
+  var sourceLabel = document.getElementById('sourceLabel');
+  var colorInput = document.getElementById('colorInput');
+  var autoBtn = document.getElementById('autoBtn');
+  var undoBtn = document.getElementById('undoBtn');
+  var resetBtn = document.getElementById('resetBtn');
+  var downloadBtn = document.getElementById('downloadBtn');
+  var hintText = document.getElementById('hintText');
+  var sampleBadge = document.getElementById('sampleBadge');
+  var dimsStatus = document.getElementById('dimsStatus');
+  var posStatus = document.getElementById('posStatus');
+  var toolStatus = document.getElementById('toolStatus');
+  var pickPreview = document.getElementById('pickPreview');
+  var segBtns = Array.prototype.slice.call(document.querySelectorAll('#toolSwitch .seg-btn'));
+  var langBtns = Array.prototype.slice.call(document.querySelectorAll('#langSwitch .lang-btn'));
+  var taglineEl = document.getElementById('tagline');
+  var toolbarEl = document.getElementById('toolbar');
+  var toolSwitchEl = document.getElementById('toolSwitch');
+  var groupImageLabel = document.getElementById('groupImageLabel');
+  var groupToolLabel = document.getElementById('groupToolLabel');
+  var groupColorLabel = document.getElementById('groupColorLabel');
+  var groupHistoryLabel = document.getElementById('groupHistoryLabel');
+  var groupExportLabel = document.getElementById('groupExportLabel');
+  var fineTuneLabel = document.getElementById('fineTuneLabel');
+
+  var MAX_DIM = 1600;
+  var HISTORY_LIMIT = 20;
+
+  var state = {
+    hasImage: false,
+    isSample: true,
+    original: null,      // ImageData snapshot of the freshly loaded image, for Reset
+    history: [],          // stack of ImageData snapshots, for Undo
+    tool: 'rect',
+    color: '#000000',
+    colorSourceKey: 'none', // 'none' | 'auto' | 'pick' | 'custom' -- drives the translated caption
+    drawing: false,
+    dragStart: null,
+    lassoPoints: [],
+    fileBaseName: 'pixel-patch',
+    lang: 'en'
+  };
+
+  // ---------- i18n ----------
+  var TOOL_ICONS = { rect: '▬', lasso: '✎', pick: '⊙' };
+  var TOOL_LABEL_KEY = { rect: 'toolRect', lasso: 'toolLasso', pick: 'toolPick' };
+  var HINT_KEY = { rect: 'hintRect', lasso: 'hintLasso', pick: 'hintPick' };
+
+  var translations = {
+    en: {
+      toolbarLabel: 'Editing tools',
+      langLabel: 'Language',
+      tagline: 'Select a region and erase it with a color lifted straight from the photo.',
+      groupImage: 'Image',
+      loadImage: 'Load image',
+      groupTool: 'Tool',
+      toolRect: 'Rectangle',
+      toolLasso: 'Lasso',
+      toolPick: 'Eyedropper',
+      groupColor: 'Fill color',
+      fineTuneTitle: 'Fine-tune the fill color',
+      autoBtn: 'Auto',
+      autoTitle: 'Sample the background automatically',
+      groupHistory: 'History',
+      undo: 'Undo',
+      reset: 'Reset',
+      groupExport: 'Export',
+      download: 'Download PNG',
+      badgeExample: 'Example image',
+      metaExampleWord: 'example',
+      sourceNone: '—',
+      sourceAuto: 'auto-detected background',
+      sourcePick: 'picked from image',
+      sourceCustom: 'custom',
+      hintRect: 'Drag a rectangle over the area you want to erase.',
+      hintLasso: 'Draw freehand around the area you want to erase.',
+      hintPick: 'Click anywhere on the image to sample that color.',
+      toolStatusPrefix: 'Tool: '
+    },
+    ja: {
+      toolbarLabel: '編集ツール',
+      langLabel: '言語',
+      tagline: '範囲を選択して、写真から採取した色で塗りつぶして消します。',
+      groupImage: '画像',
+      loadImage: '画像を読み込む',
+      groupTool: 'ツール',
+      toolRect: '矩形選択',
+      toolLasso: 'なげなわ',
+      toolPick: 'スポイト',
+      groupColor: '塗りつぶす色',
+      fineTuneTitle: '色を微調整',
+      autoBtn: '自動',
+      autoTitle: '背景色を自動で採取',
+      groupHistory: '履歴',
+      undo: '元に戻す',
+      reset: 'リセット',
+      groupExport: '書き出し',
+      download: 'PNGをダウンロード',
+      badgeExample: 'サンプル画像',
+      metaExampleWord: 'サンプル',
+      sourceNone: '—',
+      sourceAuto: '背景から自動検出',
+      sourcePick: '画像から採取',
+      sourceCustom: '手動設定',
+      hintRect: '消したい範囲を矩形でドラッグしてください。',
+      hintLasso: '消したい範囲をなげなわでなぞってください。',
+      hintPick: '画像をクリックしてその色を採取します。',
+      toolStatusPrefix: 'ツール: '
+    }
+  };
+
+  function detectDefaultLanguage(){
+    try{
+      var saved = localStorage.getItem('pixelpatch-lang');
+      if (saved && translations[saved]) return saved;
+    }catch(e){}
+    var nav = (navigator.language || navigator.userLanguage || '').toLowerCase();
+    return nav.indexOf('ja') === 0 ? 'ja' : 'en';
+  }
+
+  var downloadsApi = null;
+
+  // ---------- downloads capability ----------
+  // When this page runs inside the Claude artifact viewer, window.claude
+  // exposes a "downloads" capability that shows a proper save prompt.
+  // When it runs as a plain standalone file (file://, localhost, any
+  // ordinary web server), that API does not exist -- so the download
+  // button falls back to a standard browser download instead.
+  (function initDownloads(){
+    try{
+      if (window.claude && typeof window.claude.use === 'function'){
+        window.claude.use('downloads').then(function(api){
+          downloadsApi = api;
+        }).catch(function(){ downloadsApi = null; });
+      }
+    }catch(e){
+      downloadsApi = null;
+    }
+  })();
+
+  // Standard browser download: works in any ordinary page (not inside
+  // the artifact viewer's sandbox, where <a download> links are inert).
+  function browserDownload(blob, filename){
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  }
+
+  // ---------- helpers ----------
+  function clamp(v, min, max){ return Math.max(min, Math.min(max, v)); }
+
+  function rgbToHex(r, g, b){
+    function h(v){ return v.toString(16).padStart(2, '0'); }
+    return '#' + h(r) + h(g) + h(b);
+  }
+
+  function setStageSize(w, h){
+    canvas.width = w;
+    canvas.height = h;
+    overlay.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+    stageWrap.style.aspectRatio = w + ' / ' + h;
+    dimsStatus.textContent = w + ' × ' + h + ' px';
+  }
+
+  function toCanvasPoint(evt){
+    var rect = canvas.getBoundingClientRect();
+    var scaleX = canvas.width / rect.width;
+    var scaleY = canvas.height / rect.height;
+    var x = clamp((evt.clientX - rect.left) * scaleX, 0, canvas.width);
+    var y = clamp((evt.clientY - rect.top) * scaleY, 0, canvas.height);
+    return { x: x, y: y };
+  }
+
+  function setColor(hex, sourceKey){
+    state.color = hex;
+    state.colorSourceKey = sourceKey;
+    swatch.style.background = hex;
+    hexLabel.textContent = hex.toUpperCase();
+    colorInput.value = hex;
+    updateSourceLabel();
+  }
+
+  function updateSourceLabel(){
+    var t = translations[state.lang];
+    var map = { none: t.sourceNone, auto: t.sourceAuto, pick: t.sourcePick, custom: t.sourceCustom };
+    sourceLabel.textContent = map[state.colorSourceKey] || t.sourceNone;
+  }
+
+  function updateFileMeta(){
+    var t = translations[state.lang];
+    var label = state.isSample ? t.metaExampleWord : state.fileBaseName;
+    fileMeta.textContent = label + ' — ' + canvas.width + ' × ' + canvas.height;
+  }
+
+  // Refresh every piece of static and dynamic UI text for the given language.
+  function applyLanguage(lang){
+    if (!translations[lang]) return;
+    state.lang = lang;
+    try{ localStorage.setItem('pixelpatch-lang', lang); }catch(e){}
+
+    var t = translations[lang];
+    langBtns.forEach(function(btn){ btn.classList.toggle('active', btn.dataset.lang === lang); });
+
+    toolbarEl.setAttribute('aria-label', t.toolbarLabel);
+    taglineEl.textContent = t.tagline;
+    groupImageLabel.textContent = t.groupImage;
+    loadBtn.textContent = t.loadImage;
+    groupToolLabel.textContent = t.groupTool;
+    toolSwitchEl.setAttribute('aria-label', t.groupTool);
+    segBtns.forEach(function(btn){
+      var key = btn.dataset.tool;
+      btn.textContent = TOOL_ICONS[key] + ' ' + t[TOOL_LABEL_KEY[key]];
+    });
+    groupColorLabel.textContent = t.groupColor;
+    fineTuneLabel.title = t.fineTuneTitle;
+    autoBtn.textContent = t.autoBtn;
+    autoBtn.title = t.autoTitle;
+    groupHistoryLabel.textContent = t.groupHistory;
+    undoBtn.textContent = t.undo;
+    resetBtn.textContent = t.reset;
+    groupExportLabel.textContent = t.groupExport;
+    downloadBtn.textContent = t.download;
+    sampleBadge.textContent = t.badgeExample;
+
+    updateFileMeta();
+    updateSourceLabel();
+    setTool(state.tool);
+  }
+
+  function pushHistory(){
+    if (!state.hasImage) return;
+    state.history.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+    if (state.history.length > HISTORY_LIMIT) state.history.shift();
+    updateButtons();
+  }
+
+  function undo(){
+    if (!state.history.length) return;
+    var prev = state.history.pop();
+    ctx.putImageData(prev, 0, 0);
+    updateButtons();
+  }
+
+  function resetImage(){
+    if (!state.original) return;
+    ctx.putImageData(state.original, 0, 0);
+    state.history = [];
+    updateButtons();
+  }
+
+  function updateButtons(){
+    undoBtn.disabled = !state.history.length;
+    resetBtn.disabled = !state.hasImage;
+    downloadBtn.disabled = !state.hasImage;
+  }
+
+  function setTool(tool){
+    state.tool = tool;
+    var t = translations[state.lang];
+    segBtns.forEach(function(btn){
+      var active = btn.dataset.tool === tool;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+    hintText.textContent = t[HINT_KEY[tool]];
+    toolStatus.textContent = t.toolStatusPrefix + t[TOOL_LABEL_KEY[tool]];
+    stageWrap.style.cursor = 'crosshair';
+    clearOverlay();
+    pickPreview.hidden = true;
+  }
+
+  function clearOverlay(){
+    overlay.innerHTML = '';
+  }
+
+  // ---------- pixel sampling ----------
+  function sampleAt(pt){
+    var x = Math.min(canvas.width - 1, Math.floor(pt.x));
+    var y = Math.min(canvas.height - 1, Math.floor(pt.y));
+    var d = ctx.getImageData(x, y, 1, 1).data;
+    return rgbToHex(d[0], d[1], d[2]);
+  }
+
+  function autoDetectColor(){
+    if (!state.hasImage) return;
+    var w = canvas.width, h = canvas.height;
+    var pts = [
+      {x: 2, y: 2}, {x: w - 3, y: 2}, {x: 2, y: h - 3}, {x: w - 3, y: h - 3},
+      {x: Math.floor(w / 2), y: 2}, {x: 2, y: Math.floor(h / 2)}
+    ];
+    var counts = {};
+    pts.forEach(function(pt){
+      var hex = sampleAt(pt);
+      counts[hex] = (counts[hex] || 0) + 1;
+    });
+    var best = pts[0], bestHex = sampleAt(pts[0]), bestCount = 0;
+    Object.keys(counts).forEach(function(hex){
+      if (counts[hex] > bestCount){ bestCount = counts[hex]; bestHex = hex; }
+    });
+    setColor(bestHex, 'auto');
+  }
+
+  // ---------- image loading ----------
+  function loadFromImage(img, baseName){
+    var scale = Math.min(1, MAX_DIM / Math.max(img.naturalWidth, img.naturalHeight));
+    var w = Math.round(img.naturalWidth * scale);
+    var h = Math.round(img.naturalHeight * scale);
+    setStageSize(w, h);
+    ctx.clearRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+    state.hasImage = true;
+    state.isSample = false;
+    state.original = ctx.getImageData(0, 0, w, h);
+    state.history = [];
+    state.fileBaseName = baseName || 'pixel-patch';
+    updateFileMeta();
+    sampleBadge.hidden = true;
+    autoDetectColor();
+    updateButtons();
+  }
+
+  function handleFile(file){
+    if (!file || file.type.indexOf('image/') !== 0) return;
+    var url = URL.createObjectURL(file);
+    var img = new Image();
+    img.onload = function(){
+      var base = file.name.replace(/\.[^.]+$/, '') || 'pixel-patch';
+      loadFromImage(img, base);
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  }
+
+  // ---------- procedural sample scene (shown on first load) ----------
+  function drawSampleScene(){
+    var w = 900, h = 600;
+    setStageSize(w, h);
+
+    // sky
+    var sky = ctx.createLinearGradient(0, 0, 0, h * 0.62);
+    sky.addColorStop(0, '#8fc0e2');
+    sky.addColorStop(1, '#e9f4f2');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, w, h * 0.62);
+
+    // sun
+    var sun = ctx.createRadialGradient(w * 0.82, h * 0.18, 4, w * 0.82, h * 0.18, 70);
+    sun.addColorStop(0, '#fff1c2');
+    sun.addColorStop(1, '#ffb95c');
+    ctx.fillStyle = sun;
+    ctx.beginPath();
+    ctx.arc(w * 0.82, h * 0.18, 46, 0, Math.PI * 2);
+    ctx.fill();
+
+    // ground
+    var ground = ctx.createLinearGradient(0, h * 0.58, 0, h);
+    ground.addColorStop(0, '#93bd72');
+    ground.addColorStop(1, '#4f7a44');
+    ctx.fillStyle = ground;
+    ctx.fillRect(0, h * 0.6, w, h * 0.4);
+
+    // soft hills for depth
+    ctx.fillStyle = 'rgba(255,255,255,0.10)';
+    ctx.beginPath();
+    ctx.ellipse(w * 0.25, h * 0.6, w * 0.3, 26, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // a couple of stray dust specks -- the kind of blemish this tool is for
+    ctx.fillStyle = 'rgba(40,34,26,0.55)';
+    ctx.beginPath(); ctx.arc(w * 0.30, h * 0.22, 3.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(w * 0.315, h * 0.235, 2, 0, Math.PI * 2); ctx.fill();
+
+    // a small bird silhouette -- another easy target to practice on
+    ctx.strokeStyle = '#2c3e4a';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(w * 0.58, h * 0.15);
+    ctx.quadraticCurveTo(w * 0.60, h * 0.12, w * 0.62, h * 0.15);
+    ctx.quadraticCurveTo(w * 0.64, h * 0.12, w * 0.66, h * 0.15);
+    ctx.stroke();
+
+    state.hasImage = true;
+    state.isSample = true;
+    state.original = ctx.getImageData(0, 0, w, h);
+    state.history = [];
+    state.fileBaseName = 'pixel-patch';
+    updateFileMeta();
+    sampleBadge.hidden = false;
+    autoDetectColor();
+    updateButtons();
+  }
+
+  // ---------- selection erasing ----------
+  function finishRect(start, end){
+    var x = Math.min(start.x, end.x);
+    var y = Math.min(start.y, end.y);
+    var w = Math.abs(end.x - start.x);
+    var h = Math.abs(end.y - start.y);
+    clearOverlay();
+    if (w < 4 || h < 4) return;
+    pushHistory();
+    ctx.fillStyle = state.color;
+    ctx.fillRect(x, y, w, h);
+  }
+
+  function finishLasso(points){
+    clearOverlay();
+    if (points.length < 3) return;
+    pushHistory();
+    ctx.fillStyle = state.color;
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    for (var i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  var SVG_NS = 'http://www.w3.org/2000/svg';
+
+  function drawRectOverlay(start, end){
+    clearOverlay();
+    var rect = document.createElementNS(SVG_NS, 'rect');
+    rect.setAttribute('class', 'sel');
+    rect.setAttribute('x', Math.min(start.x, end.x));
+    rect.setAttribute('y', Math.min(start.y, end.y));
+    rect.setAttribute('width', Math.abs(end.x - start.x));
+    rect.setAttribute('height', Math.abs(end.y - start.y));
+    overlay.appendChild(rect);
+  }
+
+  function drawLassoOverlay(points){
+    clearOverlay();
+    var d = 'M ' + points.map(function(p){ return p.x + ' ' + p.y; }).join(' L ');
+    var path = document.createElementNS(SVG_NS, 'path');
+    path.setAttribute('class', 'sel');
+    path.setAttribute('d', d);
+    overlay.appendChild(path);
+  }
+
+  // ---------- pointer interaction ----------
+  stageWrap.addEventListener('pointerdown', function(evt){
+    if (!state.hasImage) return;
+    var pt = toCanvasPoint(evt);
+
+    if (state.tool === 'pick'){
+      var hex = sampleAt(pt);
+      setColor(hex, 'pick');
+      return;
+    }
+
+    state.drawing = true;
+    try{ stageWrap.setPointerCapture(evt.pointerId); }catch(e){}
+
+    if (state.tool === 'rect'){
+      state.dragStart = pt;
+      drawRectOverlay(pt, pt);
+    } else if (state.tool === 'lasso'){
+      state.lassoPoints = [pt];
+      drawLassoOverlay(state.lassoPoints);
+    }
+  });
+
+  stageWrap.addEventListener('pointermove', function(evt){
+    if (!state.hasImage) return;
+    var pt = toCanvasPoint(evt);
+    posStatus.textContent = 'x: ' + Math.round(pt.x) + ' y: ' + Math.round(pt.y);
+
+    if (state.tool === 'pick' && !state.drawing){
+      var hex = sampleAt(pt);
+      pickPreview.style.background = hex;
+      pickPreview.style.left = evt.clientX + 'px';
+      pickPreview.style.top = evt.clientY + 'px';
+      pickPreview.hidden = false;
+    }
+
+    if (!state.drawing) return;
+
+    if (state.tool === 'rect'){
+      drawRectOverlay(state.dragStart, pt);
+    } else if (state.tool === 'lasso'){
+      var last = state.lassoPoints[state.lassoPoints.length - 1];
+      var dx = pt.x - last.x, dy = pt.y - last.y;
+      if (dx * dx + dy * dy > 9){ // skip points closer than 3px apart
+        state.lassoPoints.push(pt);
+        drawLassoOverlay(state.lassoPoints);
+      }
+    }
+  });
+
+  stageWrap.addEventListener('pointerleave', function(){
+    pickPreview.hidden = true;
+  });
+
+  function endDrawing(evt){
+    if (!state.drawing) return;
+    var pt = toCanvasPoint(evt);
+    if (state.tool === 'rect'){
+      finishRect(state.dragStart, pt);
+    } else if (state.tool === 'lasso'){
+      finishLasso(state.lassoPoints);
+    }
+    state.drawing = false;
+    try{ stageWrap.releasePointerCapture(evt.pointerId); }catch(e){}
+  }
+
+  stageWrap.addEventListener('pointerup', endDrawing);
+  stageWrap.addEventListener('pointercancel', endDrawing);
+
+  // ---------- tool switching ----------
+  segBtns.forEach(function(btn){
+    btn.addEventListener('click', function(){ setTool(btn.dataset.tool); });
+  });
+
+  // ---------- color controls ----------
+  colorInput.addEventListener('input', function(){
+    setColor(colorInput.value, 'custom');
+  });
+  autoBtn.addEventListener('click', autoDetectColor);
+
+  // ---------- language switching ----------
+  langBtns.forEach(function(btn){
+    btn.addEventListener('click', function(){ applyLanguage(btn.dataset.lang); });
+  });
+
+  // ---------- history controls ----------
+  undoBtn.addEventListener('click', undo);
+  resetBtn.addEventListener('click', resetImage);
+
+  window.addEventListener('keydown', function(evt){
+    if ((evt.ctrlKey || evt.metaKey) && evt.key.toLowerCase() === 'z'){
+      evt.preventDefault();
+      undo();
+    }
+  });
+
+  // ---------- file loading ----------
+  loadBtn.addEventListener('click', function(){ fileInput.click(); });
+  fileInput.addEventListener('change', function(){
+    if (fileInput.files && fileInput.files[0]) handleFile(fileInput.files[0]);
+    fileInput.value = '';
+  });
+
+  ['dragenter', 'dragover'].forEach(function(evtName){
+    stageWrap.addEventListener(evtName, function(evt){
+      evt.preventDefault();
+      stageWrap.classList.add('dragover');
+    });
+  });
+  ['dragleave', 'drop'].forEach(function(evtName){
+    stageWrap.addEventListener(evtName, function(evt){
+      evt.preventDefault();
+      stageWrap.classList.remove('dragover');
+    });
+  });
+  stageWrap.addEventListener('drop', function(evt){
+    var file = evt.dataTransfer && evt.dataTransfer.files && evt.dataTransfer.files[0];
+    if (file) handleFile(file);
+  });
+
+  // ---------- export ----------
+  downloadBtn.addEventListener('click', function(){
+    if (!state.hasImage) return;
+    canvas.toBlob(function(blob){
+      if (!blob) return;
+      var filename = state.fileBaseName + '-erased.png';
+      if (downloadsApi){
+        downloadsApi.save({ filename: filename, data: blob }).catch(function(err){
+          if (err && err.code === 'declined') return;
+          browserDownload(blob, filename);
+        });
+      } else {
+        browserDownload(blob, filename);
+      }
+    }, 'image/png');
+  });
+
+  // ---------- boot ----------
+  state.lang = detectDefaultLanguage();
+  drawSampleScene();
+  setTool('rect');
+  applyLanguage(state.lang);
+})();
+</script>
