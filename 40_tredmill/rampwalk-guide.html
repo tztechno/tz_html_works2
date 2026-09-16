@@ -143,7 +143,7 @@
 
   <section id="about">
     <div class="section-head"><span class="section-num">1</span><h2 data-i18n="aboutHeading">このツールについて</h2></div>
-    <div class="card"><p data-i18n="aboutBody">「ランプウォーク計算機」は、トレッドミル(ウォーキングマシン)で速度0km/hから最高速度まで一定の傾きで加速し、その後一定時間その速度を維持するセッションの消費カロリーを見積もるツールです。加速フェーズと維持フェーズを分けて計算するため、「ゆっくり慣らしてから、狙った速度で歩き込む」という一般的な使い方に沿った数値が得られます。</p></div>
+    <div class="card"><p data-i18n="aboutBody">「ランプウォーク計算機」は、トレッドミル(ウォーキングマシン)で設定した初速から最高速度まで一定の傾きで加速し、その後一定時間その速度を維持するセッションの消費カロリーを見積もるツールです。加速フェーズと維持フェーズを分けて計算するため、「ゆっくり慣らしてから、狙った速度で歩き込む」という一般的な使い方に沿った数値が得られます。</p></div>
   </section>
 
   <section id="inputs">
@@ -160,26 +160,33 @@
         <div class="field-item">
           <span class="field-num">02</span>
           <div class="field-body">
-            <span class="field-name"><span class="dot" style="background:var(--accent)"></span><span data-i18n="inSpeedName">最高速度</span></span>
-            <span class="field-desc" data-i18n="inSpeedDesc">セッション後半で維持する速度。目安は下の「速度の目安」を参照してください。</span>
+            <span class="field-name"><span class="dot" style="background:var(--accent)"></span><span data-i18n="inStartName">初速</span></span>
+            <span class="field-desc" data-i18n="inStartDesc">加速を開始する時点の速度。最高速度と同じかそれ以下の値を設定できます。</span>
           </div>
         </div>
         <div class="field-item">
           <span class="field-num">03</span>
           <div class="field-body">
-            <span class="field-name"><span class="dot" style="background:var(--accent)"></span><span data-i18n="inRampName">加速時間</span></span>
-            <span class="field-desc" data-i18n="inRampDesc">0km/hから最高速度に到達するまでの時間。0分にすると、最初から最高速度で開始する一定速度セッションになります。</span>
+            <span class="field-name"><span class="dot" style="background:var(--accent)"></span><span data-i18n="inSpeedName">最高速度</span></span>
+            <span class="field-desc" data-i18n="inSpeedDesc">セッション後半で維持する速度。目安は下の「速度の目安」を参照してください。</span>
           </div>
         </div>
         <div class="field-item">
           <span class="field-num">04</span>
+          <div class="field-body">
+            <span class="field-name"><span class="dot" style="background:var(--accent)"></span><span data-i18n="inRampName">加速時間</span></span>
+            <span class="field-desc" data-i18n="inRampDesc">初速から最高速度に到達するまでの時間。0分にすると、最初から最高速度で開始する一定速度セッションになります。</span>
+          </div>
+        </div>
+        <div class="field-item">
+          <span class="field-num">05</span>
           <div class="field-body">
             <span class="field-name"><span class="dot" style="background:var(--accent-2)"></span><span data-i18n="inSustainName">維持時間</span></span>
             <span class="field-desc" data-i18n="inSustainDesc">最高速度に到達してから、その速度を保つ時間。</span>
           </div>
         </div>
         <div class="field-item">
-          <span class="field-num">05</span>
+          <span class="field-num">06</span>
           <div class="field-body">
             <span class="field-name" data-i18n="inGradeName">傾斜(詳細設定)</span>
             <span class="field-desc" data-i18n="inGradeDesc">トレッドミルの傾斜角度(%)。平坦な状態で歩くなら0のままで構いません。</span>
@@ -206,7 +213,7 @@
     <div class="card" style="display:flex; flex-direction:column; gap:14px;">
       <p data-i18n="formulaIntro">消費カロリーは、ACSM(米国スポーツ医学会)の代謝方程式にもとづき、1秒ごとに台形積分で計算しています。</p>
       <div class="formula" id="formulaBlock"></div>
-      <p class="muted" data-i18n="formulaNote">加速フェーズは、速度が0から最高速度まで直線的に増加すると仮定しています。各時点のMETsをもとにkcal/分を求め、それを秒単位で積み上げることで、加速中も含めた正確な合計値を計算します。</p>
+      <p class="muted" data-i18n="formulaNote">加速フェーズは、速度が初速から最高速度まで直線的に増加すると仮定しています。各時点のMETsをもとにkcal/分を求め、それを秒単位で積み上げることで、加速中も含めた正確な合計値を計算します。</p>
     </div>
   </section>
 
@@ -239,7 +246,7 @@
         </div>
         <div class="faq-item">
           <span class="faq-q" data-i18n="faq2Q">加速時間を0分にするとどうなりますか?</span>
-          <span class="faq-a" data-i18n="faq2A">最初から最高速度でスタートする、一定速度のセッションとして計算されます。</span>
+          <span class="faq-a" data-i18n="faq2A">初速の設定にかかわらず、最初から最高速度でスタートする一定速度のセッションとして計算されます。</span>
         </div>
         <div class="faq-item">
           <span class="faq-q" data-i18n="faq3Q">傾斜はどんなときに使いますか?</span>
@@ -265,11 +272,12 @@ const translations = {
     lead: '「ランプウォーク計算機」の各項目の意味、結果の読み方、計算の仕組みをまとめました。',
     navAbout: '概要', navInputs: '入力項目', navResults: '結果の見方', navFormula: '計算方法', navSpeeds: '速度の目安', navFaq: 'よくある質問',
     aboutHeading: 'このツールについて',
-    aboutBody: '「ランプウォーク計算機」は、トレッドミル(ウォーキングマシン)で速度0km/hから最高速度まで一定の傾きで加速し、その後一定時間その速度を維持するセッションの消費カロリーを見積もるツールです。加速フェーズと維持フェーズを分けて計算するため、「ゆっくり慣らしてから、狙った速度で歩き込む」という一般的な使い方に沿った数値が得られます。',
+    aboutBody: '「ランプウォーク計算機」は、トレッドミル(ウォーキングマシン)で設定した初速から最高速度まで一定の傾きで加速し、その後一定時間その速度を維持するセッションの消費カロリーを見積もるツールです。加速フェーズと維持フェーズを分けて計算するため、「ゆっくり慣らしてから、狙った速度で歩き込む」という一般的な使い方に沿った数値が得られます。',
     inputsHeading: '入力項目',
     inWeightName: '体重', inWeightDesc: '消費カロリーは体重にほぼ比例します。運動直前の体重を入力してください。',
+    inStartName: '初速', inStartDesc: '加速を開始する時点の速度。最高速度と同じかそれ以下の値を設定できます。',
     inSpeedName: '最高速度', inSpeedDesc: 'セッション後半で維持する速度。目安は下の「速度の目安」を参照してください。',
-    inRampName: '加速時間', inRampDesc: '0km/hから最高速度に到達するまでの時間。0分にすると、最初から最高速度で開始する一定速度セッションになります。',
+    inRampName: '加速時間', inRampDesc: '初速から最高速度に到達するまでの時間。0分にすると、最初から最高速度で開始する一定速度セッションになります。',
     inSustainName: '維持時間', inSustainDesc: '最高速度に到達してから、その速度を保つ時間。',
     inGradeName: '傾斜(詳細設定)', inGradeDesc: 'トレッドミルの傾斜角度(%)。平坦な状態で歩くなら0のままで構いません。',
     resultsHeading: '結果の見方',
@@ -284,7 +292,7 @@ const translations = {
       '走行 (>6.4km/h)  VO2 = 3.5 + 0.2v + 0.9v×傾斜\n' +
       'METs             = VO2 ÷ 3.5\n' +
       'kcal/分          = VO2 ×体重(kg) ÷ 200',
-    formulaNote: '加速フェーズは、速度が0から最高速度まで直線的に増加すると仮定しています。各時点のMETsをもとにkcal/分を求め、それを秒単位で積み上げることで、加速中も含めた正確な合計値を計算します。',
+    formulaNote: '加速フェーズは、速度が初速から最高速度まで直線的に増加すると仮定しています。各時点のMETsをもとにkcal/分を求め、それを秒単位で積み上げることで、加速中も含めた正確な合計値を計算します。',
     speedsHeading: '速度の目安',
     thSpeedCol: '速度', thFeelCol: '目安',
     feelSlow: 'ゆっくり', feelNormal: '普通', feelBrisk: 'やや速め', feelFast: '速歩き', feelVeryFast: 'かなり速い',
@@ -293,7 +301,7 @@ const translations = {
     faq1Q: '心拍計や活動量計の実測値と違う数値が出ます。なぜですか?',
     faq1A: 'ACSM式は体重・速度・傾斜だけから求める理論値で、体組成やフォーム、心肺機能などの個人差は反映されません。実測値がある場合はそちらを優先してください。',
     faq2Q: '加速時間を0分にするとどうなりますか?',
-    faq2A: '最初から最高速度でスタートする、一定速度のセッションとして計算されます。',
+    faq2A: '初速の設定にかかわらず、最初から最高速度でスタートする一定速度のセッションとして計算されます。',
     faq3Q: '傾斜はどんなときに使いますか?',
     faq3A: 'トレッドミルに傾斜をつけて歩く場合に設定します。1%程度の傾斜は、屋外歩行で受ける空気抵抗をおおよそ再現すると言われています。',
     footerNote: '本計算はACSM(米国スポーツ医学会)の歩行/走行代謝方程式による推定値です。歩行フォームや体組成、路面条件などにより実際の消費カロリーとは差が生じます。心拍計や活動量計の実測値がある場合はそちらを優先してください。',
@@ -303,11 +311,12 @@ const translations = {
     lead: 'How to read every field, every result, and the math behind the Ramp Walk Calculator.',
     navAbout: 'About', navInputs: 'Inputs', navResults: 'Reading Results', navFormula: 'How It Works', navSpeeds: 'Typical Speeds', navFaq: 'FAQ',
     aboutHeading: 'About This Tool',
-    aboutBody: 'The Ramp Walk Calculator estimates calories burned during a treadmill session that accelerates from 0 km/h up to a target speed, then holds that speed for a set duration. It tracks the ramp-up and sustain phases separately, matching how most people actually walk: ease in first, then hold the pace you’re aiming for.',
+    aboutBody: 'The Ramp Walk Calculator estimates calories burned during a treadmill session that accelerates from a starting speed you set up to a target speed, then holds that speed for a set duration. It tracks the ramp-up and sustain phases separately, matching how most people actually walk: ease in first, then hold the pace you’re aiming for.',
     inputsHeading: 'Inputs',
     inWeightName: 'Weight', inWeightDesc: 'Calories burned scale almost linearly with body weight — use your weight right before the session.',
+    inStartName: 'Start Speed', inStartDesc: 'The speed the ramp-up phase begins from. It can be set to anything up to the max speed.',
     inSpeedName: 'Max Speed', inSpeedDesc: 'The speed you hold for the second half of the session. See “Typical Speeds” below for reference.',
-    inRampName: 'Ramp-up Time', inRampDesc: 'How long it takes to go from 0 km/h to max speed. Set it to 0 to start at max speed immediately — a flat, constant-speed session.',
+    inRampName: 'Ramp-up Time', inRampDesc: 'How long it takes to go from the start speed to max speed. Set it to 0 to start at max speed immediately — a flat, constant-speed session.',
     inSustainName: 'Sustain Time', inSustainDesc: 'How long you hold max speed once you reach it.',
     inGradeName: 'Incline (Advanced)', inGradeDesc: 'Treadmill incline as a percentage. Leave at 0 for a flat walk.',
     resultsHeading: 'Reading Your Results',
@@ -322,7 +331,7 @@ const translations = {
       'Running (> 6.4 km/h)  VO2 = 3.5 + 0.2v + 0.9v×grade\n' +
       'METs                 = VO2 ÷ 3.5\n' +
       'kcal/min              = VO2 × weight(kg) ÷ 200',
-    formulaNote: 'During the ramp-up phase, speed is assumed to increase linearly from 0 to max speed. METs at each moment convert to kcal/min, which are then summed second by second — so the ramp-up is counted accurately too, not approximated as a flat average.',
+    formulaNote: 'During the ramp-up phase, speed is assumed to increase linearly from the start speed to max speed. METs at each moment convert to kcal/min, which are then summed second by second — so the ramp-up is counted accurately too, not approximated as a flat average.',
     speedsHeading: 'Typical Speeds',
     thSpeedCol: 'Speed', thFeelCol: 'Feel',
     feelSlow: 'Slow', feelNormal: 'Normal', feelBrisk: 'Brisk', feelFast: 'Fast walk', feelVeryFast: 'Very fast',
@@ -331,7 +340,7 @@ const translations = {
     faq1Q: 'My heart-rate monitor or activity tracker shows a different number. Why?',
     faq1A: 'The ACSM equations are a theoretical estimate from weight, speed, and incline alone — they don’t account for individual differences in body composition, gait, or fitness. Trust a measured reading over this estimate when you have one.',
     faq2Q: 'What happens if I set ramp-up time to 0?',
-    faq2A: 'The session is calculated as a flat, constant-speed walk at max speed for the full duration.',
+    faq2A: 'Regardless of the start speed setting, the session is calculated as a flat, constant-speed walk at max speed for the full duration.',
     faq3Q: 'When should I use the incline setting?',
     faq3A: 'When your treadmill is actually inclined. A grade around 1% is commonly used to roughly offset the air resistance you’d feel walking outdoors.',
     footerNote: 'This is an estimate based on the ACSM (American College of Sports Medicine) walking/running metabolic equations. Actual calories burned vary with gait, body composition, and surface conditions. Prefer a heart-rate monitor or activity tracker reading if you have one.',

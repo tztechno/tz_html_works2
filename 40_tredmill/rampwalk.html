@@ -292,7 +292,7 @@
       <div class="masthead-text">
         <span class="eyebrow">Treadmill Energy Estimator</span>
         <h1 data-i18n="title">ランプウォーク計算機</h1>
-        <p data-i18n="desc">速度0km/hから最高速度まで一定の傾きで加速し、その後最高速度を一定時間維持するウォーキングの消費カロリーを、ACSM歩行代謝式にもとづいて秒単位で積分計算します。</p>
+        <p data-i18n="desc">設定した初速から最高速度まで一定の傾きで加速し、その後最高速度を一定時間維持するウォーキングの消費カロリーを、ACSM歩行代謝式にもとづいて秒単位で積分計算します。</p>
       </div>
       <div class="lang-switch" role="group" aria-label="Language / 言語">
         <button type="button" class="lang-btn" id="langJa" data-lang="ja">日本語</button>
@@ -315,6 +315,13 @@
       </div>
 
       <div class="field">
+        <div class="field-label"><span><span class="dot" style="background:var(--accent)"></span><span data-i18n="fieldStart">初速</span></span>
+          <span class="readout"><span id="startOut">0.0</span><span class="unit">km/h</span></span>
+        </div>
+        <input type="range" id="startRange" min="0" max="12" step="0.1" value="0" style="--track-fill:var(--accent)">
+      </div>
+
+      <div class="field">
         <div class="field-label"><span><span class="dot" style="background:var(--accent)"></span><span data-i18n="fieldSpeed">最高速度</span></span>
           <span class="readout"><span id="speedOut">6.0</span><span class="unit">km/h</span></span>
         </div>
@@ -322,7 +329,7 @@
       </div>
 
       <div class="field">
-        <div class="field-label"><span><span class="dot" style="background:var(--accent)"></span><span data-i18n="fieldRamp">加速時間(0→最高速度)</span></span>
+        <div class="field-label"><span><span class="dot" style="background:var(--accent)"></span><span data-i18n="fieldRamp">加速時間(初速→最高速度)</span></span>
           <span class="readout"><span id="rampOut">5</span><span class="unit" data-i18n="unitMin">分</span></span>
         </div>
         <input type="range" id="rampRange" min="0" max="20" step="0.5" value="5" style="--track-fill:var(--accent)">
@@ -425,9 +432,9 @@
 // Element references
 // ---------------------------------------------------------------
 const el = (id) => document.getElementById(id);
-const weightRange = el('weightRange'), speedRange = el('speedRange'),
+const weightRange = el('weightRange'), startRange = el('startRange'), speedRange = el('speedRange'),
       rampRange = el('rampRange'), sustainRange = el('sustainRange'), gradeRange = el('gradeRange');
-const weightOut = el('weightOut'), speedOut = el('speedOut'), rampOut = el('rampOut'),
+const weightOut = el('weightOut'), startOut = el('startOut'), speedOut = el('speedOut'), rampOut = el('rampOut'),
       sustainOut = el('sustainOut'), gradeOut = el('gradeOut');
 
 // ---------------------------------------------------------------
@@ -436,8 +443,8 @@ const weightOut = el('weightOut'), speedOut = el('speedOut'), rampOut = el('ramp
 const translations = {
   ja: {
     title: 'ランプウォーク計算機',
-    desc: '速度0km/hから最高速度まで一定の傾きで加速し、その後最高速度を一定時間維持するウォーキングの消費カロリーを、ACSM歩行代謝式にもとづいて秒単位で積分計算します。',
-    fieldWeight: '体重', fieldSpeed: '最高速度', fieldRamp: '加速時間(0→最高速度)', fieldSustain: '維持時間(最高速度を保つ)',
+    desc: '設定した初速から最高速度まで一定の傾きで加速し、その後最高速度を一定時間維持するウォーキングの消費カロリーを、ACSM歩行代謝式にもとづいて秒単位で積分計算します。',
+    fieldWeight: '体重', fieldStart: '初速', fieldSpeed: '最高速度', fieldRamp: '加速時間(初速→最高速度)', fieldSustain: '維持時間(最高速度を保つ)',
     unitMin: '分', advSummary: '詳細設定(傾斜)', fieldGrade: '傾斜',
     formulaNote: '計算式:ACSM歩行代謝式(6.4km/h超は走行代謝式)。VO2(ml/kg/分) = 3.5 + 0.1×速度 + 1.8×速度×傾斜。1L酸素消費 ≈ 5kcalとして換算。',
     statKcalLabel: '総消費カロリー', statTimeLabel: '総運動時間', statDistLabel: '走行距離', statMetLabel: '平均METs',
@@ -452,8 +459,8 @@ const translations = {
   },
   en: {
     title: 'Ramp Walk Calculator',
-    desc: 'Accelerates linearly from 0 km/h to a max speed, then holds that speed for a set duration — and integrates the calories burned second by second using ACSM metabolic equations.',
-    fieldWeight: 'Weight', fieldSpeed: 'Max Speed', fieldRamp: 'Ramp-up Time (0 → Max Speed)', fieldSustain: 'Sustain Time (hold max speed)',
+    desc: 'Accelerates linearly from a starting speed you set to a max speed, then holds that speed for a set duration — and integrates the calories burned second by second using ACSM metabolic equations.',
+    fieldWeight: 'Weight', fieldStart: 'Start Speed', fieldSpeed: 'Max Speed', fieldRamp: 'Ramp-up Time (Start → Max Speed)', fieldSustain: 'Sustain Time (hold max speed)',
     unitMin: 'min', advSummary: 'Advanced (Incline)', fieldGrade: 'Incline',
     formulaNote: 'Formula: ACSM walking equation (running equation above 6.4 km/h). VO2 (ml/kg/min) = 3.5 + 0.1×speed + 1.8×speed×grade. Converted at ≈5 kcal per liter of O2.',
     statKcalLabel: 'Total Calories Burned', statTimeLabel: 'Total Duration', statDistLabel: 'Distance Covered', statMetLabel: 'Average METs',
@@ -519,7 +526,7 @@ function kcalPerMin(speedKmH, gradePercent, weightKg) {
 // ---------------------------------------------------------------
 // Simulation: integrate the ramp-up + sustain session at 1s resolution
 // ---------------------------------------------------------------
-function simulate(weightKg, maxSpeed, rampMin, sustainMin, gradePercent) {
+function simulate(weightKg, startSpeed, maxSpeed, rampMin, sustainMin, gradePercent) {
   const rampSec = Math.round(rampMin * 60);
   const sustainSec = Math.round(sustainMin * 60);
   const totalSec = rampSec + sustainSec;
@@ -530,7 +537,7 @@ function simulate(weightKg, maxSpeed, rampMin, sustainMin, gradePercent) {
 
   for (let s = 0; s <= totalSec; s++) {
     const speed = s <= rampSec
-      ? (rampSec === 0 ? maxSpeed : maxSpeed * (s / rampSec))
+      ? (rampSec === 0 ? maxSpeed : startSpeed + (maxSpeed - startSpeed) * (s / rampSec))
       : maxSpeed;
     const { met, kcalMin } = kcalPerMin(speed, gradePercent, weightKg);
     const kcalRate = kcalMin / 60;   // kcal per second
@@ -692,21 +699,31 @@ function wireHover(hit, svg, tooltipEl, wrapEl, series, totalMin, otherCross, va
 function recompute() {
   const weight = parseFloat(weightRange.value);
   const maxSpeed = parseFloat(speedRange.value);
+
+  // keep the start-speed slider capped at the current max speed
+  startRange.max = maxSpeed;
+  let startSpeed = parseFloat(startRange.value);
+  if (startSpeed > maxSpeed) {
+    startSpeed = maxSpeed;
+    startRange.value = maxSpeed;
+  }
+
   const rampMin = parseFloat(rampRange.value);
   const sustainMin = parseFloat(sustainRange.value);
   const grade = parseFloat(gradeRange.value);
 
   weightOut.textContent = fmt(weight, 0);
+  startOut.textContent = fmt(startSpeed, 1);
   speedOut.textContent = fmt(maxSpeed, 1);
   rampOut.textContent = fmt(rampMin, rampMin % 1 === 0 ? 0 : 1);
   sustainOut.textContent = fmt(sustainMin, 0);
   gradeOut.textContent = fmt(grade, 1);
-  [weightRange, speedRange, rampRange, sustainRange, gradeRange].forEach(r => {
+  [weightRange, startRange, speedRange, rampRange, sustainRange, gradeRange].forEach(r => {
     const pct = ((r.value - r.min) / (r.max - r.min)) * 100;
     r.style.setProperty('--fill', pct + '%');
   });
 
-  const sim = simulate(weight, maxSpeed, rampMin, sustainMin, grade);
+  const sim = simulate(weight, startSpeed, maxSpeed, rampMin, sustainMin, grade);
   const totalMin = sim.totalSec / 60;
   const boundaryMin = sim.rampSec / 60;
 
@@ -753,7 +770,7 @@ function recompute() {
   }
 }
 
-[weightRange, speedRange, rampRange, sustainRange, gradeRange].forEach(r => r.addEventListener('input', recompute));
+[weightRange, startRange, speedRange, rampRange, sustainRange, gradeRange].forEach(r => r.addEventListener('input', recompute));
 applyStaticI18n(currentLang);
 recompute();
 </script>
