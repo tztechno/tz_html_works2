@@ -1,0 +1,358 @@
+<title>Diffscope Guide</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg:#eef2f3;
+    --surface:#ffffff;
+    --surface-alt:#e2e9eb;
+    --line:#cdd7da;
+    --text:#12191c;
+    --text-muted:#54666c;
+    --accent:#0f7d8c;
+    --accent-strong:#0b5e6a;
+    --accent-soft:#d7ecef;
+    --chan-r:#d1453f;
+    --chan-g:#1f9d55;
+    --chan-b:#2b6fd1;
+    --diff:#d1451c;
+    --shadow:0 1px 2px rgba(20,30,32,.06), 0 8px 24px -12px rgba(20,30,32,.18);
+    font-family:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0d1417; --surface:#151f22; --surface-alt:#1c282b; --line:#2b393d;
+      --text:#e7eef0; --text-muted:#93a7ac; --accent:#2bb6c4; --accent-strong:#5fd0dc;
+      --accent-soft:#123339; --chan-r:#ef6b64; --chan-g:#3fc47c; --chan-b:#5b93e6; --diff:#ff7a52;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0d1417; --surface:#151f22; --surface-alt:#1c282b; --line:#2b393d;
+    --text:#e7eef0; --text-muted:#93a7ac; --accent:#2bb6c4; --accent-strong:#5fd0dc;
+    --accent-soft:#123339; --chan-r:#ef6b64; --chan-g:#3fc47c; --chan-b:#5b93e6; --diff:#ff7a52;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+  }
+  *{box-sizing:border-box;}
+  body{background:var(--bg); color:var(--text);}
+  .page{
+    max-width:760px; margin:0 auto;
+    padding-inline:16px; padding-block:28px 64px;
+    display:flex; flex-direction:column; gap:26px;
+  }
+  header.top{
+    display:flex; align-items:flex-start; justify-content:space-between; gap:14px; flex-wrap:wrap;
+    border-bottom:1px solid var(--line); padding-bottom:18px;
+  }
+  .titleblock{display:flex; flex-direction:column; gap:6px; min-width:0;}
+  .eyebrow{
+    font-family:"IBM Plex Mono",monospace; font-size:12px; letter-spacing:.09em;
+    text-transform:uppercase; color:var(--accent-strong);
+  }
+  h1{ margin:0; font-size:clamp(24px,5vw,30px); font-weight:700; letter-spacing:-0.01em; text-wrap:balance; }
+  .titleblock p{ margin:0; color:var(--text-muted); font-size:14px; max-width:56ch; line-height:1.5; }
+  .lang-toggle{
+    display:inline-flex; border:1px solid var(--line); border-radius:999px;
+    background:var(--surface-alt); padding:3px; flex:none;
+  }
+  .lang-toggle button{
+    font-family:"IBM Plex Mono",monospace; font-size:12px; font-weight:600;
+    border:none; border-radius:999px; padding:6px 14px; cursor:pointer;
+    background:transparent; color:var(--text-muted);
+  }
+  .lang-toggle button[aria-pressed="true"]{ background:var(--accent); color:#fff; }
+  .lang-toggle button:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+
+  nav.toc{
+    background:var(--surface); border:1px solid var(--line); border-radius:12px;
+    padding:14px 16px; box-shadow:var(--shadow);
+  }
+  nav.toc .k{ font-size:11.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); margin:0 0 8px; font-weight:600; }
+  nav.toc ol{ margin:0; padding-left:1.1em; display:flex; flex-direction:column; gap:4px; }
+  nav.toc a{ color:var(--accent-strong); text-decoration:none; font-size:13.5px; }
+  nav.toc a:hover{ text-decoration:underline; }
+
+  article section{
+    background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    box-shadow:var(--shadow); padding:20px 22px; display:flex; flex-direction:column; gap:10px;
+    scroll-margin-top:16px;
+  }
+  article h2{
+    margin:0; font-size:18px; font-weight:700; display:flex; align-items:baseline; gap:10px;
+  }
+  article h2 .num{ font-family:"IBM Plex Mono",monospace; font-size:13px; color:var(--accent-strong); font-weight:600; }
+  article p{ margin:0; font-size:14.5px; line-height:1.65; max-width:65ch; color:var(--text); }
+  article p.muted{ color:var(--text-muted); font-size:13.5px; }
+  article ol, article ul{ margin:2px 0 0; padding-left:1.3em; display:flex; flex-direction:column; gap:8px; }
+  article li{ font-size:14.5px; line-height:1.6; max-width:62ch; }
+  article li b{ font-weight:600; }
+
+  .kv{ display:flex; flex-direction:column; gap:10px; margin-top:2px; }
+  .kv-row{ display:grid; grid-template-columns:150px 1fr; gap:12px; align-items:start; }
+  @media (max-width:520px){ .kv-row{ grid-template-columns:1fr; } }
+  .kv-row .term{
+    font-family:"IBM Plex Mono",monospace; font-size:12.5px; font-weight:600;
+    color:var(--accent-strong); padding-top:2px;
+  }
+  .kv-row .desc{ font-size:14px; line-height:1.6; }
+
+  .swatches{ display:flex; gap:14px; flex-wrap:wrap; margin-top:4px; }
+  .swatch{ display:flex; align-items:center; gap:8px; font-size:13px; }
+  .swatch .dot{ width:11px; height:11px; border-radius:50%; flex:none; }
+
+  code.k{
+    font-family:"IBM Plex Mono",monospace; font-size:12.5px; background:var(--surface-alt);
+    border:1px solid var(--line); border-radius:5px; padding:1px 6px;
+  }
+
+  footer.note{ font-size:12px; color:var(--text-muted); text-align:center; line-height:1.6; }
+
+  [data-lang]{ display:flex; flex-direction:column; gap:20px; }
+  [data-lang][hidden]{ display:none; }
+
+  @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
+</style>
+
+<div class="page">
+  <header class="top">
+    <div class="titleblock">
+      <span class="eyebrow">Reference</span>
+      <h1>Diffscope Guide</h1>
+      <p id="subtitle"></p>
+    </div>
+    <div class="lang-toggle" role="group" aria-label="Language / 表示言語">
+      <button type="button" id="langJa" aria-pressed="true">日本語</button>
+      <button type="button" id="langEn" aria-pressed="false">English</button>
+    </div>
+  </header>
+
+  <!-- ============================= Japanese ============================= -->
+  <div data-lang="ja" id="content-ja">
+    <nav class="toc" aria-label="目次">
+      <p class="k">目次</p>
+      <ol>
+        <li><a href="#ja-start">はじめに</a></li>
+        <li><a href="#ja-results">結果の見方</a></li>
+        <li><a href="#ja-heatmap">差分ヒートマップの見方</a></li>
+        <li><a href="#ja-tolerance">許容誤差の調整</a></li>
+        <li><a href="#ja-comments">自動コメントについて</a></li>
+        <li><a href="#ja-limits">プライバシーと制限事項</a></li>
+      </ol>
+    </nav>
+
+    <article>
+      <section id="ja-start">
+        <h2><span class="num">01</span>はじめに</h2>
+        <p>Diffscope は、2枚の画像をブラウザ上でピクセル単位に比較し、一致率と違いの内容を自動で解説するツールです。使い方は次の3ステップです。</p>
+        <ol>
+          <li><b>画像Aと画像Bをアップロード</b> — 各枠にドラッグ&ドロップするか、クリックしてファイルを選択します。</li>
+          <li><b>自動で比較が実行される</b> — 2枚がそろうと、一致率・差分ヒートマップ・自動コメントがその場で更新されます。</li>
+          <li><b>必要に応じて再調整</b> — 「比較の許容誤差」スライダーを動かすと、判定基準を変えて再計算できます。</li>
+        </ol>
+        <p class="muted">初回はサンプル画像で動作を確認できます。画像をアップロードすると自動的に置き換わります。「サンプルに戻す」ボタンでいつでも戻せます。</p>
+      </section>
+
+      <section id="ja-results">
+        <h2><span class="num">02</span>結果の見方</h2>
+        <p>「比較結果」セクションには4つの指標が表示されます。</p>
+        <div class="kv">
+          <div class="kv-row">
+            <span class="term">一致率</span>
+            <span class="desc">許容誤差の範囲内にあるピクセルの割合です。98%以上は「ほぼ同一」、90%以上は「非常に近い」、75%以上は「概ね類似」、50%以上は「部分的に類似」、それ未満は「大きく異なる」と判定されます。</span>
+          </div>
+          <div class="kv-row">
+            <span class="term">輝度差</span>
+            <span class="desc">画像Aに対する画像Bの平均的な明るさの差です。正の値は画像Bのほうが明るく、負の値は暗いことを示します。</span>
+          </div>
+          <div class="kv-row">
+            <span class="term">色成分の差(RGB)</span>
+            <span class="desc">赤・緑・青それぞれの平均的な差分をバーで表示します。特定の色だけ突出している場合、色調の変化(照明やホワイトバランスの違いなど)を示唆します。</span>
+          </div>
+          <div class="kv-row">
+            <span class="term">サイズ</span>
+            <span class="desc">画像A・Bそれぞれの元のピクセルサイズです。縦横比が異なる場合は「解説」欄でも案内されます。</span>
+          </div>
+        </div>
+        <div class="swatches">
+          <span class="swatch"><span class="dot" style="background:#1f9d55"></span>90%以上:高い一致</span>
+          <span class="swatch"><span class="dot" style="background:#c98a17"></span>70〜90%:中程度の一致</span>
+          <span class="swatch"><span class="dot" style="background:#d1451c"></span>70%未満:低い一致</span>
+        </div>
+      </section>
+
+      <section id="ja-heatmap">
+        <h2><span class="num">03</span>差分ヒートマップの見方</h2>
+        <p>「差分の可視化」セクションには3つの画像が並びます。</p>
+        <ul>
+          <li><b>画像A(正規化後)/ 画像B(正規化後)</b> — 比較用に321×321の正方形へリサイズしたものです。元の縦横比を保つため、余白は中間グレーで埋められます(この余白部分は常に一致するため、一致率を不当に下げません)。</li>
+          <li><b>差分ヒートマップ</b> — 赤みが強いほど、その位置での差が大きいことを示します。特に差が大きい領域には、3×3のグリッド上で「左上」「中央」「右下」のようなラベルが表示されます。</li>
+        </ul>
+      </section>
+
+      <section id="ja-tolerance">
+        <h2><span class="num">04</span>許容誤差の調整</h2>
+        <p>「比較の許容誤差」スライダー(0〜150)は、1ピクセルあたりのRGB平均差がどこまでなら「一致」とみなすかを決めます。</p>
+        <ul>
+          <li><b>0に近い値</b> — ほぼ完全一致のみを「一致」として扱う、厳密な比較になります。圧縮やノイズの影響を受けやすくなります。</li>
+          <li><b>30前後(初期値)</b> — 見た目の印象に近い、実用的なバランスです。</li>
+          <li><b>100以上</b> — 大まかな構図の一致だけを見たいときに使います。</li>
+        </ul>
+        <p>値を変更すると即座に再計算されます。「再計算」ボタンは、同じ設定のまま結果を再描画したい場合に使えます。</p>
+      </section>
+
+      <section id="ja-comments">
+        <h2><span class="num">05</span>自動コメントについて</h2>
+        <p>「解説」セクションには、計算結果に基づく4種類のコメントが表示されます。</p>
+        <div class="kv">
+          <div class="kv-row"><span class="term">サイズ</span><span class="desc">縦横比が5%以上異なる場合に注記します。</span></div>
+          <div class="kv-row"><span class="term">明るさ</span><span class="desc">平均輝度差が4を超える場合に、明るい/暗いの傾向を示します。</span></div>
+          <div class="kv-row"><span class="term">色味</span><span class="desc">最も差が大きい色成分と最も差が小さい色成分の差が4を超える場合に、その色味の偏りを指摘します。</span></div>
+          <div class="kv-row"><span class="term">領域</span><span class="desc">9分割した領域の中で、平均より1.2倍以上差が大きいブロックがあれば、その位置(例:「右上」)を最大2箇所まで案内します。</span></div>
+        </div>
+      </section>
+
+      <section id="ja-limits">
+        <h2><span class="num">06</span>プライバシーと制限事項</h2>
+        <p>すべての処理はこのページ内(ブラウザ)で完結します。アップロードした画像がサーバーへ送信されたり、外部に保存されたりすることはありません。</p>
+        <p class="muted">なお、比較は321×321ピクセルへ正規化した簡易的なピクセル比較であり、画質鑑定や法的証拠としての厳密な一致判定を目的としたものではありません。極端に縦横比が異なる画像や、大きく回転・トリミングされた画像では、実際の類似度より低い一致率が出ることがあります。</p>
+      </section>
+    </article>
+  </div>
+
+  <!-- ============================= English ============================= -->
+  <div data-lang="en" id="content-en" hidden>
+    <nav class="toc" aria-label="Table of contents">
+      <p class="k">Contents</p>
+      <ol>
+        <li><a href="#en-start">Getting started</a></li>
+        <li><a href="#en-results">Reading the results</a></li>
+        <li><a href="#en-heatmap">Reading the difference heatmap</a></li>
+        <li><a href="#en-tolerance">Adjusting the tolerance</a></li>
+        <li><a href="#en-comments">About the automatic comments</a></li>
+        <li><a href="#en-limits">Privacy and limitations</a></li>
+      </ol>
+    </nav>
+
+    <article>
+      <section id="en-start">
+        <h2><span class="num">01</span>Getting started</h2>
+        <p>Diffscope compares two images pixel by pixel, entirely in your browser, and automatically explains the match rate and what's different. It works in three steps.</p>
+        <ol>
+          <li><b>Upload Image A and Image B</b> — drag and drop a file onto each box, or click to choose one.</li>
+          <li><b>Comparison runs automatically</b> — once both images are loaded, the match rate, difference heatmap, and comments update immediately.</li>
+          <li><b>Refine as needed</b> — move the "Comparison tolerance" slider to change the matching threshold and recompute.</li>
+        </ol>
+        <p class="muted">The page opens with sample images so you can see it working right away. Uploading your own image replaces the corresponding sample automatically, and "Reset to sample" brings the samples back at any time.</p>
+      </section>
+
+      <section id="en-results">
+        <h2><span class="num">02</span>Reading the results</h2>
+        <p>The Results section shows four measurements.</p>
+        <div class="kv">
+          <div class="kv-row">
+            <span class="term">Match rate</span>
+            <span class="desc">The share of pixels whose color difference falls within the current tolerance. 98%+ is labeled "Nearly identical," 90%+ "Very close," 75%+ "Broadly similar," 50%+ "Partially similar," and below that "Significantly different."</span>
+          </div>
+          <div class="kv-row">
+            <span class="term">Brightness diff.</span>
+            <span class="desc">The average brightness of Image B relative to Image A. A positive value means B is brighter; negative means B is darker.</span>
+          </div>
+          <div class="kv-row">
+            <span class="term">Color channel diff. (RGB)</span>
+            <span class="desc">The average difference in each of the red, green and blue channels, shown as bars. One channel standing out suggests a color-tone shift — different lighting or white balance, for example.</span>
+          </div>
+          <div class="kv-row">
+            <span class="term">Size</span>
+            <span class="desc">The original pixel dimensions of each image. A notable aspect-ratio difference is also called out in the Explanation section.</span>
+          </div>
+        </div>
+        <div class="swatches">
+          <span class="swatch"><span class="dot" style="background:#1f9d55"></span>90%+: high match</span>
+          <span class="swatch"><span class="dot" style="background:#c98a17"></span>70–90%: moderate match</span>
+          <span class="swatch"><span class="dot" style="background:#d1451c"></span>below 70%: low match</span>
+        </div>
+      </section>
+
+      <section id="en-heatmap">
+        <h2><span class="num">03</span>Reading the difference heatmap</h2>
+        <p>The Difference visualization section shows three canvases.</p>
+        <ul>
+          <li><b>Image A (normalized) / Image B (normalized)</b> — each image resized to fit inside a 321×321 square for comparison. The original aspect ratio is preserved, and any leftover space is filled with neutral gray on both sides — since that padding always matches, it never artificially lowers the match rate.</li>
+          <li><b>Difference heatmap</b> — the redder an area, the larger the difference there. Regions that stand out are labeled on a 3×3 grid, using positions like "top-left," "center," or "bottom-right."</li>
+        </ul>
+      </section>
+
+      <section id="en-tolerance">
+        <h2><span class="num">04</span>Adjusting the tolerance</h2>
+        <p>The "Comparison tolerance" slider (0–150) sets how much average RGB difference a single pixel can have and still count as a match.</p>
+        <ul>
+          <li><b>Near 0</b> — a strict comparison that only counts near-exact pixels as matching; more sensitive to compression artifacts and noise.</li>
+          <li><b>Around 30 (default)</b> — a practical balance close to visual perception.</li>
+          <li><b>100 or higher</b> — useful when you only care about overall composition, not fine detail.</li>
+        </ul>
+        <p>Moving the slider recomputes instantly. Use "Recompute" to redraw the results with the current settings, and "Reset to sample" to return to the built-in examples.</p>
+      </section>
+
+      <section id="en-comments">
+        <h2><span class="num">05</span>About the automatic comments</h2>
+        <p>The Explanation section lists up to four comments, generated from the measurements above.</p>
+        <div class="kv">
+          <div class="kv-row"><span class="term">Size</span><span class="desc">Noted when the two aspect ratios differ by more than 5%.</span></div>
+          <div class="kv-row"><span class="term">Brightness</span><span class="desc">Notes whether B is brighter or darker whenever the average luminance difference exceeds 4.</span></div>
+          <div class="kv-row"><span class="term">Color</span><span class="desc">Flags a color-tone bias whenever the gap between the most- and least-different channels exceeds 4.</span></div>
+          <div class="kv-row"><span class="term">Region</span><span class="desc">Out of a 3×3 grid, any block with an average difference at least 1.2× the overall average is called out by position, up to two regions.</span></div>
+        </div>
+      </section>
+
+      <section id="en-limits">
+        <h2><span class="num">06</span>Privacy and limitations</h2>
+        <p>Everything runs locally in this page, inside your browser. Uploaded images are never sent to a server or stored anywhere outside your device.</p>
+        <p class="muted">The comparison is a simplified pixel analysis on images normalized to 321×321 — it isn't intended for forensic-grade image verification or legal evidence. Images with very different aspect ratios, or that are heavily rotated or cropped relative to each other, may show a lower match rate than their real-world similarity would suggest.</p>
+      </section>
+    </article>
+  </div>
+
+  <footer class="note" id="footerNote"></footer>
+</div>
+
+<script>
+// Small strings that live outside the two language blocks (subtitle, footer)
+var META = {
+  ja: {
+    subtitle: "画像比較ツール「Diffscope」の使い方",
+    footer: "本ガイドは Diffscope(画像比較ツール)の使用マニュアルです。"
+  },
+  en: {
+    subtitle: "How to use Diffscope, the image comparison tool",
+    footer: "This guide covers how to use Diffscope, the image comparison tool."
+  }
+};
+
+var langJaBtn = document.getElementById('langJa');
+var langEnBtn = document.getElementById('langEn');
+var contentJa = document.getElementById('content-ja');
+var contentEn = document.getElementById('content-en');
+var subtitleEl = document.getElementById('subtitle');
+var footerEl = document.getElementById('footerNote');
+
+function setLang(lang) {
+  var isJa = lang === 'ja';
+  contentJa.hidden = !isJa;
+  contentEn.hidden = isJa;
+  langJaBtn.setAttribute('aria-pressed', String(isJa));
+  langEnBtn.setAttribute('aria-pressed', String(!isJa));
+  subtitleEl.textContent = META[lang].subtitle;
+  footerEl.textContent = META[lang].footer;
+  try { localStorage.setItem('diffscope-guide-lang', lang); } catch (e) { /* ignore: private mode or blocked storage */ }
+}
+
+langJaBtn.addEventListener('click', function () { setLang('ja'); });
+langEnBtn.addEventListener('click', function () { setLang('en'); });
+
+// Remember the reader's language choice on this device only (per-viewer convenience)
+var startLang = 'ja';
+try {
+  var saved = localStorage.getItem('diffscope-guide-lang');
+  if (saved === 'ja' || saved === 'en') startLang = saved;
+} catch (e) { /* ignore: private mode or blocked storage */ }
+setLang(startLang);
+</script>

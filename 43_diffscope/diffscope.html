@@ -1,0 +1,869 @@
+<title>Diffscope</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg:#eef2f3;
+    --surface:#ffffff;
+    --surface-alt:#e2e9eb;
+    --line:#cdd7da;
+    --text:#12191c;
+    --text-muted:#54666c;
+    --accent:#0f7d8c;
+    --accent-strong:#0b5e6a;
+    --accent-soft:#d7ecef;
+    --match:#1f9d55;
+    --warn:#c98a17;
+    --diff:#d1451c;
+    --chan-r:#d1453f;
+    --chan-g:#1f9d55;
+    --chan-b:#2b6fd1;
+    --shadow:0 1px 2px rgba(20,30,32,.06), 0 8px 24px -12px rgba(20,30,32,.18);
+    --radius:14px;
+    font-family:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0d1417;
+      --surface:#151f22;
+      --surface-alt:#1c282b;
+      --line:#2b393d;
+      --text:#e7eef0;
+      --text-muted:#93a7ac;
+      --accent:#2bb6c4;
+      --accent-strong:#5fd0dc;
+      --accent-soft:#123339;
+      --match:#3fc47c;
+      --warn:#e0a83c;
+      --diff:#ff7a52;
+      --chan-r:#ef6b64;
+      --chan-g:#3fc47c;
+      --chan-b:#5b93e6;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0d1417;
+    --surface:#151f22;
+    --surface-alt:#1c282b;
+    --line:#2b393d;
+    --text:#e7eef0;
+    --text-muted:#93a7ac;
+    --accent:#2bb6c4;
+    --accent-strong:#5fd0dc;
+    --accent-soft:#123339;
+    --match:#3fc47c;
+    --warn:#e0a83c;
+    --diff:#ff7a52;
+    --chan-r:#ef6b64;
+    --chan-g:#3fc47c;
+    --chan-b:#5b93e6;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+  }
+  *{box-sizing:border-box;}
+  body{background:var(--bg); color:var(--text);}
+  .app{
+    max-width:920px;
+    margin:0 auto;
+    padding-inline:16px;
+    padding-block:28px 56px;
+    display:flex;
+    flex-direction:column;
+    gap:22px;
+  }
+  header.top{display:flex; flex-direction:column; gap:6px; position:relative;}
+  .top-row{display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap;}
+  .eyebrow{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:12px;
+    letter-spacing:.09em;
+    text-transform:uppercase;
+    color:var(--accent-strong);
+  }
+  h1{
+    margin:0;
+    font-size:clamp(24px,5vw,32px);
+    font-weight:700;
+    text-wrap:balance;
+    letter-spacing:-0.01em;
+  }
+  .lede{margin:0; color:var(--text-muted); font-size:14.5px; max-width:62ch; line-height:1.55;}
+  .sample-badge{
+    display:inline-flex; align-items:center; gap:6px; width:fit-content;
+    font-family:"IBM Plex Mono",monospace; font-size:11.5px;
+    color:var(--accent-strong); background:var(--accent-soft);
+    border:1px solid var(--accent); border-radius:999px; padding:4px 10px;
+  }
+  .sample-badge .dot{width:6px;height:6px;border-radius:50%;background:var(--accent-strong); flex:none;}
+
+  .lang-toggle{
+    display:inline-flex; border:1px solid var(--line); border-radius:999px;
+    background:var(--surface-alt); padding:3px; flex:none;
+  }
+  .lang-toggle button{
+    font-family:"IBM Plex Mono",monospace; font-size:12px; font-weight:600;
+    border:none; border-radius:999px; padding:5px 12px; cursor:pointer;
+    background:transparent; color:var(--text-muted);
+  }
+  .lang-toggle button[aria-pressed="true"]{ background:var(--accent); color:#fff; }
+  .lang-toggle button:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+
+  section{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:18px;
+  }
+  .section-title{
+    font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:.06em;
+    color:var(--text-muted); margin:0 0 14px;
+  }
+
+  .uploads{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  @media (max-width:560px){ .uploads{grid-template-columns:1fr;} }
+  .dropzone{
+    position:relative;
+    border:1.5px dashed var(--line);
+    border-radius:12px;
+    background:var(--surface-alt);
+    aspect-ratio:4/3;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:8px;
+    padding:14px;
+    cursor:pointer;
+    text-align:center;
+    overflow:hidden;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .dropzone:hover, .dropzone:focus-visible{ border-color:var(--accent); }
+  .dropzone.drag-over{ border-color:var(--accent); background:var(--accent-soft); }
+  .dropzone .tag{
+    position:absolute; top:8px; left:8px;
+    font-family:"IBM Plex Mono",monospace; font-size:11px; font-weight:600;
+    color:var(--accent-strong); background:var(--surface);
+    border:1px solid var(--line); border-radius:6px; padding:2px 7px;
+  }
+  .dropzone img{max-width:100%; max-height:100%; object-fit:contain; border-radius:8px;}
+  .dropzone .hint{font-size:13px; color:var(--text-muted); line-height:1.5;}
+  .dropzone .hint b{color:var(--text); font-weight:600;}
+  .dropzone input[type="file"]{display:none;}
+
+  .controls{display:flex; flex-wrap:wrap; gap:16px 24px; align-items:flex-end; justify-content:space-between;}
+  .tolerance{flex:1 1 260px; min-width:220px;}
+  .tolerance label{display:block; font-size:13px; color:var(--text-muted); margin-bottom:6px;}
+  .tolerance .row{display:flex; align-items:center; gap:10px;}
+  input[type="range"]{
+    flex:1; accent-color:var(--accent); height:20px; cursor:pointer;
+  }
+  .tolerance .val{
+    font-family:"IBM Plex Mono",monospace; font-size:13px; font-weight:600;
+    color:var(--accent-strong); min-width:34px; text-align:right;
+  }
+  .tolerance .caption{font-size:12px; color:var(--text-muted); margin-top:4px;}
+  .actions{display:flex; gap:8px;}
+  button{
+    font-family:inherit; font-size:13.5px; font-weight:600;
+    border-radius:9px; padding:9px 14px; cursor:pointer;
+    border:1px solid var(--line); background:var(--surface-alt); color:var(--text);
+  }
+  button:hover{border-color:var(--accent);}
+  button:focus-visible, .dropzone:focus-visible, input[type="range"]:focus-visible{
+    outline:2px solid var(--accent); outline-offset:2px;
+  }
+  button.primary{background:var(--accent); border-color:var(--accent); color:#fff;}
+  button.primary:hover{background:var(--accent-strong); border-color:var(--accent-strong);}
+
+  .stats{display:grid; grid-template-columns:1.3fr 1fr 1fr 1fr; gap:12px;}
+  @media (max-width:640px){ .stats{grid-template-columns:1fr 1fr;} }
+  .tile{
+    background:var(--surface-alt); border:1px solid var(--line); border-radius:12px;
+    padding:14px; display:flex; flex-direction:column; gap:8px; min-width:0;
+  }
+  .tile .k{font-size:11.5px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.05em;}
+  .tile .v{
+    font-family:"IBM Plex Mono",monospace; font-weight:600; font-size:26px;
+    font-variant-numeric:tabular-nums; line-height:1;
+  }
+  .tile .v.small{font-size:15px;}
+  .tile .sub{font-size:12px; color:var(--text-muted); font-variant-numeric:tabular-nums;}
+  .bar-track{height:6px; border-radius:99px; background:var(--line); overflow:hidden;}
+  .bar-fill{height:100%; border-radius:99px; width:0%; transition:width .35s ease, background-color .35s ease;}
+  .chan-row{display:flex; align-items:center; gap:8px; font-family:"IBM Plex Mono",monospace; font-size:11.5px;}
+  .chan-row .lbl{width:14px; font-weight:700;}
+  .chan-row .bar-track{flex:1;}
+  .chan-row .num{width:28px; text-align:right; color:var(--text-muted);}
+
+  .visuals{display:grid; grid-template-columns:1fr 1fr 1.2fr; gap:14px; align-items:start;}
+  @media (max-width:760px){ .visuals{grid-template-columns:1fr 1fr;} }
+  @media (max-width:560px){ .visuals{grid-template-columns:1fr;} }
+  .visual-card{display:flex; flex-direction:column; gap:8px;}
+  .visual-card .cap{font-size:12px; color:var(--text-muted); font-family:"IBM Plex Mono",monospace;}
+  .visual-card canvas{
+    width:100%; aspect-ratio:1/1; display:block; border-radius:10px; border:1px solid var(--line);
+    background:var(--surface-alt);
+  }
+
+  .comments{display:flex; flex-direction:column; gap:0;}
+  .comment-row{
+    display:flex; gap:12px; padding:11px 0; border-top:1px solid var(--line);
+  }
+  .comment-row:first-child{border-top:none;}
+  .comment-row .clabel{
+    flex:0 0 84px; font-family:"IBM Plex Mono",monospace; font-size:11px; font-weight:600;
+    color:var(--accent-strong); text-transform:uppercase; letter-spacing:.04em; padding-top:1px;
+  }
+  .comment-row .ctext{font-size:14px; line-height:1.6; color:var(--text);}
+  .headline{
+    font-size:16px; font-weight:600; margin:0 0 4px;
+  }
+
+  footer.note{font-size:12px; color:var(--text-muted); text-align:center; line-height:1.6;}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none !important; transition:none !important;}
+  }
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="top-row">
+      <span class="eyebrow">Image Diff Instrument</span>
+      <div class="lang-toggle" role="group" aria-label="Language / 表示言語">
+        <button type="button" id="langJa" aria-pressed="true">JA</button>
+        <button type="button" id="langEn" aria-pressed="false">EN</button>
+      </div>
+    </div>
+    <h1>Diffscope</h1>
+    <p class="lede" data-i18n="lede">2枚の画像をアップロードすると、正規化した上でピクセル単位に比較し、一致率とその根拠になった違いを自動で解説します。</p>
+    <span class="sample-badge" id="sampleBadge"><span class="dot"></span><span data-i18n="sampleBadge">サンプル画像で動作中 — アップロードで置き換えられます</span></span>
+  </header>
+
+  <section aria-label="Upload images">
+    <p class="section-title" data-i18n="uploadTitle">画像を選択</p>
+    <div class="uploads">
+      <div class="dropzone" id="dropA" tabindex="0" role="button" data-i18n-aria="dropAAria" aria-label="画像Aを選択">
+        <span class="tag">A</span>
+        <img id="previewA" alt="" hidden>
+        <div class="hint" id="hintA" data-i18n-html="hintA"><b>画像Aをドロップ</b><br>またはクリックして選択</div>
+        <input type="file" id="fileA" accept="image/*">
+      </div>
+      <div class="dropzone" id="dropB" tabindex="0" role="button" data-i18n-aria="dropBAria" aria-label="画像Bを選択">
+        <span class="tag">B</span>
+        <img id="previewB" alt="" hidden>
+        <div class="hint" id="hintB" data-i18n-html="hintB"><b>画像Bをドロップ</b><br>またはクリックして選択</div>
+        <input type="file" id="fileB" accept="image/*">
+      </div>
+    </div>
+  </section>
+
+  <section aria-label="Comparison settings">
+    <div class="controls">
+      <div class="tolerance">
+        <label for="tolerance" data-i18n="toleranceLabel">比較の許容誤差(0=厳密 / 150=大まか)</label>
+        <div class="row">
+          <input type="range" id="tolerance" min="0" max="150" value="28">
+          <span class="val" id="toleranceVal">28</span>
+        </div>
+        <p class="caption" data-i18n="toleranceCaption">値を上げるほど、わずかな色の違いは「一致」として扱われます。</p>
+      </div>
+      <div class="actions">
+        <button id="resetSample" type="button" data-i18n="resetSampleBtn">サンプルに戻す</button>
+        <button id="recompute" type="button" class="primary" data-i18n="recomputeBtn">再計算</button>
+      </div>
+    </div>
+  </section>
+
+  <section aria-label="Results">
+    <p class="section-title" data-i18n="resultsTitle">比較結果</p>
+    <div class="stats">
+      <div class="tile">
+        <span class="k" data-i18n="matchRateLabel">一致率</span>
+        <span class="v" id="matchValue">—</span>
+        <div class="bar-track"><div class="bar-fill" id="matchBar"></div></div>
+        <span class="sub" id="matchWord">—</span>
+      </div>
+      <div class="tile">
+        <span class="k" data-i18n="brightnessLabel">輝度差</span>
+        <span class="v small" id="brightValue">—</span>
+        <span class="sub" id="brightWord">—</span>
+      </div>
+      <div class="tile">
+        <span class="k" data-i18n="rgbLabel">色成分の差(RGB)</span>
+        <div class="chan-row"><span class="lbl" style="color:var(--chan-r)">R</span><div class="bar-track"><div class="bar-fill" id="barR" style="background:var(--chan-r)"></div></div><span class="num" id="numR">—</span></div>
+        <div class="chan-row"><span class="lbl" style="color:var(--chan-g)">G</span><div class="bar-track"><div class="bar-fill" id="barG" style="background:var(--chan-g)"></div></div><span class="num" id="numG">—</span></div>
+        <div class="chan-row"><span class="lbl" style="color:var(--chan-b)">B</span><div class="bar-track"><div class="bar-fill" id="barB" style="background:var(--chan-b)"></div></div><span class="num" id="numB">—</span></div>
+      </div>
+      <div class="tile">
+        <span class="k" data-i18n="sizeLabel">サイズ</span>
+        <span class="v small" id="sizeA">—</span>
+        <span class="v small" id="sizeB">—</span>
+      </div>
+    </div>
+  </section>
+
+  <section aria-label="Difference visualization">
+    <p class="section-title" data-i18n="visualsTitle">差分の可視化</p>
+    <div class="visuals">
+      <div class="visual-card">
+        <span class="cap" data-i18n="capA">画像A(正規化後)</span>
+        <canvas id="canvasA" width="321" height="321"></canvas>
+      </div>
+      <div class="visual-card">
+        <span class="cap" data-i18n="capB">画像B(正規化後)</span>
+        <canvas id="canvasB" width="321" height="321"></canvas>
+      </div>
+      <div class="visual-card">
+        <span class="cap" data-i18n="capDiff">差分ヒートマップ(赤いほど差が大きい)</span>
+        <canvas id="canvasDiff" width="321" height="321"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <section aria-label="Explanation">
+    <p class="section-title" data-i18n="explanationTitle">解説</p>
+    <p class="headline" id="headline" data-i18n="headlineLoading">画像を読み込んでいます…</p>
+    <div class="comments" id="commentsList"></div>
+  </section>
+
+  <footer class="note" data-i18n="footerNote">すべての処理はこのページの中(ブラウザ)で完結し、画像が外部に送信されることはありません。</footer>
+</div>
+
+<script>
+// ---- i18n dictionary ---------------------------------------------------
+// All user-facing strings live here so the UI can switch between Japanese and English.
+var STRINGS = {
+  ja: {
+    lede: "2枚の画像をアップロードすると、正規化した上でピクセル単位に比較し、一致率とその根拠になった違いを自動で解説します。",
+    sampleBadge: "サンプル画像で動作中 — アップロードで置き換えられます",
+    uploadTitle: "画像を選択",
+    dropAAria: "画像Aを選択",
+    dropBAria: "画像Bを選択",
+    hintA: "<b>画像Aをドロップ</b><br>またはクリックして選択",
+    hintB: "<b>画像Bをドロップ</b><br>またはクリックして選択",
+    toleranceLabel: "比較の許容誤差(0=厳密 / 150=大まか)",
+    toleranceCaption: "値を上げるほど、わずかな色の違いは「一致」として扱われます。",
+    resetSampleBtn: "サンプルに戻す",
+    recomputeBtn: "再計算",
+    resultsTitle: "比較結果",
+    matchRateLabel: "一致率",
+    brightnessLabel: "輝度差",
+    rgbLabel: "色成分の差(RGB)",
+    sizeLabel: "サイズ",
+    visualsTitle: "差分の可視化",
+    capA: "画像A(正規化後)",
+    capB: "画像B(正規化後)",
+    capDiff: "差分ヒートマップ(赤いほど差が大きい)",
+    explanationTitle: "解説",
+    headlineLoading: "画像を読み込んでいます…",
+    footerNote: "すべての処理はこのページの中(ブラウザ)で完結し、画像が外部に送信されることはありません。",
+    positions: [["左上", "上", "右上"], ["左", "中央", "右"], ["左下", "下", "右下"]],
+    headlines: {
+      identical: "ほぼ同一の画像です。",
+      veryClose: "非常に近い画像ですが、細部にわずかな違いがあります。",
+      similar: "全体的には似ていますが、部分的に明確な違いがあります。",
+      partial: "共通点はあるものの、構図や内容が大きく異なる部分があります。",
+      different: "大きく異なる画像です。"
+    },
+    matchWords: {
+      identical: "ほぼ同一",
+      veryClose: "非常に近い",
+      similar: "概ね類似",
+      partial: "部分的に類似",
+      different: "大きく異なる"
+    },
+    brightWords: { same: "明るさはほぼ同じ", brighter: "画像Bのほうが明るい", darker: "画像Bのほうが暗い" },
+    channels: { r: "赤", g: "緑", b: "青" },
+    commentLabels: { size: "サイズ", brightness: "明るさ", color: "色味", region: "領域" },
+    sizeSame: function (a, b) { return "縦横比はほぼ同じです(画像A " + a + " / 画像B " + b + ")。"; },
+    sizeDiff: function (a, b) { return "縦横比が異なります(画像A " + a + " / 画像B " + b + ")。比較のため中央配置でリサイズしています。"; },
+    brightSame: "画像全体の明るさはほぼ同じです。",
+    brightUp: function (n) { return "画像Bのほうが明るい傾向があります(平均輝度差 約" + n + ")。"; },
+    brightDown: function (n) { return "画像Bのほうが暗い傾向があります(平均輝度差 約" + n + ")。"; },
+    colorBiased: function (name, v) { return name + "成分の違いが目立ちます(平均差 約" + v + ")。色調が変化している可能性があります。"; },
+    colorEven: "色味の違いは全体的に小さく、特定の色成分に偏りは見られません。",
+    regionNone: "違いは画像全体に分散しており、特定の領域に偏っていません。",
+    regionOne: function (pos, pct) { return "違いは主に画像の「" + pos + "」付近に集中しています(この領域の一致率 約" + pct + "%)。"; },
+    regionAlso: function (pos) { return " また、「" + pos + "」にも違いが見られます。"; }
+  },
+  en: {
+    lede: "Upload two images and Diffscope normalizes them, compares them pixel by pixel, and automatically explains the match rate and what's different.",
+    sampleBadge: "Running on sample images — upload your own to replace them",
+    uploadTitle: "Select images",
+    dropAAria: "Select Image A",
+    dropBAria: "Select Image B",
+    hintA: "<b>Drop Image A</b><br>or click to choose",
+    hintB: "<b>Drop Image B</b><br>or click to choose",
+    toleranceLabel: "Comparison tolerance (0 = strict / 150 = loose)",
+    toleranceCaption: "Higher values treat small color differences as a match.",
+    resetSampleBtn: "Reset to sample",
+    recomputeBtn: "Recompute",
+    resultsTitle: "Results",
+    matchRateLabel: "Match rate",
+    brightnessLabel: "Brightness diff.",
+    rgbLabel: "Color channel diff. (RGB)",
+    sizeLabel: "Size",
+    visualsTitle: "Difference visualization",
+    capA: "Image A (normalized)",
+    capB: "Image B (normalized)",
+    capDiff: "Difference heatmap (redder = larger difference)",
+    explanationTitle: "Explanation",
+    headlineLoading: "Loading images…",
+    footerNote: "Everything runs locally in this page (your browser) — no image ever leaves your device.",
+    positions: [["top-left", "top", "top-right"], ["left", "center", "right"], ["bottom-left", "bottom", "bottom-right"]],
+    headlines: {
+      identical: "The images are nearly identical.",
+      veryClose: "The images are very close, with only minor differences in detail.",
+      similar: "The images are broadly similar, but with some clearly different areas.",
+      partial: "The images share some features, but differ substantially in composition or content.",
+      different: "The images are significantly different."
+    },
+    matchWords: {
+      identical: "Nearly identical",
+      veryClose: "Very close",
+      similar: "Broadly similar",
+      partial: "Partially similar",
+      different: "Significantly different"
+    },
+    brightWords: { same: "Brightness is about the same", brighter: "Image B is brighter", darker: "Image B is darker" },
+    channels: { r: "Red", g: "Green", b: "Blue" },
+    commentLabels: { size: "Size", brightness: "Brightness", color: "Color", region: "Region" },
+    sizeSame: function (a, b) { return "Aspect ratios are about the same (Image A " + a + " / Image B " + b + ")."; },
+    sizeDiff: function (a, b) { return "Aspect ratios differ (Image A " + a + " / Image B " + b + "). Both are centered and resized for comparison."; },
+    brightSame: "Overall brightness is about the same.",
+    brightUp: function (n) { return "Image B tends to be brighter (average luminance difference ~" + n + ")."; },
+    brightDown: function (n) { return "Image B tends to be darker (average luminance difference ~" + n + ")."; },
+    colorBiased: function (name, v) { return "The " + name + " channel stands out (average difference ~" + v + "). The color tone may have shifted."; },
+    colorEven: "Color differences are small overall, with no channel standing out.",
+    regionNone: "Differences are spread across the whole image, without concentrating in one area.",
+    regionOne: function (pos, pct) { return "Differences are concentrated mainly around the " + pos + " of the image (match rate in this region ~" + pct + "%)."; },
+    regionAlso: function (pos) { return " Differences also appear around the " + pos + "."; }
+  }
+};
+
+var currentLang = 'ja';
+
+function t() { return STRINGS[currentLang]; }
+
+function applyStaticI18n() {
+  document.querySelectorAll('[data-i18n]').forEach(function (el) {
+    el.textContent = t()[el.getAttribute('data-i18n')];
+  });
+  document.querySelectorAll('[data-i18n-html]').forEach(function (el) {
+    el.innerHTML = t()[el.getAttribute('data-i18n-html')];
+  });
+  document.querySelectorAll('[data-i18n-aria]').forEach(function (el) {
+    el.setAttribute('aria-label', t()[el.getAttribute('data-i18n-aria')]);
+  });
+}
+
+// ---- Constants -------------------------------------------------------
+var SIZE = 321;              // analysis canvas is a SIZE x SIZE square
+var BLOCKS = 3;               // 3x3 region grid for locating differences
+var BLOCK_SIZE = SIZE / BLOCKS;
+var LETTERBOX_FILL = [128, 128, 128]; // neutral gray used to pad both images identically
+
+// ---- State -------------------------------------------------------------
+var state = {
+  a: null, // { source: Image|Canvas, w, h }
+  b: null,
+  usingSample: true
+};
+
+// ---- DOM references ------------------------------------------------------
+var dropA = document.getElementById('dropA');
+var dropB = document.getElementById('dropB');
+var fileA = document.getElementById('fileA');
+var fileB = document.getElementById('fileB');
+var previewA = document.getElementById('previewA');
+var previewB = document.getElementById('previewB');
+var hintA = document.getElementById('hintA');
+var hintB = document.getElementById('hintB');
+var sampleBadge = document.getElementById('sampleBadge');
+var toleranceInput = document.getElementById('tolerance');
+var toleranceVal = document.getElementById('toleranceVal');
+var recomputeBtn = document.getElementById('recompute');
+var resetSampleBtn = document.getElementById('resetSample');
+var langJaBtn = document.getElementById('langJa');
+var langEnBtn = document.getElementById('langEn');
+
+var canvasA = document.getElementById('canvasA');
+var canvasB = document.getElementById('canvasB');
+var canvasDiff = document.getElementById('canvasDiff');
+
+var matchValue = document.getElementById('matchValue');
+var matchBar = document.getElementById('matchBar');
+var matchWord = document.getElementById('matchWord');
+var brightValue = document.getElementById('brightValue');
+var brightWord = document.getElementById('brightWord');
+var barR = document.getElementById('barR'), numR = document.getElementById('numR');
+var barG = document.getElementById('barG'), numG = document.getElementById('numG');
+var barB = document.getElementById('barB'), numB = document.getElementById('numB');
+var sizeAEl = document.getElementById('sizeA');
+var sizeBEl = document.getElementById('sizeB');
+var headlineEl = document.getElementById('headline');
+var commentsList = document.getElementById('commentsList');
+
+// ---- Sample image generation (no external assets) ------------------------
+function generateSample() {
+  var w = 480, h = 360;
+
+  var a = document.createElement('canvas'); a.width = w; a.height = h;
+  var ctxA = a.getContext('2d');
+  var gA = ctxA.createLinearGradient(0, 0, w, h);
+  gA.addColorStop(0, '#0f7d8c'); gA.addColorStop(1, '#c9e8ec');
+  ctxA.fillStyle = gA; ctxA.fillRect(0, 0, w, h);
+  ctxA.fillStyle = '#ffffff';
+  ctxA.beginPath(); ctxA.arc(170, 230, 70, 0, Math.PI * 2); ctxA.fill();
+  ctxA.fillStyle = '#12303a';
+  ctxA.fillRect(320, 70, 70, 70);
+
+  var b = document.createElement('canvas'); b.width = w; b.height = h;
+  var ctxB = b.getContext('2d');
+  var gB = ctxB.createLinearGradient(0, 0, w, h);
+  gB.addColorStop(0, '#0f7d8c'); gB.addColorStop(1, '#c9e8ec');
+  ctxB.fillStyle = gB; ctxB.fillRect(0, 0, w, h);
+  ctxB.fillStyle = '#ffffff';
+  ctxB.beginPath(); ctxB.arc(215, 245, 70, 0, Math.PI * 2); ctxB.fill(); // circle shifted
+  ctxB.fillStyle = '#d1451c';
+  ctxB.fillRect(325, 75, 70, 70); // same square, different color
+  ctxB.fillStyle = '#12303a';
+  ctxB.beginPath(); // extra triangle mark not present in A
+  ctxB.moveTo(60, 60); ctxB.lineTo(120, 60); ctxB.lineTo(90, 115); ctxB.closePath(); ctxB.fill();
+
+  return {
+    a: { source: a, w: w, h: h },
+    b: { source: b, w: w, h: h }
+  };
+}
+
+// ---- File loading ----------------------------------------------------
+function loadFileInto(which, file) {
+  if (!file || file.type.indexOf('image/') !== 0) return;
+  var reader = new FileReader();
+  reader.onload = function (e) {
+    var img = new Image();
+    img.onload = function () {
+      state[which] = { source: img, w: img.naturalWidth, h: img.naturalHeight };
+      state.usingSample = false;
+      sampleBadge.hidden = true;
+      var previewEl = which === 'a' ? previewA : previewB;
+      var hintEl = which === 'a' ? hintA : hintB;
+      previewEl.src = e.target.result;
+      previewEl.hidden = false;
+      hintEl.hidden = true;
+      compare();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function wireDropzone(zone, input, which) {
+  zone.addEventListener('click', function () { input.click(); });
+  zone.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); }
+  });
+  input.addEventListener('change', function () {
+    if (input.files && input.files[0]) loadFileInto(which, input.files[0]);
+  });
+  zone.addEventListener('dragover', function (e) { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', function () { zone.classList.remove('drag-over'); });
+  zone.addEventListener('drop', function (e) {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) loadFileInto(which, e.dataTransfer.files[0]);
+  });
+}
+wireDropzone(dropA, fileA, 'a');
+wireDropzone(dropB, fileB, 'b');
+
+// ---- Drawing helper: fit an image into a square canvas without distortion ----
+function drawContain(ctx, entry) {
+  ctx.fillStyle = 'rgb(' + LETTERBOX_FILL.join(',') + ')';
+  ctx.fillRect(0, 0, SIZE, SIZE);
+  var scale = Math.min(SIZE / entry.w, SIZE / entry.h);
+  var dw = entry.w * scale, dh = entry.h * scale;
+  var dx = (SIZE - dw) / 2, dy = (SIZE - dh) / 2;
+  ctx.drawImage(entry.source, 0, 0, entry.w, entry.h, dx, dy, dw, dh);
+}
+
+// ---- Core comparison -------------------------------------------------
+function compare() {
+  if (!state.a || !state.b) return;
+
+  var ctxA = canvasA.getContext('2d', { willReadFrequently: true });
+  var ctxB = canvasB.getContext('2d', { willReadFrequently: true });
+  drawContain(ctxA, state.a);
+  drawContain(ctxB, state.b);
+
+  var dataA = ctxA.getImageData(0, 0, SIZE, SIZE).data;
+  var dataB = ctxB.getImageData(0, 0, SIZE, SIZE).data;
+  var tolerance = parseInt(toleranceInput.value, 10);
+
+  var totalPixels = SIZE * SIZE;
+  var matchCount = 0;
+  var sumDR = 0, sumDG = 0, sumDB = 0;
+  var sumLumA = 0, sumLumB = 0;
+
+  // Per-block accumulators for the 3x3 region grid
+  var blockSum = new Array(BLOCKS * BLOCKS).fill(0);
+  var blockCount = new Array(BLOCKS * BLOCKS).fill(0);
+
+  var diffImage = new ImageData(SIZE, SIZE);
+  var diffData = diffImage.data;
+
+  for (var y = 0; y < SIZE; y++) {
+    var by = Math.min(BLOCKS - 1, Math.floor(y / BLOCK_SIZE));
+    for (var x = 0; x < SIZE; x++) {
+      var i = (y * SIZE + x) * 4;
+      var rA = dataA[i], gA = dataA[i + 1], bA = dataA[i + 2];
+      var rB = dataB[i], gB = dataB[i + 1], bB = dataB[i + 2];
+
+      var dr = Math.abs(rA - rB), dg = Math.abs(gA - gB), db = Math.abs(bA - bB);
+      var avgDiff = (dr + dg + db) / 3;
+
+      sumDR += dr; sumDG += dg; sumDB += db;
+      sumLumA += 0.299 * rA + 0.587 * gA + 0.114 * bA;
+      sumLumB += 0.299 * rB + 0.587 * gB + 0.114 * bB;
+
+      if (avgDiff <= tolerance) matchCount++;
+
+      var bx = Math.min(BLOCKS - 1, Math.floor(x / BLOCK_SIZE));
+      var bIdx = by * BLOCKS + bx;
+      blockSum[bIdx] += avgDiff;
+      blockCount[bIdx]++;
+
+      // Heatmap pixel: base gray blended toward the diff color by magnitude
+      var gray = (rA + gA + bA + rB + gB + bB) / 6;
+      var tt = Math.min(1, avgDiff / 60);
+      diffData[i] = gray + (209 - gray) * tt;
+      diffData[i + 1] = gray + (69 - gray) * tt;
+      diffData[i + 2] = gray + (28 - gray) * tt;
+      diffData[i + 3] = 255;
+    }
+  }
+
+  var ctxDiff = canvasDiff.getContext('2d');
+  ctxDiff.putImageData(diffImage, 0, 0);
+
+  var blockAvg = blockSum.map(function (s, idx) { return s / blockCount[idx]; });
+  var meanAll = blockAvg.reduce(function (a, b) { return a + b; }, 0) / blockAvg.length;
+
+  // Rank blocks by how far they exceed the overall mean difference
+  var ranked = blockAvg.map(function (v, idx) { return { idx: idx, v: v }; })
+    .sort(function (p, q) { return q.v - p.v; });
+
+  drawGridOverlay(ctxDiff, blockAvg, meanAll, ranked);
+
+  var metrics = {
+    matchPct: (matchCount / totalPixels) * 100,
+    avgDR: sumDR / totalPixels,
+    avgDG: sumDG / totalPixels,
+    avgDB: sumDB / totalPixels,
+    lumDiff: (sumLumB - sumLumA) / totalPixels,
+    ranked: ranked,
+    meanAll: meanAll,
+    blockAvg: blockAvg
+  };
+
+  renderResults(metrics);
+}
+
+function drawGridOverlay(ctx, blockAvg, meanAll, ranked) {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+  ctx.lineWidth = 1;
+  for (var k = 1; k < BLOCKS; k++) {
+    ctx.beginPath(); ctx.moveTo(k * BLOCK_SIZE, 0); ctx.lineTo(k * BLOCK_SIZE, SIZE); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, k * BLOCK_SIZE); ctx.lineTo(SIZE, k * BLOCK_SIZE); ctx.stroke();
+  }
+
+  // Label only the blocks that stand out meaningfully above the average
+  var top = ranked.filter(function (r) { return r.v > meanAll * 1.2 && r.v > 6; }).slice(0, 2);
+  var positions = t().positions;
+  top.forEach(function (r) {
+    var by = Math.floor(r.idx / BLOCKS), bx = r.idx % BLOCKS;
+    var cx = bx * BLOCK_SIZE + BLOCK_SIZE / 2;
+    var cy = by * BLOCK_SIZE + BLOCK_SIZE / 2;
+    var label = positions[by][bx];
+    ctx.font = '600 13px "IBM Plex Mono", monospace';
+    var textW = ctx.measureText(label).width;
+    var padX = 8, padY = 5, boxW = textW + padX * 2, boxH = 22;
+    ctx.fillStyle = 'rgba(10,14,16,0.72)';
+    roundRect(ctx, cx - boxW / 2, cy - boxH / 2, boxW, boxH, 6);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(label, cx, cy + 1);
+  });
+  ctx.restore();
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+// ---- Rendering results into the DOM -----------------------------------
+function matchColor(pct) {
+  if (pct >= 90) return 'var(--match)';
+  if (pct >= 70) return 'var(--warn)';
+  return 'var(--diff)';
+}
+
+function renderResults(m) {
+  var s = t();
+  matchValue.textContent = m.matchPct.toFixed(1) + '%';
+  matchValue.style.color = matchColor(m.matchPct);
+  matchBar.style.width = m.matchPct.toFixed(1) + '%';
+  matchBar.style.background = matchColor(m.matchPct);
+
+  var bucket;
+  if (m.matchPct >= 98) bucket = 'identical';
+  else if (m.matchPct >= 90) bucket = 'veryClose';
+  else if (m.matchPct >= 75) bucket = 'similar';
+  else if (m.matchPct >= 50) bucket = 'partial';
+  else bucket = 'different';
+  matchWord.textContent = s.matchWords[bucket];
+  headlineEl.textContent = s.headlines[bucket];
+
+  var lumRounded = Math.round(m.lumDiff);
+  brightValue.textContent = (lumRounded > 0 ? '+' : '') + lumRounded;
+  if (Math.abs(lumRounded) < 4) brightWord.textContent = s.brightWords.same;
+  else if (lumRounded > 0) brightWord.textContent = s.brightWords.brighter;
+  else brightWord.textContent = s.brightWords.darker;
+
+  var maxChan = Math.max(m.avgDR, m.avgDG, m.avgDB, 1);
+  setChannelBar(barR, numR, m.avgDR, maxChan);
+  setChannelBar(barG, numG, m.avgDG, maxChan);
+  setChannelBar(barB, numB, m.avgDB, maxChan);
+
+  sizeAEl.textContent = 'A ' + state.a.w + '×' + state.a.h;
+  sizeBEl.textContent = 'B ' + state.b.w + '×' + state.b.h;
+
+  renderComments(m, lumRounded);
+}
+
+function setChannelBar(barEl, numEl, value, maxChan) {
+  var pct = Math.min(100, (value / Math.max(maxChan, 40)) * 100);
+  barEl.style.width = pct + '%';
+  numEl.textContent = value.toFixed(1);
+}
+
+function renderComments(m, lumRounded) {
+  var s = t();
+  var rows = [];
+
+  // Aspect ratio / size comparison
+  var ratioA = state.a.w / state.a.h;
+  var ratioB = state.b.w / state.b.h;
+  var relDiff = Math.abs(ratioA - ratioB) / ((ratioA + ratioB) / 2);
+  var sizeStrA = state.a.w + '×' + state.a.h;
+  var sizeStrB = state.b.w + '×' + state.b.h;
+  if (relDiff > 0.05) {
+    rows.push({ label: s.commentLabels.size, text: s.sizeDiff(sizeStrA, sizeStrB) });
+  } else {
+    rows.push({ label: s.commentLabels.size, text: s.sizeSame(sizeStrA, sizeStrB) });
+  }
+
+  // Brightness
+  if (Math.abs(lumRounded) < 4) {
+    rows.push({ label: s.commentLabels.brightness, text: s.brightSame });
+  } else if (lumRounded > 0) {
+    rows.push({ label: s.commentLabels.brightness, text: s.brightUp(Math.abs(lumRounded)) });
+  } else {
+    rows.push({ label: s.commentLabels.brightness, text: s.brightDown(Math.abs(lumRounded)) });
+  }
+
+  // Color channel bias
+  var chans = [
+    { name: s.channels.r, v: m.avgDR },
+    { name: s.channels.g, v: m.avgDG },
+    { name: s.channels.b, v: m.avgDB }
+  ].sort(function (a, b) { return b.v - a.v; });
+  if (chans[0].v - chans[2].v > 4) {
+    rows.push({ label: s.commentLabels.color, text: s.colorBiased(chans[0].name, chans[0].v.toFixed(1)) });
+  } else {
+    rows.push({ label: s.commentLabels.color, text: s.colorEven });
+  }
+
+  // Region concentration
+  var top = m.ranked.filter(function (r) { return r.v > m.meanAll * 1.2 && r.v > 6; });
+  var positions = s.positions;
+  if (top.length === 0) {
+    rows.push({ label: s.commentLabels.region, text: s.regionNone });
+  } else {
+    var first = top[0];
+    var by0 = Math.floor(first.idx / BLOCKS), bx0 = first.idx % BLOCKS;
+    var pos0 = positions[by0][bx0];
+    var pct0 = Math.max(0, 100 - first.v / 2.55).toFixed(0);
+    var text = s.regionOne(pos0, pct0);
+    if (top.length > 1) {
+      var second = top[1];
+      var by1 = Math.floor(second.idx / BLOCKS), bx1 = second.idx % BLOCKS;
+      var pos1 = positions[by1][bx1];
+      if (pos1 !== pos0) text += s.regionAlso(pos1);
+    }
+    rows.push({ label: s.commentLabels.region, text: text });
+  }
+
+  commentsList.innerHTML = '';
+  rows.forEach(function (r) {
+    var row = document.createElement('div');
+    row.className = 'comment-row';
+    var label = document.createElement('span');
+    label.className = 'clabel';
+    label.textContent = r.label;
+    var text = document.createElement('span');
+    text.className = 'ctext';
+    text.textContent = r.text;
+    row.appendChild(label);
+    row.appendChild(text);
+    commentsList.appendChild(row);
+  });
+}
+
+// ---- Language toggle -----------------------------------------------------
+function setLang(lang) {
+  currentLang = lang;
+  langJaBtn.setAttribute('aria-pressed', String(lang === 'ja'));
+  langEnBtn.setAttribute('aria-pressed', String(lang === 'en'));
+  applyStaticI18n();
+  if (state.a && state.b) compare(); // re-render diff labels and comments in the new language
+}
+langJaBtn.addEventListener('click', function () { setLang('ja'); });
+langEnBtn.addEventListener('click', function () { setLang('en'); });
+
+// ---- Controls ----------------------------------------------------------
+toleranceInput.addEventListener('input', function () {
+  toleranceVal.textContent = toleranceInput.value;
+  compare();
+});
+recomputeBtn.addEventListener('click', compare);
+resetSampleBtn.addEventListener('click', function () {
+  var sample = generateSample();
+  state.a = sample.a; state.b = sample.b; state.usingSample = true;
+  previewA.hidden = true; previewB.hidden = true;
+  hintA.hidden = false; hintB.hidden = false;
+  sampleBadge.hidden = false;
+  compare();
+});
+
+// ---- Boot ----------------------------------------------------------------
+function boot(initial) {
+  applyStaticI18n();
+  var sample = generateSample();
+  state.a = sample.a; state.b = sample.b; state.usingSample = true;
+  compare();
+}
+if (window.claude && window.claude.hot && window.claude.hot.ready) {
+  window.claude.hot.ready(boot);
+} else {
+  boot({});
+}
+</script>
