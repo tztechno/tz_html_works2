@@ -469,33 +469,96 @@
   // ---------------------------------------------------------------------
   // Capture lifecycle
   // ---------------------------------------------------------------------
+  const stageEmptySub = stageEmpty.querySelector('.stage-empty-sub');
+  const stageEmptySubDefault = stageEmptySub.textContent;
+
+  function setEmptyMessage(text) {
+    stageEmptySub.textContent = text;
+    stageEmpty.hidden = false;
+  }
+
+  // Wait until the video element actually reports real pixel dimensions —
+  // selection math depends on videoWidth/videoHeight, and on some browsers
+  // those aren't populated the instant play() resolves.
+  function waitForVideoDimensions(video, timeoutMs) {
+    if (video.videoWidth && video.videoHeight) return Promise.resolve(true);
+    return new Promise((resolve) => {
+      let done = false;
+      const finish = (ok) => {
+        if (done) return;
+        done = true;
+        video.removeEventListener('loadedmetadata', onReady);
+        video.removeEventListener('resize', onReady);
+        resolve(ok);
+      };
+      const onReady = () => {
+        if (video.videoWidth && video.videoHeight) finish(true);
+      };
+      video.addEventListener('loadedmetadata', onReady);
+      video.addEventListener('resize', onReady);
+      setTimeout(() => finish(!!(video.videoWidth && video.videoHeight)), timeoutMs);
+    });
+  }
+
   async function startCapture() {
     if (state.stream) return;
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+      setEmptyMessage('この環境では画面共有(getDisplayMedia)を利用できません。最新のChrome/Edgeで、https:// または file:// で開いているか確認してください。');
+      return;
+    }
+
+    let stream;
     try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({
+      stream = await navigator.mediaDevices.getDisplayMedia({
         video: { frameRate: 30 },
         audio: false,
       });
-      state.stream = stream;
-      videoEl.srcObject = stream;
-      await videoEl.play();
-
-      stream.getVideoTracks()[0].addEventListener('ended', stopCapture);
-
-      stageEmpty.hidden = true;
-      btnStart.disabled = true;
-      btnStop.disabled = false;
-      statusPill.classList.add('live');
-      statusText.textContent = 'キャプチャ中';
-
-      if (!state.rafId) tick();
     } catch (err) {
       // User cancelled the picker, or the browser denied capture.
-      setHint('共有がキャンセルされました', 1600);
+      setEmptyMessage('共有が許可されませんでした (' + (err && err.name ? err.name : String(err)) + ')');
+      return;
     }
+
+    const videoTrack = stream.getVideoTracks()[0];
+    if (!videoTrack) {
+      stream.getTracks().forEach((t) => t.stop());
+      setEmptyMessage('映像トラックを取得できませんでした。共有ダイアログで別のタブ/ウィンドウ/画面を選び直してください。');
+      return;
+    }
+
+    state.stream = stream;
+    videoEl.srcObject = stream;
+    videoTrack.addEventListener('ended', stopCapture);
+
+    try {
+      await videoEl.play();
+    } catch (err) {
+      setEmptyMessage('プレビューの再生に失敗しました: ' + err.message);
+      resetStreamState();
+      return;
+    }
+
+    const ready = await waitForVideoDimensions(videoEl, 4000);
+    if (!ready) {
+      setEmptyMessage('映像の読み込みがタイムアウトしました。「共有を停止」してもう一度お試しください。');
+      resetStreamState();
+      return;
+    }
+
+    stageEmpty.hidden = true;
+    btnStart.disabled = true;
+    btnStop.disabled = false;
+    statusPill.classList.add('live');
+    statusText.textContent = 'キャプチャ中';
+
+    if (!state.rafId) tick();
   }
 
-  function stopCapture() {
+  // Tears down the active stream/UI without touching the stage-empty
+  // message, so a caller that just set a specific error message (a failed
+  // play(), a timed-out load) doesn't have it overwritten.
+  function resetStreamState() {
     if (state.stream) {
       state.stream.getTracks().forEach((t) => t.stop());
       state.stream = null;
@@ -510,6 +573,11 @@
     overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
   }
 
+  function stopCapture() {
+    resetStreamState();
+    stageEmptySub.textContent = stageEmptySubDefault;
+  }
+
   btnStart.addEventListener('click', startCapture);
   btnStop.addEventListener('click', stopCapture);
 
@@ -519,6 +587,7 @@
   hud.forEach((h) => {
     h.card.querySelector('[data-act="select"]').addEventListener('click', () => {
       if (!state.stream) { setHint('先に「共有を開始」してください', 1600); return; }
+      if (!videoEl.videoWidth) { setHint('プレビューを読み込み中です。少し待って再度お試しください', 1800); return; }
       armSelection(h.idx);
     });
     h.card.querySelector('[data-act="clear"]').addEventListener('click', () => {
