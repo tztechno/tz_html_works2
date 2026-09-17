@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Viewfinder Duo</title>
+<style>
+  :root {
+    --bg: #eef0f6;
+    --surface: #ffffff;
+    --surface-2: #e4e7f0;
+    --border: #d3d7e3;
+    --text: #181b25;
+    --text-dim: #666c80;
+    --accent: #4353ff;
+    --accent-soft: #e6e9ff;
+    --live: #ff5a36;
+    --region1: #4353ff;
+    --region2: #00a88e;
+    --font-display: "Sora", ui-sans-serif, system-ui, sans-serif;
+    --font-body: "Manrope", ui-sans-serif, system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #090b10;
+      --surface: #12141c;
+      --surface-2: #1a1d28;
+      --border: #272b39;
+      --text: #edeff6;
+      --text-dim: #8b90a6;
+      --accent: #7b8cff;
+      --accent-soft: #1e2440;
+      --live: #ff7a57;
+      --region1: #7b8cff;
+      --region2: #2fd6bb;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #090b10;
+    --surface: #12141c;
+    --surface-2: #1a1d28;
+    --border: #272b39;
+    --text: #edeff6;
+    --text-dim: #8b90a6;
+    --accent: #7b8cff;
+    --accent-soft: #1e2440;
+    --live: #ff7a57;
+    --region1: #7b8cff;
+    --region2: #2fd6bb;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+  }
+  .app {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding-inline: clamp(16px, 4vw, 32px);
+    padding-block: 20px 40px;
+  }
+
+  .topbar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand-mark {
+    font-size: 26px;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent-soft);
+    border-radius: 12px;
+  }
+  .brand h1 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 20px;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  .brand p {
+    margin: 2px 0 0;
+    font-size: 12.5px;
+    color: var(--text-dim);
+  }
+  .status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 7px 14px;
+    border-radius: 999px;
+    font-size: 12.5px;
+    font-family: var(--font-mono);
+    color: var(--text-dim);
+  }
+  .status .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--text-dim);
+    transition: background 0.2s, box-shadow 0.2s;
+  }
+  .status.live .dot {
+    background: var(--live);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--live) 22%, transparent);
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  .status.live { color: var(--live); }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+
+  .stage-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 16px;
+  }
+  .stage-bezel {
+    position: relative;
+    background: #05060a;
+    border-radius: 12px;
+    padding: 14px;
+  }
+  .stage-bezel::before,
+  .stage-bezel::after,
+  .stage-corner-a,
+  .stage-corner-b {
+    content: "";
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border-color: color-mix(in srgb, var(--accent) 70%, white 10%);
+    border-style: solid;
+    opacity: 0.9;
+    pointer-events: none;
+  }
+  .stage-bezel::before { top: 8px; left: 8px; border-width: 2px 0 0 2px; border-radius: 4px 0 0 0; }
+  .stage-bezel::after { top: 8px; right: 8px; border-width: 2px 2px 0 0; border-radius: 0 4px 0 0; }
+  .stage-corner-a { bottom: 8px; left: 8px; border-width: 0 0 2px 2px; border-radius: 0 0 0 4px; }
+  .stage-corner-b { bottom: 8px; right: 8px; border-width: 0 2px 2px 0; border-radius: 0 0 4px 0; }
+
+  .stage-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: #000;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .stage-wrap video {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: fill;
+    display: block;
+  }
+  .stage-wrap canvas {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    cursor: default;
+  }
+  .stage-wrap.armed canvas { cursor: crosshair; }
+
+  .stage-empty {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 6px;
+    color: #7b8296;
+    text-align: center;
+    padding: 20px;
+  }
+  .stage-empty-icon {
+    font-size: 30px;
+    width: 56px; height: 56px;
+    border: 1.5px solid #333a4d;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 4px;
+    color: color-mix(in srgb, var(--accent) 65%, white 20%);
+  }
+  .stage-empty-title { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 14px; color: #d7dbea; }
+  .stage-empty-sub { margin: 0; font-size: 12px; max-width: 30ch; }
+
+  .stage-hint {
+    position: absolute;
+    top: 10px; left: 50%;
+    transform: translateX(-50%);
+    background: color-mix(in srgb, var(--accent) 88%, black 4%);
+    color: #fff;
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-family: var(--font-mono);
+    white-space: nowrap;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+  }
+
+  .stage-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+  }
+  .btn {
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 13px;
+    padding: 9px 16px;
+    border-radius: 9px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text);
+    cursor: pointer;
+  }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .btn:not(:disabled):hover { filter: brightness(1.05); }
+  .btn:focus-visible, .btn-sm:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .howto {
+    margin: 4px 0 0;
+    padding-left: 18px;
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.7;
+    flex-basis: 100%;
+  }
+
+  .hud-rail {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .hud-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 14px;
+  }
+  .hud-card header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .hud-card h2 {
+    font-family: var(--font-display);
+    font-size: 13.5px;
+    font-weight: 700;
+    margin: 0;
+    flex: 1;
+  }
+  .swatch {
+    width: 10px; height: 10px; border-radius: 3px;
+    flex-shrink: 0;
+  }
+  .swatch-1 { background: var(--region1); }
+  .swatch-2 { background: var(--region2); }
+  .hud-actions { display: flex; gap: 6px; }
+  .btn-sm {
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 5px 9px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text);
+    cursor: pointer;
+  }
+  .btn-sm:hover { filter: brightness(1.06); }
+
+  .hud-canvas-wrap {
+    position: relative;
+    width: 100%;
+    height: 190px;
+    min-height: 110px;
+    max-height: 420px;
+    background: #05060a;
+    border-radius: 10px;
+    overflow: hidden;
+    resize: vertical;
+  }
+  .hud-canvas-wrap canvas {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+  }
+  .hud-empty {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: #565d72;
+    font-size: 12px;
+    font-family: var(--font-mono);
+  }
+
+  .hud-readout {
+    margin: 8px 0 0;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+  }
+  .hud-readout .val { color: var(--text); }
+
+  @media (max-width: 420px) {
+    .hud-card header { flex-wrap: wrap; }
+  }
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+</head>
+<body>
+
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">🔭</span>
+      <div>
+        <h1>Viewfinder Duo</h1>
+        <p>共有した画面・タブの任意の2領域をライブで拡大ミラー表示するHUD</p>
+      </div>
+    </div>
+    <div class="status" id="statusPill">
+      <span class="dot" id="statusDot"></span>
+      <span id="statusText">待機中</span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="stage-card">
+      <div class="stage-bezel">
+        <span class="stage-corner-a"></span><span class="stage-corner-b"></span>
+        <div class="stage-wrap" id="stageWrap">
+          <video id="videoEl" autoplay muted playsinline></video>
+          <canvas id="overlayCanvas"></canvas>
+          <div class="stage-empty" id="stageEmpty">
+            <div class="stage-empty-icon">&#9678;</div>
+            <p class="stage-empty-title">プレビュー待機中</p>
+            <p class="stage-empty-sub">「共有を開始」を押し、対象サイトを開いたタブ・ウィンドウ・画面を選択してください</p>
+          </div>
+          <div class="stage-hint" id="stageHint" hidden></div>
+        </div>
+      </div>
+      <div class="stage-controls">
+        <button class="btn btn-primary" id="btnStart">共有を開始</button>
+        <button class="btn" id="btnStop" disabled>共有を停止</button>
+        <ol class="howto">
+          <li>「共有を開始」→ 対象サイトを開いたタブ・ウィンドウ・画面を選択</li>
+          <li>右の各HUDカードで「領域を選択」→ プレビュー上をドラッグして矩形を指定</li>
+          <li>矩形の内側をドラッグで移動、角をつまんでリサイズ。HUDカードは下端をドラッグして拡大率調整</li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="hud-rail">
+      <article class="hud-card" data-region="0">
+        <header>
+          <span class="swatch swatch-1"></span>
+          <h2>Region 1</h2>
+          <div class="hud-actions">
+            <button class="btn-sm" data-act="select">領域を選択</button>
+            <button class="btn-sm" data-act="clear">クリア</button>
+          </div>
+        </header>
+        <div class="hud-canvas-wrap">
+          <canvas class="hud-canvas"></canvas>
+          <div class="hud-empty">未選択</div>
+        </div>
+        <p class="hud-readout">—</p>
+      </article>
+
+      <article class="hud-card" data-region="1">
+        <header>
+          <span class="swatch swatch-2"></span>
+          <h2>Region 2</h2>
+          <div class="hud-actions">
+            <button class="btn-sm" data-act="select">領域を選択</button>
+            <button class="btn-sm" data-act="clear">クリア</button>
+          </div>
+        </header>
+        <div class="hud-canvas-wrap">
+          <canvas class="hud-canvas"></canvas>
+          <div class="hud-empty">未選択</div>
+        </div>
+        <p class="hud-readout">—</p>
+      </article>
+    </section>
+  </main>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ---------------------------------------------------------------------
+  // Element references
+  // ---------------------------------------------------------------------
+  const videoEl = document.getElementById('videoEl');
+  const overlayCanvas = document.getElementById('overlayCanvas');
+  const overlayCtx = overlayCanvas.getContext('2d');
+  const stageWrap = document.getElementById('stageWrap');
+  const stageEmpty = document.getElementById('stageEmpty');
+  const stageHint = document.getElementById('stageHint');
+  const statusPill = document.getElementById('statusPill');
+  const statusDot = document.getElementById('statusDot');
+  const statusText = document.getElementById('statusText');
+  const btnStart = document.getElementById('btnStart');
+  const btnStop = document.getElementById('btnStop');
+  const hudCards = Array.from(document.querySelectorAll('.hud-card'));
+
+  const REGION_COLORS = ['--region1', '--region2'];
+  const MIN_NATIVE_SIZE = 24; // minimum region width/height, in captured-video pixels
+  const HANDLE_HIT_PX = 10;   // corner-handle hit radius, in CSS pixels
+
+  // ---------------------------------------------------------------------
+  // State
+  // ---------------------------------------------------------------------
+  const state = {
+    stream: null,
+    regions: [null, null],   // each: { x, y, w, h } in native video-pixel space
+    armed: null,             // index currently armed for a fresh drag-selection
+    drag: null,              // active drag/move/resize operation, or null
+    rafId: null,
+  };
+
+  const hud = hudCards.map((card) => ({
+    card,
+    idx: Number(card.dataset.region),
+    canvas: card.querySelector('.hud-canvas'),
+    ctx: card.querySelector('.hud-canvas').getContext('2d'),
+    empty: card.querySelector('.hud-empty'),
+    readout: card.querySelector('.hud-readout'),
+    bufW: 0,
+    bufH: 0,
+  }));
+  hud.forEach((h) => { h.ctx = h.canvas.getContext('2d'); });
+
+  function cssVar(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
+
+  // ---------------------------------------------------------------------
+  // Capture lifecycle
+  // ---------------------------------------------------------------------
+  async function startCapture() {
+    if (state.stream) return;
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { frameRate: 30 },
+        audio: false,
+      });
+      state.stream = stream;
+      videoEl.srcObject = stream;
+      await videoEl.play();
+
+      stream.getVideoTracks()[0].addEventListener('ended', stopCapture);
+
+      stageEmpty.hidden = true;
+      btnStart.disabled = true;
+      btnStop.disabled = false;
+      statusPill.classList.add('live');
+      statusText.textContent = 'キャプチャ中';
+
+      if (!state.rafId) tick();
+    } catch (err) {
+      // User cancelled the picker, or the browser denied capture.
+      setHint('共有がキャンセルされました', 1600);
+    }
+  }
+
+  function stopCapture() {
+    if (state.stream) {
+      state.stream.getTracks().forEach((t) => t.stop());
+      state.stream = null;
+    }
+    videoEl.srcObject = null;
+    stageEmpty.hidden = false;
+    btnStart.disabled = false;
+    btnStop.disabled = true;
+    statusPill.classList.remove('live');
+    statusText.textContent = '待機中';
+    if (state.rafId) { cancelAnimationFrame(state.rafId); state.rafId = null; }
+    overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+  }
+
+  btnStart.addEventListener('click', startCapture);
+  btnStop.addEventListener('click', stopCapture);
+
+  // ---------------------------------------------------------------------
+  // Region selection buttons
+  // ---------------------------------------------------------------------
+  hud.forEach((h) => {
+    h.card.querySelector('[data-act="select"]').addEventListener('click', () => {
+      if (!state.stream) { setHint('先に「共有を開始」してください', 1600); return; }
+      armSelection(h.idx);
+    });
+    h.card.querySelector('[data-act="clear"]').addEventListener('click', () => {
+      state.regions[h.idx] = null;
+      updateHudEmptyState(h.idx);
+    });
+  });
+
+  function armSelection(idx) {
+    state.armed = idx;
+    stageWrap.classList.add('armed');
+    setHint(`プレビュー上でドラッグして Region ${idx + 1} を指定 (Escでキャンセル)`);
+  }
+
+  function disarmSelection() {
+    state.armed = null;
+    stageWrap.classList.remove('armed');
+    stageHint.hidden = true;
+  }
+
+  function setHint(text, autoHideMs) {
+    stageHint.textContent = text;
+    stageHint.hidden = false;
+    if (autoHideMs) {
+      clearTimeout(setHint._t);
+      setHint._t = setTimeout(() => {
+        if (state.armed === null) stageHint.hidden = true;
+      }, autoHideMs);
+    }
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && state.armed !== null) disarmSelection();
+  });
+
+  // ---------------------------------------------------------------------
+  // Native <-> CSS pixel mapping for the stage
+  // ---------------------------------------------------------------------
+  function getScale() {
+    const vw = videoEl.videoWidth || 1;
+    const rect = overlayCanvas.getBoundingClientRect();
+    return vw / Math.max(1, rect.width);
+  }
+
+  function nativeToCssRect(r, scale) {
+    return { x: r.x / scale, y: r.y / scale, w: r.w / scale, h: r.h / scale };
+  }
+
+  function clampRegion(r) {
+    const vw = videoEl.videoWidth || r.x + r.w;
+    const vh = videoEl.videoHeight || r.y + r.h;
+    r.w = Math.max(MIN_NATIVE_SIZE, Math.min(r.w, vw));
+    r.h = Math.max(MIN_NATIVE_SIZE, Math.min(r.h, vh));
+    r.x = Math.max(0, Math.min(r.x, vw - r.w));
+    r.y = Math.max(0, Math.min(r.y, vh - r.h));
+    return r;
+  }
+
+  // ---------------------------------------------------------------------
+  // Mouse interaction on the stage: draw new region / move / resize
+  // ---------------------------------------------------------------------
+  overlayCanvas.addEventListener('mousedown', (e) => {
+    if (!state.stream || !videoEl.videoWidth) return;
+    const rect = overlayCanvas.getBoundingClientRect();
+    const cssX = e.clientX - rect.left;
+    const cssY = e.clientY - rect.top;
+    const scale = getScale();
+
+    // Check existing regions (topmost/most-recently-touched first) for a
+    // corner-handle hit, then a body hit, before falling back to a new
+    // drag-selection (only when a region slot is armed).
+    for (let i = hud.length - 1; i >= 0; i--) {
+      const region = state.regions[i];
+      if (!region) continue;
+      const css = nativeToCssRect(region, scale);
+      const corner = hitCorner(cssX, cssY, css);
+      if (corner) {
+        state.drag = { mode: 'resize', idx: i, corner, scale, orig: { ...region }, startX: e.clientX, startY: e.clientY };
+        return;
+      }
+      if (cssX >= css.x && cssX <= css.x + css.w && cssY >= css.y && cssY <= css.y + css.h) {
+        state.drag = { mode: 'move', idx: i, scale, orig: { ...region }, startX: e.clientX, startY: e.clientY };
+        return;
+      }
+    }
+
+    if (state.armed !== null) {
+      state.drag = { mode: 'new', idx: state.armed, startCssX: cssX, startCssY: cssY, curCssX: cssX, curCssY: cssY, scale };
+    }
+  });
+
+  function hitCorner(cssX, cssY, css) {
+    const pts = {
+      tl: { x: css.x, y: css.y },
+      tr: { x: css.x + css.w, y: css.y },
+      bl: { x: css.x, y: css.y + css.h },
+      br: { x: css.x + css.w, y: css.y + css.h },
+    };
+    for (const key in pts) {
+      const p = pts[key];
+      if (Math.hypot(cssX - p.x, cssY - p.y) <= HANDLE_HIT_PX) return key;
+    }
+    return null;
+  }
+
+  window.addEventListener('mousemove', (e) => {
+    const drag = state.drag;
+    if (!drag) return;
+    const deltaCssX = e.clientX - drag.startX;
+    const deltaCssY = e.clientY - drag.startY;
+
+    if (drag.mode === 'new') {
+      const rect = overlayCanvas.getBoundingClientRect();
+      drag.curCssX = e.clientX - rect.left;
+      drag.curCssY = e.clientY - rect.top;
+      return; // rendered from raw CSS coords in tick()
+    }
+
+    const deltaNativeX = deltaCssX * drag.scale;
+    const deltaNativeY = deltaCssY * drag.scale;
+    const region = state.regions[drag.idx];
+    if (!region) return;
+
+    if (drag.mode === 'move') {
+      region.x = drag.orig.x + deltaNativeX;
+      region.y = drag.orig.y + deltaNativeY;
+      clampRegion(region);
+    } else if (drag.mode === 'resize') {
+      let { x, y, w, h } = drag.orig;
+      if (drag.corner === 'br') { w = drag.orig.w + deltaNativeX; h = drag.orig.h + deltaNativeY; }
+      if (drag.corner === 'bl') { x = drag.orig.x + deltaNativeX; w = drag.orig.w - deltaNativeX; h = drag.orig.h + deltaNativeY; }
+      if (drag.corner === 'tr') { y = drag.orig.y + deltaNativeY; w = drag.orig.w + deltaNativeX; h = drag.orig.h - deltaNativeY; }
+      if (drag.corner === 'tl') { x = drag.orig.x + deltaNativeX; y = drag.orig.y + deltaNativeY; w = drag.orig.w - deltaNativeX; h = drag.orig.h - deltaNativeY; }
+      region.x = x; region.y = y; region.w = Math.max(MIN_NATIVE_SIZE, w); region.h = Math.max(MIN_NATIVE_SIZE, h);
+      clampRegion(region);
+    }
+    updateHudEmptyState(drag.idx);
+  });
+
+  window.addEventListener('mouseup', () => {
+    const drag = state.drag;
+    if (!drag) return;
+
+    if (drag.mode === 'new') {
+      const x = Math.min(drag.startCssX, drag.curCssX);
+      const y = Math.min(drag.startCssY, drag.curCssY);
+      const w = Math.abs(drag.curCssX - drag.startCssX);
+      const h = Math.abs(drag.curCssY - drag.startCssY);
+      if (w >= 8 && h >= 8) {
+        const scale = drag.scale;
+        const region = clampRegion({ x: x * scale, y: y * scale, w: w * scale, h: h * scale });
+        state.regions[drag.idx] = region;
+        updateHudEmptyState(drag.idx);
+      }
+      disarmSelection();
+    }
+    state.drag = null;
+  });
+
+  function updateHudEmptyState(idx) {
+    hud[idx].empty.hidden = !!state.regions[idx];
+  }
+
+  // ---------------------------------------------------------------------
+  // Resizable HUD canvases: keep the drawing buffer matched to CSS size
+  // ---------------------------------------------------------------------
+  function syncCanvasBuffer(canvas) {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const w = Math.max(1, Math.round(rect.width * dpr));
+    const h = Math.max(1, Math.round(rect.height * dpr));
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // Main render loop: draws the stage overlay (region outlines + live
+  // rubber-band) and each HUD's magnified mirror of its region.
+  // ---------------------------------------------------------------------
+  function tick() {
+    if (videoEl.videoWidth) {
+      drawStageOverlay();
+      hud.forEach((h) => drawHud(h));
+    }
+    state.rafId = requestAnimationFrame(tick);
+  }
+
+  function drawStageOverlay() {
+    syncCanvasBuffer(overlayCanvas);
+    const w = overlayCanvas.width, h = overlayCanvas.height;
+    overlayCtx.clearRect(0, 0, w, h);
+
+    const dpr = window.devicePixelRatio || 1;
+    const scale = getScale();
+
+    state.regions.forEach((region, idx) => {
+      if (!region) return;
+      const css = nativeToCssRect(region, scale);
+      drawRegionBox(overlayCtx, css.x * dpr, css.y * dpr, css.w * dpr, css.h * dpr, cssVar(REGION_COLORS[idx]), `R${idx + 1}`, dpr);
+    });
+
+    if (state.drag && state.drag.mode === 'new') {
+      const d = state.drag;
+      const x = Math.min(d.startCssX, d.curCssX) * dpr;
+      const y = Math.min(d.startCssY, d.curCssY) * dpr;
+      const rw = Math.abs(d.curCssX - d.startCssX) * dpr;
+      const rh = Math.abs(d.curCssY - d.startCssY) * dpr;
+      drawRegionBox(overlayCtx, x, y, rw, rh, cssVar(REGION_COLORS[d.idx]), `R${d.idx + 1}`, dpr);
+    }
+  }
+
+  function drawRegionBox(ctx, x, y, w, h, color, label, dpr) {
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2 * dpr;
+    ctx.setLineDash([6 * dpr, 4 * dpr]);
+    ctx.strokeRect(x, y, w, h);
+    ctx.setLineDash([]);
+
+    // Corner handles
+    ctx.fillStyle = color;
+    const s = 4 * dpr;
+    [[x, y], [x + w, y], [x, y + h], [x + w, y + h]].forEach(([hx, hy]) => {
+      ctx.fillRect(hx - s / 2, hy - s / 2, s, s);
+    });
+
+    // Label chip
+    ctx.font = `${11 * dpr}px "JetBrains Mono", monospace`;
+    const padX = 5 * dpr;
+    const textW = ctx.measureText(label).width;
+    const chipH = 15 * dpr;
+    const chipY = Math.max(0, y - chipH - 2 * dpr);
+    ctx.fillRect(x, chipY, textW + padX * 2, chipH);
+    ctx.fillStyle = '#fff';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, x + padX, chipY + chipH / 2 + 0.5 * dpr);
+    ctx.restore();
+  }
+
+  function drawHud(h) {
+    const region = state.regions[h.idx];
+    if (!region) return;
+    syncCanvasBuffer(h.canvas);
+    h.ctx.clearRect(0, 0, h.canvas.width, h.canvas.height);
+    try {
+      h.ctx.drawImage(
+        videoEl,
+        region.x, region.y, region.w, region.h,
+        0, 0, h.canvas.width, h.canvas.height
+      );
+    } catch (e) {
+      // Source rect can briefly be invalid mid-drag; skip this frame.
+    }
+    h.readout.innerHTML =
+      `<span class="val">x:${Math.round(region.x)} y:${Math.round(region.y)}</span> &nbsp;` +
+      `<span class="val">${Math.round(region.w)}&times;${Math.round(region.h)}</span> px`;
+  }
+})();
+</script>
+</body>
+</html>
