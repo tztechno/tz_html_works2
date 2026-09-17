@@ -51,7 +51,6 @@
   }
 
   * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; }
   body {
     background: var(--bg);
     color: var(--text);
@@ -176,11 +175,13 @@
     width: 100%; height: 100%;
     object-fit: fill;
     display: block;
+    pointer-events: none;
   }
   .stage-wrap canvas {
     position: absolute; inset: 0;
     width: 100%; height: 100%;
     cursor: default;
+    pointer-events: auto;
   }
   .stage-wrap.armed canvas { cursor: crosshair; }
 
@@ -191,7 +192,14 @@
     color: #7b8296;
     text-align: center;
     padding: 20px;
+    pointer-events: none;
   }
+  /* An author-level `display` on an element the app also toggles with the
+     `hidden` attribute needs an explicit override — otherwise this rule's
+     `display: flex` (author origin) beats the browser's own default
+     `[hidden] { display: none }` (user-agent origin), and the element stays
+     visible (and, worse, still catches pointer events) even while hidden. */
+  .stage-empty[hidden] { display: none !important; }
   .stage-empty-icon {
     font-size: 30px;
     width: 56px; height: 56px;
@@ -252,6 +260,15 @@
     color: var(--text-dim);
     line-height: 1.7;
     flex-basis: 100%;
+  }
+
+  .debug-line {
+    margin: 8px 0 0;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--text-dim);
+    opacity: 0.7;
+    word-break: break-all;
   }
 
   .hud-rail {
@@ -319,7 +336,9 @@
     color: #565d72;
     font-size: 12px;
     font-family: var(--font-mono);
+    pointer-events: none;
   }
+  .hud-empty[hidden] { display: none !important; }
 
   .hud-readout {
     margin: 8px 0 0;
@@ -368,6 +387,7 @@
           <div class="stage-hint" id="stageHint" hidden></div>
         </div>
       </div>
+      <p class="debug-line" id="debugLine"></p>
       <div class="stage-controls">
         <button class="btn btn-primary" id="btnStart">共有を開始</button>
         <button class="btn" id="btnStop" disabled>共有を停止</button>
@@ -433,9 +453,16 @@
   const statusText = document.getElementById('statusText');
   const btnStart = document.getElementById('btnStart');
   const btnStop = document.getElementById('btnStop');
+  const debugLine = document.getElementById('debugLine');
   const hudCards = Array.from(document.querySelectorAll('.hud-card'));
 
-  const REGION_COLORS = ['--region1', '--region2'];
+  // Literal colors (not read from CSS custom properties) so the selection
+  // rectangle is guaranteed visible regardless of theme/computed-style
+  // resolution, and readable against typically dark captured content.
+  const REGION_COLORS = [
+    { stroke: '#5B7CFA', fill: 'rgba(91, 124, 250, 0.22)' },
+    { stroke: '#20D9BE', fill: 'rgba(32, 217, 190, 0.22)' },
+  ];
   const MIN_NATIVE_SIZE = 24; // minimum region width/height, in captured-video pixels
   const HANDLE_HIT_PX = 10;   // corner-handle hit radius, in CSS pixels
 
@@ -461,10 +488,6 @@
     bufH: 0,
   }));
   hud.forEach((h) => { h.ctx = h.canvas.getContext('2d'); });
-
-  function cssVar(name) {
-    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  }
 
   // ---------------------------------------------------------------------
   // Capture lifecycle
@@ -530,6 +553,10 @@
     state.stream = stream;
     videoEl.srcObject = stream;
     videoTrack.addEventListener('ended', stopCapture);
+    // The shared source's resolution can change mid-session (e.g. the
+    // shared window is resized) — keep the stage box's aspect ratio in
+    // sync so the coordinate mapping never drifts.
+    videoEl.addEventListener('resize', syncStageAspectRatio);
 
     try {
       await videoEl.play();
@@ -546,6 +573,7 @@
       return;
     }
 
+    syncStageAspectRatio();
     stageEmpty.hidden = true;
     btnStart.disabled = true;
     btnStop.disabled = false;
@@ -626,14 +654,34 @@
   // ---------------------------------------------------------------------
   // Native <-> CSS pixel mapping for the stage
   // ---------------------------------------------------------------------
+  // Scale is tracked per-axis (not a single scalar) because the stage box's
+  // CSS aspect ratio can differ slightly from the captured video's true
+  // aspect ratio (rounding, or before syncStageAspectRatio has run), and
+  // object-fit: fill then stretches X and Y by different amounts. Using one
+  // scalar for both axes in that case silently grows/shrinks the selected
+  // region on one axis, pulling in neighboring content that was never
+  // inside the drawn rectangle.
   function getScale() {
     const vw = videoEl.videoWidth || 1;
+    const vh = videoEl.videoHeight || 1;
     const rect = overlayCanvas.getBoundingClientRect();
-    return vw / Math.max(1, rect.width);
+    return {
+      x: vw / Math.max(1, rect.width),
+      y: vh / Math.max(1, rect.height),
+    };
+  }
+
+  // Match the stage box's CSS aspect ratio to the captured video's real
+  // pixel aspect ratio, so object-fit: fill doesn't need to stretch the
+  // two axes by different amounts in the first place.
+  function syncStageAspectRatio() {
+    if (videoEl.videoWidth && videoEl.videoHeight) {
+      stageWrap.style.aspectRatio = videoEl.videoWidth + ' / ' + videoEl.videoHeight;
+    }
   }
 
   function nativeToCssRect(r, scale) {
-    return { x: r.x / scale, y: r.y / scale, w: r.w / scale, h: r.h / scale };
+    return { x: r.x / scale.x, y: r.y / scale.y, w: r.w / scale.x, h: r.h / scale.y };
   }
 
   function clampRegion(r) {
@@ -706,8 +754,8 @@
       return; // rendered from raw CSS coords in tick()
     }
 
-    const deltaNativeX = deltaCssX * drag.scale;
-    const deltaNativeY = deltaCssY * drag.scale;
+    const deltaNativeX = deltaCssX * drag.scale.x;
+    const deltaNativeY = deltaCssY * drag.scale.y;
     const region = state.regions[drag.idx];
     if (!region) return;
 
@@ -738,7 +786,7 @@
       const h = Math.abs(drag.curCssY - drag.startCssY);
       if (w >= 8 && h >= 8) {
         const scale = drag.scale;
-        const region = clampRegion({ x: x * scale, y: y * scale, w: w * scale, h: h * scale });
+        const region = clampRegion({ x: x * scale.x, y: y * scale.y, w: w * scale.x, h: h * scale.y });
         state.regions[drag.idx] = region;
         updateHudEmptyState(drag.idx);
       }
@@ -788,7 +836,7 @@
     state.regions.forEach((region, idx) => {
       if (!region) return;
       const css = nativeToCssRect(region, scale);
-      drawRegionBox(overlayCtx, css.x * dpr, css.y * dpr, css.w * dpr, css.h * dpr, cssVar(REGION_COLORS[idx]), `R${idx + 1}`, dpr);
+      drawRegionBox(overlayCtx, css.x * dpr, css.y * dpr, css.w * dpr, css.h * dpr, REGION_COLORS[idx], `R${idx + 1}`, dpr);
     });
 
     if (state.drag && state.drag.mode === 'new') {
@@ -797,21 +845,38 @@
       const y = Math.min(d.startCssY, d.curCssY) * dpr;
       const rw = Math.abs(d.curCssX - d.startCssX) * dpr;
       const rh = Math.abs(d.curCssY - d.startCssY) * dpr;
-      drawRegionBox(overlayCtx, x, y, rw, rh, cssVar(REGION_COLORS[d.idx]), `R${d.idx + 1}`, dpr);
+      drawRegionBox(overlayCtx, x, y, rw, rh, REGION_COLORS[d.idx], `R${d.idx + 1}`, dpr);
+    }
+
+    if (debugLine) {
+      const dr = state.drag;
+      debugLine.textContent =
+        `armed=${state.armed === null ? '-' : state.armed} ` +
+        `drag=${dr ? dr.mode + '#' + dr.idx : '-'} ` +
+        `videoWH=${videoEl.videoWidth}x${videoEl.videoHeight} ` +
+        `canvasCSS=${Math.round(overlayCanvas.getBoundingClientRect().width)}x${Math.round(overlayCanvas.getBoundingClientRect().height)}`;
     }
   }
 
   function drawRegionBox(ctx, x, y, w, h, color, label, dpr) {
     ctx.save();
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2 * dpr;
-    ctx.setLineDash([6 * dpr, 4 * dpr]);
+    // Filled interior first, so the box reads even before the eye catches
+    // the dashed edge — important against busy or similarly-colored video.
+    ctx.fillStyle = color.fill;
+    ctx.fillRect(x, y, w, h);
+
+    ctx.strokeStyle = color.stroke;
+    ctx.lineWidth = 2.5 * dpr;
+    ctx.shadowColor = 'rgba(0,0,0,0.6)';
+    ctx.shadowBlur = 3 * dpr;
+    ctx.setLineDash([7 * dpr, 4 * dpr]);
     ctx.strokeRect(x, y, w, h);
     ctx.setLineDash([]);
+    ctx.shadowBlur = 0;
 
     // Corner handles
-    ctx.fillStyle = color;
-    const s = 4 * dpr;
+    ctx.fillStyle = color.stroke;
+    const s = 6 * dpr;
     [[x, y], [x + w, y], [x, y + h], [x + w, y + h]].forEach(([hx, hy]) => {
       ctx.fillRect(hx - s / 2, hy - s / 2, s, s);
     });
@@ -822,6 +887,7 @@
     const textW = ctx.measureText(label).width;
     const chipH = 15 * dpr;
     const chipY = Math.max(0, y - chipH - 2 * dpr);
+    ctx.fillStyle = color.stroke;
     ctx.fillRect(x, chipY, textW + padX * 2, chipH);
     ctx.fillStyle = '#fff';
     ctx.textBaseline = 'middle';
@@ -833,12 +899,33 @@
     const region = state.regions[h.idx];
     if (!region) return;
     syncCanvasBuffer(h.canvas);
-    h.ctx.clearRect(0, 0, h.canvas.width, h.canvas.height);
+    const cw = h.canvas.width, ch = h.canvas.height;
+    h.ctx.clearRect(0, 0, cw, ch);
+
+    // "Contain" fit: preserve the selected region's true aspect ratio
+    // instead of stretching it to fill the panel. The panel itself can be
+    // any shape (it's freely resized to control zoom), so without this a
+    // region whose proportions don't match the panel's would come out
+    // squashed or stretched. Any leftover space is centered letterboxing,
+    // which reads cleanly against the panel's dark background.
+    const regionAspect = region.w / region.h;
+    const canvasAspect = cw / ch;
+    let dw, dh;
+    if (regionAspect > canvasAspect) {
+      dw = cw;
+      dh = cw / regionAspect;
+    } else {
+      dh = ch;
+      dw = ch * regionAspect;
+    }
+    const dx = (cw - dw) / 2;
+    const dy = (ch - dh) / 2;
+
     try {
       h.ctx.drawImage(
         videoEl,
         region.x, region.y, region.w, region.h,
-        0, 0, h.canvas.width, h.canvas.height
+        dx, dy, dw, dh
       );
     } catch (e) {
       // Source rect can briefly be invalid mid-drag; skip this frame.
@@ -849,5 +936,6 @@
   }
 })();
 </script>
+
 </body>
 </html>
