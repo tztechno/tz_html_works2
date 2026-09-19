@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>背景除去 → 透明PNG</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --text: #1d2330; --muted: #6b7385;
+    --accent: #5b5bf0; --accent-h: #4747d6; --border: #d9dde6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #14161c; --card: #1e212a; --text: #e8eaf0; --muted: #98a0b3;
+            --accent: #7c7cff; --accent-h: #9a9aff; --border: #333846; }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    line-height: 1.6;
+  }
+  main { max-width: 860px; margin: 0 auto; padding: 32px 16px 64px; }
+  .head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .lang button { padding: 6px 12px; font-size: .82rem; }
+  .note { white-space: pre-line; }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  p.sub { margin: 0 0 24px; color: var(--muted); font-size: .92rem; }
+
+  #drop {
+    display: block; /* <label> is inline by default */
+    border: 2px dashed var(--border); border-radius: 14px; background: var(--card);
+    padding: 48px 16px; text-align: center; cursor: pointer; transition: .15s;
+  }
+  #drop.over, #drop:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 6%, var(--card)); }
+  #drop strong { display: block; font-size: 1.05rem; margin-bottom: 4px; }
+  #drop span { color: var(--muted); font-size: .88rem; }
+
+  #status { margin: 20px 0 0; display: none; }
+  #status .msg { font-size: .92rem; color: var(--muted); margin-bottom: 6px; }
+  #bar { height: 8px; border-radius: 4px; background: var(--border); overflow: hidden; }
+  #bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+  #bar.indeterminate i { width: 40%; animation: slide 1.1s infinite ease-in-out; }
+  @keyframes slide { 0% { margin-left: -40%; } 100% { margin-left: 100%; } }
+
+  #result { display: none; margin-top: 24px; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .seg button { border: 0; background: var(--card); color: var(--text); padding: 8px 14px; cursor: pointer; font: inherit; font-size: .9rem; }
+  .seg button.on { background: var(--accent); color: #fff; }
+  .spacer { flex: 1; }
+  .btn {
+    border: 0; border-radius: 8px; padding: 10px 18px; font: inherit; font-weight: 600; cursor: pointer;
+    background: var(--accent); color: #fff; text-decoration: none; display: inline-block;
+  }
+  .btn:hover { background: var(--accent-h); }
+  .btn.ghost { background: var(--card); color: var(--text); border: 1px solid var(--border); font-weight: 500; }
+
+  #stage {
+    border-radius: 12px; border: 1px solid var(--border); overflow: hidden; text-align: center;
+    /* Checkerboard pattern makes transparent areas visible */
+    background-color: #fff;
+    background-image:
+      linear-gradient(45deg, #d5d8de 25%, transparent 25%, transparent 75%, #d5d8de 75%),
+      linear-gradient(45deg, #d5d8de 25%, transparent 25%, transparent 75%, #d5d8de 75%);
+    background-size: 20px 20px; background-position: 0 0, 10px 10px;
+  }
+  #stage img, #stage canvas { display: block; max-width: 100%; max-height: 70vh; margin: 0 auto; }
+  #edit { touch-action: none; cursor: none; } /* custom brush cursor is drawn by #brushCursor */
+  #preview { display: none; }
+  #brushCursor {
+    position: fixed; display: none; pointer-events: none; z-index: 10; border-radius: 50%;
+    border: 2px solid #fff; box-shadow: 0 0 0 1px #000, inset 0 0 0 1px #000; transform: translate(-50%, -50%);
+  }
+  .size { display: inline-flex; align-items: center; gap: 8px; font-size: .9rem; color: var(--muted); }
+  .size input { width: 140px; accent-color: var(--accent); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  #tools { margin-top: -4px; }
+  .note { color: var(--muted); font-size: .8rem; margin-top: 28px; }
+  .err { color: #d6403b; }
+</style>
+</head>
+<body>
+<main>
+  <div class="head">
+    <h1 data-i18n="title"></h1>
+    <div class="seg lang" id="lang">
+      <button data-l="ja">日本語</button>
+      <button data-l="en">English</button>
+    </div>
+  </div>
+  <p class="sub" data-i18n="sub"></p>
+
+  <label id="drop" for="file">
+    <strong data-i18n="dropMain"></strong>
+    <span data-i18n="dropSub"></span>
+    <input id="file" type="file" accept="image/*" hidden>
+  </label>
+
+  <div id="status">
+    <div class="msg" id="msg"></div>
+    <div id="bar"><i></i></div>
+  </div>
+
+  <section id="result">
+    <div class="toolbar">
+      <div class="seg" id="view">
+        <button data-v="cut" class="on" data-i18n="viewCut"></button>
+        <button data-v="orig" data-i18n="viewOrig"></button>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn ghost" id="reset" data-i18n="reset"></button>
+      <button class="btn" id="dl" data-i18n="save"></button>
+    </div>
+    <div class="toolbar" id="tools">
+      <div class="seg" id="mode">
+        <button data-m="erase" class="on" data-i18n="erase"></button>
+        <button data-m="restore" data-i18n="restore"></button>
+      </div>
+      <label class="size"><span data-i18n="size"></span>
+        <input type="range" id="size" min="4" max="200" value="40">
+        <span id="sizeVal">40</span>px
+      </label>
+      <button class="btn ghost" id="undo" disabled data-i18n="undo"></button>
+    </div>
+    <div id="stage">
+      <canvas id="edit"></canvas>
+      <img id="preview" data-i18n-alt="viewOrig">
+    </div>
+    <div id="brushCursor"></div>
+  </section>
+
+  <p class="note" data-i18n="note"></p>
+</main>
+
+<script type="module">
+// Load transformers.js from CDN (ES module)
+import { AutoModel, AutoProcessor, RawImage, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3';
+
+env.allowLocalModels = false;
+
+const MODEL_ID = 'briaai/RMBG-1.4';
+const MAX_SIDE = 4096; // Downscale very large images to keep memory usage sane
+
+const $ = (id) => document.getElementById(id);
+const drop = $('drop'), fileInput = $('file');
+const statusBox = $('status'), msg = $('msg'), bar = $('bar'), barFill = bar.querySelector('i');
+const resultBox = $('result'), preview = $('preview'), dl = $('dl');
+const edit = $('edit'), editCtx = edit.getContext('2d', { willReadFrequently: true }); // undo snapshots use getImageData
+const sizeInput = $('size'), sizeVal = $('sizeVal'), undoBtn = $('undo'), brushCursor = $('brushCursor');
+
+let modelPromise = null;
+let origUrl = null;
+let origCanvas = null;   // untouched source pixels, used by the restore brush
+let downloadName = 'transparent.png';
+let mode = 'erase';      // 'erase' | 'restore'
+let view = 'cut';        // 'cut' | 'orig'
+let drawing = false, last = null;
+let history = [];        // ImageData snapshots taken before each stroke
+const HISTORY_MAX = 10;
+
+/* ---------- i18n (Japanese / English) ---------- */
+const I18N = {
+  ja: {
+    title: '背景除去 → 透明PNG',
+    sub: '画像はこのブラウザ内だけで処理され、外部サーバーには送信されません。',
+    dropMain: 'ここに画像をドロップ / クリックして選択 / ⌘V で貼り付け',
+    dropSub: 'PNG・JPG・WebP に対応',
+    viewCut: '切り抜き結果', viewOrig: '元画像',
+    reset: '別の画像', save: '透明PNGを保存',
+    erase: '消しゴム', restore: '復元', size: 'サイズ', undo: '元に戻す (⌘Z)',
+    note: 'AIモデルは初回のみダウンロードされます(約170MB)。2回目以降はブラウザにキャッシュされます。\nモデル: briaai/RMBG-1.4(非商用ライセンスのため、個人利用に限ります)',
+    stPrep: 'AIモデルを準備中…',
+    stDl: 'AIモデルをダウンロード中… {l} / {t} MB',
+    stRun: '背景を除去中…',
+    errType: '画像ファイルを選択してください。',
+    errFail: '処理に失敗しました: {msg}',
+  },
+  en: {
+    title: 'Background Remover → Transparent PNG',
+    sub: 'Images are processed entirely in your browser and are never uploaded to any server.',
+    dropMain: 'Drop an image here / click to choose / paste with ⌘V (Ctrl+V)',
+    dropSub: 'PNG, JPG and WebP are supported',
+    viewCut: 'Result', viewOrig: 'Original',
+    reset: 'New image', save: 'Save transparent PNG',
+    erase: 'Eraser', restore: 'Restore', size: 'Size', undo: 'Undo (⌘Z)',
+    note: 'The AI model (about 170 MB) is downloaded on first use only, then cached by your browser.\nModel: briaai/RMBG-1.4 (non-commercial license, so personal use only)',
+    stPrep: 'Preparing the AI model…',
+    stDl: 'Downloading the AI model… {l} / {t} MB',
+    stRun: 'Removing the background…',
+    errType: 'Please choose an image file.',
+    errFail: 'Processing failed: {msg}',
+  },
+};
+
+let lang = 'en';
+try { lang = localStorage.getItem('bgr-lang') || ''; } catch (_) { /* storage may be unavailable */ }
+if (!I18N[lang]) lang = (navigator.language || '').toLowerCase().startsWith('ja') ? 'ja' : 'en';
+
+const t = (key, params = {}) =>
+  I18N[lang][key].replace(/\{(\w+)\}/g, (_, k) => (k in params ? params[k] : ''));
+
+let lastStatus = null; // remembered so the status line can be re-rendered when the language changes
+
+function applyLang() {
+  document.documentElement.lang = lang;
+  document.title = t('title');
+  document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-alt]').forEach((el) => { el.alt = t(el.dataset.i18nAlt); });
+  document.querySelectorAll('#lang button').forEach((b) => b.classList.toggle('on', b.dataset.l === lang));
+  if (lastStatus) renderStatus();
+}
+
+/* ---------- UI helpers ---------- */
+function showStatus(key, pct = null, isError = false, params = {}) {
+  lastStatus = { key, pct, isError, params };
+  renderStatus();
+}
+
+function renderStatus() {
+  const { key, pct, isError, params } = lastStatus;
+  statusBox.style.display = 'block';
+  msg.textContent = t(key, params);
+  msg.classList.toggle('err', isError);
+  if (pct === null) {
+    bar.classList.add('indeterminate');
+  } else {
+    bar.classList.remove('indeterminate');
+    barFill.style.width = Math.max(0, Math.min(100, pct)) + '%';
+  }
+  bar.style.display = isError ? 'none' : 'block';
+}
+const hideStatus = () => { lastStatus = null; statusBox.style.display = 'none'; };
+
+/* ---------- Model loading (lazy, cached by the browser) ---------- */
+function loadModel() {
+  if (modelPromise) return modelPromise;
+
+  // Aggregate download progress across all files
+  const files = {};
+  const onProgress = (p) => {
+    if (p.status !== 'progress' || !p.total) return;
+    files[p.file] = { loaded: p.loaded, total: p.total };
+    let l = 0, t = 0;
+    for (const f of Object.values(files)) { l += f.loaded; t += f.total; }
+    showStatus('stDl', (l / t) * 100, false, { l: (l / 1048576).toFixed(0), t: (t / 1048576).toFixed(0) });
+  };
+
+  const modelOpts = {
+    config: { model_type: 'custom' }, // repo has no standard config.json
+    dtype: 'fp32',
+    progress_callback: onProgress,
+  };
+
+  modelPromise = (async () => {
+    showStatus('stPrep');
+    let model;
+    // Prefer WebGPU when available, otherwise (or on failure) fall back to WASM
+    if (navigator.gpu) {
+      try { model = await AutoModel.from_pretrained(MODEL_ID, { ...modelOpts, device: 'webgpu' }); }
+      catch (e) { console.warn('WebGPU init failed, falling back to WASM', e); }
+    }
+    if (!model) model = await AutoModel.from_pretrained(MODEL_ID, modelOpts);
+
+    const processor = await AutoProcessor.from_pretrained(MODEL_ID, {
+      config: {
+        do_normalize: true, do_pad: false, do_rescale: true, do_resize: true,
+        image_mean: [0.5, 0.5, 0.5], image_std: [1, 1, 1],
+        feature_extractor_type: 'ImageFeatureExtractor',
+        resample: 2, rescale_factor: 0.00392156862745098,
+        size: { width: 1024, height: 1024 },
+      },
+    });
+    return { model, processor };
+  })().catch((e) => { modelPromise = null; throw e; }); // allow retry after failure
+
+  return modelPromise;
+}
+
+/* ---------- Core: remove background ---------- */
+async function removeBackground(blob) {
+  // Decode with EXIF orientation applied, and cap the size
+  const bmp = await createImageBitmap(blob, { imageOrientation: 'from-image' });
+  const scale = Math.min(1, MAX_SIDE / Math.max(bmp.width, bmp.height));
+  const w = Math.round(bmp.width * scale), h = Math.round(bmp.height * scale);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(bmp, 0, 0, w, h);
+  const imgData = ctx.getImageData(0, 0, w, h);
+
+  const { model, processor } = await loadModel();
+
+  showStatus('stRun');
+  // Yield to the browser so the status text can repaint before heavy inference
+  await new Promise((r) => setTimeout(r, 30));
+
+  const image = new RawImage(imgData.data, w, h, 4).rgb();
+  const { pixel_values } = await processor(image);
+  const { output } = await model({ input: pixel_values });
+
+  // Model output is 1024x1024 alpha matte in [0,1]; scale back to original size
+  const mask = await RawImage.fromTensor(output[0].mul(255).to('uint8')).resize(w, h);
+
+  // Keep a pristine copy of the source pixels for the restore brush
+  const orig = document.createElement('canvas');
+  orig.width = w; orig.height = h;
+  orig.getContext('2d').putImageData(imgData, 0, 0);
+
+  // Apply matte to the alpha channel (keeps any existing transparency)
+  const px = imgData.data, m = mask.data;
+  for (let i = 0, n = w * h; i < n; i++) {
+    px[i * 4 + 3] = Math.round((px[i * 4 + 3] * m[i]) / 255);
+  }
+  ctx.putImageData(imgData, 0, 0);
+
+  return { cut: canvas, orig };
+}
+
+/* ---------- Manual eraser / restore brush ---------- */
+const brushDiameterScreen = () => Number(sizeInput.value);
+
+// Convert a pointer event to image (canvas) pixel coordinates
+function toImage(e) {
+  const r = edit.getBoundingClientRect();
+  const k = edit.width / r.width;
+  return { x: (e.clientX - r.left) * k, y: (e.clientY - r.top) * k, k };
+}
+
+// Apply one circular dab: erase makes pixels transparent, restore copies the original back
+function dab(x, y, radius) {
+  const x0 = Math.max(0, Math.floor(x - radius - 1)), y0 = Math.max(0, Math.floor(y - radius - 1));
+  const x1 = Math.min(edit.width, Math.ceil(x + radius + 1)), y1 = Math.min(edit.height, Math.ceil(y + radius + 1));
+  if (x1 <= x0 || y1 <= y0) return;
+  editCtx.save();
+  editCtx.beginPath();
+  editCtx.arc(x, y, radius, 0, Math.PI * 2);
+  if (mode === 'erase') {
+    editCtx.globalCompositeOperation = 'destination-out';
+    editCtx.fill();
+  } else {
+    editCtx.clip();
+    editCtx.drawImage(origCanvas, x0, y0, x1 - x0, y1 - y0, x0, y0, x1 - x0, y1 - y0);
+  }
+  editCtx.restore();
+}
+
+// Stroke from the previous point to (x, y), filling gaps with evenly spaced dabs
+function stroke(x, y, radius) {
+  if (last) {
+    const dx = x - last.x, dy = y - last.y, dist = Math.hypot(dx, dy);
+    const step = Math.max(1, radius / 3);
+    for (let d = step; d < dist; d += step) dab(last.x + (dx * d) / dist, last.y + (dy * d) / dist, radius);
+  }
+  dab(x, y, radius);
+  last = { x, y };
+}
+
+function updateUndo() { undoBtn.disabled = history.length === 0; }
+
+function pushHistory() {
+  history.push(editCtx.getImageData(0, 0, edit.width, edit.height));
+  if (history.length > HISTORY_MAX) history.shift();
+  updateUndo();
+}
+
+function undo() {
+  const snap = history.pop();
+  if (snap) editCtx.putImageData(snap, 0, 0);
+  updateUndo();
+}
+
+function moveCursor(e) {
+  if (e.pointerType === 'touch' || view !== 'cut') { brushCursor.style.display = 'none'; return; }
+  const d = brushDiameterScreen();
+  Object.assign(brushCursor.style, { display: 'block', width: d + 'px', height: d + 'px', left: e.clientX + 'px', top: e.clientY + 'px' });
+}
+
+/* ---------- Flow ---------- */
+async function handleFile(file) {
+  if (!file || !file.type.startsWith('image/')) {
+    showStatus('errType', 0, true);
+    return;
+  }
+  resultBox.style.display = 'none';
+  try {
+    const { cut, orig } = await removeBackground(file);
+    if (origUrl) URL.revokeObjectURL(origUrl);
+    origUrl = URL.createObjectURL(file);
+    preview.src = origUrl;
+    origCanvas = orig;
+
+    // Show the result in the editable canvas
+    edit.width = cut.width; edit.height = cut.height;
+    editCtx.clearRect(0, 0, edit.width, edit.height);
+    editCtx.drawImage(cut, 0, 0);
+    history = []; updateUndo();
+
+    downloadName = `${(file.name || 'image').replace(/\.[^.]+$/, '')}_transparent.png`;
+    setView('cut');
+    hideStatus();
+    resultBox.style.display = 'block';
+  } catch (e) {
+    console.error(e);
+    showStatus('errFail', 0, true, { msg: e && e.message ? e.message : String(e) });
+  }
+}
+
+function setView(v) {
+  view = v;
+  edit.style.display = v === 'cut' ? 'block' : 'none';
+  preview.style.display = v === 'orig' ? 'block' : 'none';
+  $('tools').style.display = v === 'cut' ? 'flex' : 'none';
+  brushCursor.style.display = 'none';
+  document.querySelectorAll('#view button').forEach((b) => b.classList.toggle('on', b.dataset.v === v));
+}
+
+/* ---------- Events ---------- */
+fileInput.addEventListener('change', () => { handleFile(fileInput.files[0]); fileInput.value = ''; });
+['dragenter', 'dragover'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', (e) => handleFile(e.dataTransfer.files[0]));
+// Also accept drops anywhere on the page, and clipboard paste
+window.addEventListener('dragover', (e) => e.preventDefault());
+window.addEventListener('drop', (e) => { if (e.target !== drop) { e.preventDefault(); handleFile(e.dataTransfer.files[0]); } });
+window.addEventListener('paste', (e) => {
+  const item = [...(e.clipboardData?.items || [])].find((i) => i.type.startsWith('image/'));
+  if (item) handleFile(item.getAsFile());
+});
+document.querySelectorAll('#view button').forEach((b) => b.addEventListener('click', () => setView(b.dataset.v)));
+$('reset').addEventListener('click', () => { resultBox.style.display = 'none'; hideStatus(); });
+
+// Brush tool events
+edit.addEventListener('pointerdown', (e) => {
+  if (e.button !== 0) return;
+  edit.setPointerCapture(e.pointerId);
+  pushHistory();
+  drawing = true; last = null;
+  const p = toImage(e);
+  stroke(p.x, p.y, (brushDiameterScreen() / 2) * p.k);
+});
+edit.addEventListener('pointermove', (e) => {
+  moveCursor(e);
+  if (!drawing) return;
+  const p = toImage(e);
+  stroke(p.x, p.y, (brushDiameterScreen() / 2) * p.k);
+});
+const endStroke = () => { drawing = false; last = null; };
+edit.addEventListener('pointerup', endStroke);
+edit.addEventListener('pointercancel', endStroke);
+edit.addEventListener('pointerleave', () => { brushCursor.style.display = 'none'; });
+
+document.querySelectorAll('#mode button').forEach((b) => b.addEventListener('click', () => {
+  mode = b.dataset.m;
+  document.querySelectorAll('#mode button').forEach((x) => x.classList.toggle('on', x === b));
+}));
+sizeInput.addEventListener('input', () => { sizeVal.textContent = sizeInput.value; });
+undoBtn.addEventListener('click', undo);
+window.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && resultBox.style.display === 'block' && view === 'cut') {
+    e.preventDefault(); undo();
+  }
+});
+
+// Export the edited canvas as a transparent PNG
+dl.addEventListener('click', () => {
+  edit.toBlob((blob) => {
+    if (!blob) return;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = downloadName;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  }, 'image/png');
+});
+
+// Language switch (choice is remembered when storage is available)
+document.querySelectorAll('#lang button').forEach((b) => b.addEventListener('click', () => {
+  lang = b.dataset.l;
+  try { localStorage.setItem('bgr-lang', lang); } catch (_) { /* ignore */ }
+  applyLang();
+}));
+applyLang();
+</script>
+</body>
+</html>
