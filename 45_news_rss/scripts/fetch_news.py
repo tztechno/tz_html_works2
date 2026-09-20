@@ -1,5 +1,3 @@
-
-Fetch news · PY
 #!/usr/bin/env python3
 """Fetch the NYT World RSS feed and write it to data/news.json.
  
