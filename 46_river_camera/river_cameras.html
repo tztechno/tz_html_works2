@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>河川カメラ 2画面</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #111; color: #eee;
+    font-family: -apple-system, "Hiragino Sans", "Yu Gothic", sans-serif; }
+  body { display: flex; flex-direction: column; }
+  main {
+    flex: 1; min-height: 0; padding: 8px;
+    display: grid; gap: 8px;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 480px), 1fr));
+    align-content: start;
+  }
+  figure { margin: 0; background: #000; border-radius: 6px; overflow: hidden; }
+  figcaption {
+    display: flex; justify-content: space-between; align-items: baseline;
+    gap: 8px; padding: 6px 10px; font-size: 14px; background: #1c1c1c;
+  }
+  figcaption a { color: inherit; text-decoration: none; font-weight: 600; }
+  figcaption a:hover { text-decoration: underline; }
+  figcaption .time { font-size: 12px; color: #9a9a9a; white-space: nowrap; }
+  .frame { aspect-ratio: 16 / 9; background: #000; }
+  .frame img { display: block; width: 100%; height: 100%; object-fit: contain; }
+  .frame img:not([src]) { visibility: hidden; }
+  footer { padding: 4px 10px 8px; font-size: 11px; color: #777; text-align: right; }
+</style>
+</head>
+<body>
+<main id="grid"></main>
+<footer>60秒ごとに自動更新 / 出典: 国土交通省 川の防災情報</footer>
+
+<script>
+// Camera definitions (sysCamId is used for both the image URL and the metadata URL)
+const CAMERAS = [
+  { id: "103073096", name: "境橋", river: "南白亀川", city: "大網白里市",
+    page: "https://www.river.go.jp/kawabou/pc/tm?zm=15&clat=35.526584&clon=140.341265&itmkndCd=200&scamId=103073096&ownCd=3073&sysCamId=3073096" },
+  { id: "103073099", name: "中橋", river: "真亀川", city: "東金市",
+    page: "https://www.river.go.jp/kawabou/pc/tm?zm=16&clat=35.550736&clon=140.390843&itmkndCd=200&scamId=103073099&ownCd=3073&sysCamId=3073099" }
+];
+const REFRESH_MS = 60 * 1000;
+const BASE = "https://cam.river.go.jp/cam/now/";
+
+// Build the DOM for each camera
+const grid = document.getElementById("grid");
+for (const c of CAMERAS) {
+  const fig = document.createElement("figure");
+  fig.innerHTML =
+    '<div class="frame"><img alt="" referrerpolicy="no-referrer"></div>' +
+    '<figcaption><a target="_blank" rel="noopener"></a><span class="time">--</span></figcaption>';
+  const a = fig.querySelector("a");
+  a.href = c.page;
+  a.textContent = c.river + " / " + c.name + "（" + c.city + "）";
+  grid.appendChild(fig);
+  c.img = fig.querySelector("img");
+  c.time = fig.querySelector(".time");
+}
+
+function pad(n) { return String(n).padStart(2, "0"); }
+function fmt(d) {
+  return (d.getMonth() + 1) + "/" + d.getDate() + " " + pad(d.getHours()) + ":" + pad(d.getMinutes());
+}
+
+// Preload into an offscreen Image so the visible frame never goes blank on failure
+function refresh(c) {
+  const probe = new Image();
+  probe.referrerPolicy = "no-referrer";
+  probe.onload = () => {
+    c.img.src = probe.src;
+    c.time.textContent = "更新 " + fmt(new Date());
+    updateCaptureTime(c);
+  };
+  probe.onerror = () => { c.time.textContent = "取得失敗 (前回の画像を表示中)"; };
+  probe.src = BASE + c.id + ".jpg?t=" + Date.now(); // cache-buster
+}
+
+// Best-effort: read the actual capture time from the metadata JSON.
+// This can be blocked by CORS when opened from file://, so failure is ignored.
+async function updateCaptureTime(c) {
+  try {
+    const r = await fetch(BASE + c.id + ".json?t=" + Date.now(), { cache: "no-store", referrerPolicy: "no-referrer" });
+    const j = await r.json();
+    if (j.get_time) c.time.textContent = "撮影 " + fmt(new Date(j.get_time));
+  } catch (e) { /* keep the fallback text */ }
+}
+
+function refreshAll() { CAMERAS.forEach(refresh); }
+refreshAll();
+setInterval(refreshAll, REFRESH_MS);
+</script>
+</body>
+</html>
