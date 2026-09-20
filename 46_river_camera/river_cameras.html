@@ -14,8 +14,12 @@
   main {
     flex: 1; min-height: 0; padding: 8px;
     display: grid; gap: 8px;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 480px), 1fr));
+    grid-template-columns: 1fr;
     align-content: start;
+  }
+  /* 2x2 layout on wider screens */
+  @media (min-width: 800px) {
+    main { grid-template-columns: 1fr 1fr; }
   }
   figure { margin: 0; background: #000; border-radius: 6px; overflow: hidden; }
   figcaption {
@@ -41,7 +45,11 @@ const CAMERAS = [
   { id: "103073096", name: "境橋", river: "南白亀川", city: "大網白里市",
     page: "https://www.river.go.jp/kawabou/pc/tm?zm=15&clat=35.526584&clon=140.341265&itmkndCd=200&scamId=103073096&ownCd=3073&sysCamId=3073096" },
   { id: "103073099", name: "中橋", river: "真亀川", city: "東金市",
-    page: "https://www.river.go.jp/kawabou/pc/tm?zm=16&clat=35.550736&clon=140.390843&itmkndCd=200&scamId=103073099&ownCd=3073&sysCamId=3073099" }
+    page: "https://www.river.go.jp/kawabou/pc/tm?zm=16&clat=35.550736&clon=140.390843&itmkndCd=200&scamId=103073099&ownCd=3073&sysCamId=3073099" },
+  { id: "103073090", name: "弁天橋", river: "見明川", city: "浦安市",
+    page: "https://www.river.go.jp/kawabou/pc/tm?zm=17&clat=35.63990277&clon=139.8879033&itmkndCd=200&scamId=103073090&ownCd=3073&sysCamId=3073090" },
+  { id: "103073020", name: "草刈", river: "村田川", city: "市原市",
+    page: "https://www.river.go.jp/kawabou/pc/tm?zm=16&clat=35.5315221&clon=140.1635856&itmkndCd=200&scamId=103073020&ownCd=3073&sysCamId=3073020" }
 ];
 const REFRESH_MS = 60 * 1000;
 const BASE = "https://cam.river.go.jp/cam/now/";
