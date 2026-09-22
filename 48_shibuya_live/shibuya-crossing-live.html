@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>渋谷スクランブル交差点</title>
+<meta name="description" content="Live YouTube feed of Shibuya Scramble Crossing.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  :root {
+    --bg: #f6f3ec;
+    --surface: #ffffff;
+    --surface-line: #e2ddd0;
+    --text: #16161c;
+    --text-muted: #6b6a72;
+    --accent-pink: #d81b60;
+    --accent-cyan: #0e8a82;
+    --glow: rgba(216, 27, 96, 0.18);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0a0b10;
+      --surface: #12141d;
+      --surface-line: #23273a;
+      --text: #f2f1eb;
+      --text-muted: #8c8fa3;
+      --accent-pink: #ff3f7f;
+      --accent-cyan: #2ee6c8;
+      --glow: rgba(255, 63, 127, 0.28);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #0a0b10;
+    --surface: #12141d;
+    --surface-line: #23273a;
+    --text: #f2f1eb;
+    --text-muted: #8c8fa3;
+    --accent-pink: #ff3f7f;
+    --accent-cyan: #2ee6c8;
+    --glow: rgba(255, 63, 127, 0.28);
+  }
+
+  html, body {
+    height: 100%;
+    background: #000;
+    overflow: hidden;
+  }
+
+  body {
+    color: var(--text);
+    font-family: "Noto Sans JP", "Hiragino Sans", sans-serif;
+  }
+
+  /* Video fills the entire viewport — this is the frame OBS/Window Capture should grab */
+  .frame {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100dvh;
+    background: #000;
+  }
+
+  .frame iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+
+  /* Everything below is a lightweight overlay — it never takes space from the video */
+  .overlay-top {
+    position: fixed;
+    top: env(safe-area-inset-top, 0px);
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 14px;
+    pointer-events: none;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(10, 11, 16, 0.55);
+    backdrop-filter: blur(6px);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: #f2f1eb;
+    text-transform: uppercase;
+  }
+
+  .badge .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent-pink);
+    box-shadow: 0 0 0 4px var(--glow);
+    animation: pulse 1.8s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .badge .dot { animation: none; }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+  }
+
+  .badge.title {
+    font-family: "Shippori Mincho", serif;
+    font-size: 13px;
+    letter-spacing: 0.05em;
+    text-transform: none;
+  }
+
+  .overlay-bottom {
+    position: fixed;
+    bottom: env(safe-area-inset-bottom, 0px);
+    right: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+  }
+
+  .meta-value {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    color: var(--accent-cyan);
+    background: rgba(10, 11, 16, 0.55);
+    backdrop-filter: blur(6px);
+    padding: 5px 9px;
+    border-radius: 999px;
+  }
+
+  a.source-link {
+    color: #f2f1eb;
+    text-decoration: none;
+    font-size: 11px;
+    background: rgba(10, 11, 16, 0.55);
+    backdrop-filter: blur(6px);
+    padding: 5px 9px;
+    border-radius: 999px;
+  }
+
+  a.source-link:hover { color: var(--accent-pink); }
+
+  a.source-link:focus-visible,
+  .frame iframe:focus-visible {
+    outline: 2px solid var(--accent-cyan);
+    outline-offset: 2px;
+  }
+
+  /* Press "H" to hide the overlay entirely for a clean capture */
+  body.hide-ui .overlay-top,
+  body.hide-ui .overlay-bottom {
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="frame">
+  <iframe
+    src="https://www.youtube-nocookie.com/embed/8H3nRCFVR6Y?si=W85LvfNCKzVk91_K"
+    title="YouTube video player"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+    referrerpolicy="strict-origin-when-cross-origin"
+    allowfullscreen
+  ></iframe>
+</div>
+
+<div class="overlay-top">
+  <span class="badge"><span class="dot"></span>Live</span>
+  <span class="badge title">渋谷スクランブル交差点</span>
+</div>
+
+<div class="overlay-bottom">
+  <span class="meta-value" id="clock">--:--:--</span>
+  <a class="source-link" href="https://www.youtube.com/watch?v=8H3nRCFVR6Y" target="_blank" rel="noopener">YouTubeで開く ↗</a>
+</div>
+
+<script>
+  (function () {
+    var el = document.getElementById('clock');
+    function tick() {
+      try {
+        var now = new Date().toLocaleTimeString('ja-JP', {
+          timeZone: 'Asia/Tokyo',
+          hour12: false
+        });
+        el.textContent = now;
+      } catch (e) {
+        el.textContent = new Date().toLocaleTimeString();
+      }
+    }
+    tick();
+    setInterval(tick, 1000);
+  })();
+
+  // Press "H" to hide the overlay for a clean, edge-to-edge capture
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'h' || e.key === 'H') {
+      document.body.classList.toggle('hide-ui');
+    }
+  });
+</script>
+</body>
+</html>
