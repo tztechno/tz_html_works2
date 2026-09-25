@@ -94,12 +94,19 @@
   .ex { font: 11px var(--mono); color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; margin-left: 6px; }
 
   .gear { display: none; }
+  .hdr-actions { display: flex; gap: 6px; align-items: center; order: 2; }
+  a.btn { text-decoration: none; }
+  .btn { white-space: nowrap; }
+  .btn.icon { min-width: 36px; justify-content: center; font-weight: 700; }
+  h1 { white-space: nowrap; }
   @media (max-width: 720px) {
     body { font-size: 16px; -webkit-text-size-adjust: 100%; }
     .wrap { padding-block: 12px calc(96px + env(safe-area-inset-bottom, 0px)); gap: 10px; }
     header { flex-wrap: nowrap; align-items: center; }
     h1 { font-size: 20px; }
-    .gear { display: inline-flex; margin-left: auto; }
+    .gear { display: inline-flex; }
+    .hdr-actions { margin-left: auto; }
+    .hdr-actions .btn { padding: 7px 10px; }
     /* Settings collapse into a drawer toggled by the gear button */
     .engine, .opts { display: none; }
     .wrap.show-settings .engine, .wrap.show-settings .opts { display: flex; }
@@ -124,11 +131,12 @@
       position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
       background: var(--panel); border-top: 1px solid var(--line);
       padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
-      display: grid; grid-template-columns: 1fr 1fr auto auto; gap: 8px;
+      display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px;
       box-shadow: 0 -4px 16px rgba(0,0,0,.08);
     }
     .pane.src .pane-foot .spacer { display: none; }
-    .pane.src .pane-foot .btn { justify-content: center; padding: 14px 10px; font-size: 16px; border-radius: 12px; }
+    #speakSrc { display: none; } /* keep the bar to three thumb-sized buttons */
+    .pane.src .pane-foot .btn { min-width: 0; justify-content: center; padding: 14px 10px; font-size: 16px; border-radius: 12px; }
     .pane.src .pane-foot .mic { font-weight: 700; }
     .pane-foot .btn { padding: 10px 12px; font-size: 15px; }
     .pane.dst .pane-foot .status { width: 100%; order: 5; }
@@ -146,9 +154,13 @@
 <div class="wrap">
   <header>
     <h1>Kotoba <span>Booth</span></h1>
-    <button type="button" class="btn gear" id="gearBtn" aria-expanded="false" aria-label="Settings">⚙︎ 設定</button>
+    <div class="hdr-actions">
+      <button type="button" class="btn" id="uiLangBtn" aria-label="Interface language">EN / 日本語</button>
+      <a class="btn icon" id="helpLink" href="manual.html" target="_blank" rel="noopener" aria-label="Help">?</a>
+      <button type="button" class="btn gear icon" id="gearBtn" aria-expanded="false" aria-label="Settings">⚙︎</button>
+    </div>
     <div class="engine">
-      <label for="backend">engine</label>
+      <label for="backend" data-i18n="engine">engine</label>
       <select id="backend">
         <option value="claude">Claude</option>
         <option value="wasm">In-browser (FuguMT)</option>
@@ -165,11 +177,11 @@
       <button type="button" data-dir="en" aria-pressed="false">EN → JA</button>
     </div>
     <div class="opts">
-      <label><input type="checkbox" id="autoSpeak" checked> 自動読み上げ</label>
-      <label><input type="checkbox" id="autoTranslate" checked> 音声入力後に自動翻訳</label>
-      <label for="voiceEn">EN 音声 <select id="voiceEn" class="vsel"></select></label>
-      <label for="voiceJa">JA 音声 <select id="voiceJa" class="vsel"></select></label>
-      <label for="rate">速度 <input type="range" id="rate" min="0.6" max="1.6" step="0.1" value="1"></label>
+      <label><input type="checkbox" id="autoSpeak" checked> <span data-i18n="autoSpeak"></span></label>
+      <label><input type="checkbox" id="autoTranslate" checked> <span data-i18n="autoTranslate"></span></label>
+      <label for="voiceEn"><span data-i18n="voiceEn"></span> <select id="voiceEn" class="vsel"></select></label>
+      <label for="voiceJa"><span data-i18n="voiceJa"></span> <select id="voiceJa" class="vsel"></select></label>
+      <label for="rate"><span data-i18n="rate"></span> <input type="range" id="rate" min="0.6" max="1.6" step="0.1" value="1"></label>
     </div>
   </div>
 
@@ -178,8 +190,8 @@
   <div class="grid">
     <div class="pane src">
       <div class="pane-head">
-        <span class="tag">Source · <b id="srcLang">—</b></span>
-        <button type="button" class="btn" id="clearBtn">Clear</button>
+        <span class="tag"><span data-i18n="source"></span> · <b id="srcLang">—</b></span>
+        <button type="button" class="btn" id="clearBtn" data-i18n="clear">Clear</button>
       </div>
       <textarea id="src" spellcheck="false" aria-label="Source text">Where is the nearest train station?</textarea>
       <div class="interim" id="interim"></div>
@@ -189,7 +201,7 @@
         <button type="button" class="btn" id="speakSrc">🔊</button>
         <span class="spacer"></span>
         <span class="kbd">⌘/Ctrl + Enter</span>
-        <button type="button" class="btn primary" id="goBtn">翻訳</button>
+        <button type="button" class="btn primary" id="goBtn" data-i18n="translate">Translate</button>
       </div>
     </div>
 
@@ -199,22 +211,22 @@
 
     <div class="pane dst">
       <div class="pane-head">
-        <span class="tag">Translation · <b id="dstLang">—</b></span>
-        <button type="button" class="btn" id="stopBtn" hidden>Stop</button>
+        <span class="tag"><span data-i18n="translation"></span> · <b id="dstLang">—</b></span>
+        <button type="button" class="btn" id="stopBtn" hidden data-i18n="stop">Stop</button>
       </div>
       <div class="out dim" id="dst" aria-live="polite">最寄りの駅はどこですか？</div>
       <div class="pane-foot">
-        <button type="button" class="btn" id="speakDst">🔊 読み上げ</button>
+        <button type="button" class="btn" id="speakDst">🔊 <span data-i18n="speak"></span></button>
         <button type="button" class="btn" id="hushBtn">⏹</button>
-        <button type="button" class="btn" id="copyBtn">Copy</button>
+        <button type="button" class="btn" id="copyBtn" data-i18n="copy">Copy</button>
         <span class="spacer"></span>
-        <span class="status" id="status">Example shown · press 翻訳 to run</span>
+        <span class="status" id="status"></span>
       </div>
     </div>
   </div>
 
   <section class="hist">
-    <h2>History</h2>
+    <h2 data-i18n="history">History</h2>
     <ul id="histList"></ul>
   </section>
 </div>
@@ -224,6 +236,48 @@
   // ---------- State ----------
   const $ = (id) => document.getElementById(id);
   const JA_RE = /[぀-ヿ㐀-鿿ｦ-ﾟ]/;
+  // ---------- UI language ----------
+  const I18N = {
+    en: {
+      help: "Help", settings: "⚙︎ Settings", engine: "engine", autoSpeak: "Speak result automatically",
+      autoTranslate: "Translate after voice input", voiceEn: "EN voice", voiceJa: "JA voice", rate: "Speed",
+      source: "Source", translation: "Translation", clear: "Clear", translate: "Translate", stop: "Stop",
+      speak: "Speak", copy: "Copy", history: "History", example: "example", recStop: "⏺ Stop",
+      ready: "Example shown · press Translate to run", translating: "Translating…", translatingLocal: "Translating (in-browser)…",
+      stopped: "Stopped", listening: "Listening…", copied: "Copied", selected: "Selected — press ⌘C / long-press to copy",
+      download: "Downloading model {l} / {t} MB (first run only)",
+      noVoiceEn: "No English voice found. Add one in your OS speech settings.", noVoiceJa: "No Japanese voice found. Add one in your OS speech settings.",
+      micDenied: "Microphone permission denied", noSpeech: "No speech detected", srError: "Speech recognition error: {e}", srStart: "Could not start speech recognition",
+      wasmFail: "Failed to load or run the model: {e}", ollamaFail: "Cannot reach Ollama. Run `ollama serve` and open this page from your computer.",
+      failed: "Translation failed. Please try again.",
+      not_granted: "Claude is not allowed for this page. Switch the engine in Settings.", sampling_disabled: "Claude is not available for this account.",
+      rate_limited: "Too many requests. Wait a moment and try again.", session_expired: "Please sign in again.", refused: "This text could not be translated.",
+      noSR: "This browser does not support speech recognition. Use Chrome or Safari, or your device's dictation key.",
+      micBlocked: "The microphone is blocked on this page. Open the standalone version in Chrome/Safari, or use your device's dictation (Mac: press fn twice).",
+      standaloneOnly: " — standalone only",
+    },
+    ja: {
+      help: "ヘルプ", settings: "⚙︎ 設定", engine: "エンジン", autoSpeak: "翻訳結果を自動で読み上げ",
+      autoTranslate: "音声入力後に自動翻訳", voiceEn: "英語の音声", voiceJa: "日本語の音声", rate: "速度",
+      source: "原文", translation: "訳文", clear: "クリア", translate: "翻訳", stop: "中止",
+      speak: "読み上げ", copy: "コピー", history: "履歴", example: "例", recStop: "⏺ 停止",
+      ready: "例を表示中 · 「翻訳」を押すと実行します", translating: "翻訳中…", translatingLocal: "翻訳中（端末内）…",
+      stopped: "中止しました", listening: "聞き取り中…", copied: "コピーしました", selected: "選択しました。⌘C または長押しでコピー",
+      download: "モデルをダウンロード中 {l} / {t} MB（初回のみ）",
+      noVoiceEn: "英語の音声が見つかりません。OS の設定で英語音声を追加してください", noVoiceJa: "日本語の音声が見つかりません。OS の設定で追加してください",
+      micDenied: "マイクが許可されていません", noSpeech: "音声が検出されませんでした", srError: "音声認識エラー: {e}", srStart: "音声認識を開始できません",
+      wasmFail: "モデルの読み込み/推論に失敗しました: {e}", ollamaFail: "Ollama に接続できません。ollama serve を起動し、PC でこのページを開いてください",
+      failed: "翻訳に失敗しました。もう一度押してください",
+      not_granted: "このページでは Claude が許可されていません。設定でエンジンを切り替えてください", sampling_disabled: "このアカウントでは Claude を使えません",
+      rate_limited: "リクエストが多すぎます。少し待ってから再実行してください", session_expired: "サインインし直してください", refused: "この文は翻訳できませんでした",
+      noSR: "このブラウザは音声認識に対応していません。Chrome / Safari を使うか、端末の音声入力キーを使ってください。",
+      micBlocked: "このページ内ではマイクが使えません。単体版を Chrome / Safari で開くか、端末の音声入力（Mac: fn キー2回）を使ってください。",
+      standaloneOnly: " — 単体版のみ",
+    },
+  };
+  let uiLang = "en";
+  const t = (k, v = {}) => (I18N[uiLang][k] ?? I18N.en[k] ?? k).replace(/\{(\w+)\}/g, (_, x) => v[x] ?? "");
+
   const state = { dir: "auto", sample: null, ctl: null, rec: null, recBtn: null, history: [] };
 
   const store = {
@@ -235,7 +289,7 @@
   const detect = (t) => (JA_RE.test(t) ? "ja" : "en");
   const srcLangFor = (t) => (state.dir === "auto" ? detect(t) : state.dir);
   const other = (l) => (l === "ja" ? "en" : "ja");
-  const setStatus = (msg, err = false) => { $("status").textContent = msg; $("status").classList.toggle("err", err); };
+  const setStatus = (msg, err = false) => { if (msg !== t("ready")) state.touched = true; $("status").textContent = msg; $("status").classList.toggle("err", err); };
   const setLangs = (s) => { $("srcLang").textContent = s.toUpperCase(); $("dstLang").textContent = other(s).toUpperCase(); };
 
   function buildPrompt(text, target) {
@@ -285,7 +339,7 @@
     u.lang = lang === "ja" ? "ja-JP" : "en-US";
     const v = pickVoice(lang);
     if (v) u.voice = v;
-    else setStatus(lang === "en" ? "英語の音声が見つかりません。OS の設定で英語音声を追加してください" : "日本語の音声が見つかりません", true);
+    else setStatus(t(lang === "en" ? "noVoiceEn" : "noVoiceJa"), true);
     u.rate = parseFloat($("rate").value);
     speechSynthesis.speak(u);
   }
@@ -336,7 +390,7 @@
           if (p.status === "progress" && p.total) {
             files[p.file] = [p.loaded, p.total];
             const [l, t] = Object.values(files).reduce((a, [x, y]) => [a[0] + x, a[1] + y], [0, 0]);
-            setStatus(`Downloading model ${(l / 1e6).toFixed(0)} / ${(t / 1e6).toFixed(0)} MB (first run only)`);
+            setStatus(t("download", { l: (l / 1e6).toFixed(0), t: (t / 1e6).toFixed(0) }));
           }
         };
         return pipeline("translation", WASM_MODELS[target], { dtype: "q8", device: "wasm", progress_callback });
@@ -352,7 +406,7 @@
 
   async function translateWasm(text, target, onText, signal) {
     const tr = await getWasmPipe(target);
-    setStatus("Translating (in-browser)…");
+    setStatus(t("translatingLocal"));
     const parts = [];
     for (const sent of splitSentences(text)) {
       if (signal.aborted) throw { code: "cancelled", text: parts.join(target === "ja" ? "" : " ") };
@@ -363,13 +417,7 @@
     return parts.join(target === "ja" ? "" : " ");
   }
 
-  const SAMPLE_ERR = {
-    not_granted: "Claude の利用が許可されていません。Ollama に切り替えてください",
-    sampling_disabled: "このアカウントでは Claude を呼び出せません",
-    rate_limited: "リクエストが多すぎます。少し待ってから再実行してください",
-    session_expired: "サインインし直してください",
-    refused: "この文は翻訳できませんでした",
-  };
+  const SAMPLE_ERR = new Set(["not_granted", "sampling_disabled", "rate_limited", "session_expired", "refused"]);
 
   async function runTranslate() {
     const text = $("src").value.trim();
@@ -381,7 +429,7 @@
     const out = $("dst");
     out.classList.add("dim"); out.textContent = "…";
     $("goBtn").disabled = true; $("stopBtn").hidden = false;
-    setStatus("Translating…"); $("status").classList.add("pulse");
+    setStatus(t("translating")); $("status").classList.add("pulse");
     const backend = $("backend").value;
     try {
       const fn = { claude: translateClaude, wasm: translateWasm, ollama: translateOllama }[backend];
@@ -392,10 +440,10 @@
       if ($("autoSpeak").checked) speak(result, t);
     } catch (e) {
       const code = e?.code || e?.name;
-      if (code === "cancelled" || code === "AbortError") { setStatus("Stopped"); if (e.text) out.textContent = e.text; }
-      else if (backend === "wasm") { console.error(e); setStatus(`モデルの読み込み/推論に失敗しました: ${e?.message || e}`, true); }
-      else if (backend === "ollama") setStatus("Ollama に接続できません。ollama serve を起動し、このページをローカルで開いてください", true);
-      else { setStatus(SAMPLE_ERR[code] || "翻訳に失敗しました。もう一度押してください", true); if (e?.text) out.textContent = e.text; }
+      if (code === "cancelled" || code === "AbortError") { setStatus(t("stopped")); if (e.text) out.textContent = e.text; }
+      else if (backend === "wasm") { console.error(e); setStatus(t("wasmFail", { e: e?.message || e }), true); }
+      else if (backend === "ollama") setStatus(t("ollamaFail"), true);
+      else { setStatus(t(SAMPLE_ERR.has(code) ? code : "failed"), true); if (e?.text) out.textContent = e.text; }
     } finally {
       $("goBtn").disabled = false; $("stopBtn").hidden = true; $("status").classList.remove("pulse");
       if (state.ctl === ctl) state.ctl = null;
@@ -423,7 +471,7 @@
       if (finalText) $("src").value = finalText;
     };
     rec.onerror = (ev) => {
-      const msg = ev.error === "not-allowed" ? "マイクが許可されていません" : ev.error === "no-speech" ? "音声が検出されませんでした" : `音声認識エラー: ${ev.error}`;
+      const msg = ev.error === "not-allowed" ? t("micDenied") : ev.error === "no-speech" ? t("noSpeech") : t("srError", { e: ev.error });
       setStatus(msg, true);
       if (ev.error === "not-allowed") showMicNote(true);
     };
@@ -439,19 +487,16 @@
       }
     };
     state.rec = rec; state.recBtn = btn;
-    btn.classList.add("on"); btn.textContent = "⏺ 停止";
-    setStatus("Listening…");
-    try { rec.start(); } catch (e) { setStatus("音声認識を開始できません", true); }
+    btn.classList.add("on"); btn.textContent = t("recStop");
+    setStatus(t("listening"));
+    try { rec.start(); } catch (e) { setStatus(t("srStart"), true); }
   }
 
   function showMicNote(force) {
     const n = $("micNote");
     n.hidden = false;
-    n.textContent = !SR
-      ? "このブラウザは音声認識に対応していません。Chrome / Safari でローカルファイルとして開くか、OS の音声入力（Mac: fn キー2回）を使ってください。"
-      : force
-        ? "このページ内ではマイクが使えません。HTML をダウンロードして Chrome / Safari で開くか、OS の音声入力（Mac: fn キー2回）でテキスト欄に話しかけてください。"
-        : "";
+    state.micNote = force ? (SR ? "micBlocked" : "noSR") : (!SR ? "noSR" : "");
+    n.textContent = state.micNote ? t(state.micNote) : "";
     if (!n.textContent) n.hidden = true;
   }
 
@@ -463,7 +508,7 @@
       const d = document.createElement("span"); d.className = "dir"; d.textContent = `${h.s.toUpperCase()}→${other(h.s).toUpperCase()}`;
       const a = document.createElement("span"); a.className = "t muted"; a.textContent = h.src;
       const b = document.createElement("span"); b.className = "t"; b.textContent = h.dst;
-      if (h.example) { const x = document.createElement("span"); x.className = "ex"; x.textContent = "example"; b.append(x); }
+      if (h.example) { const x = document.createElement("span"); x.className = "ex"; x.textContent = t("example"); b.append(x); }
       const p = document.createElement("button"); p.className = "play"; p.type = "button"; p.textContent = "🔊"; p.setAttribute("aria-label", "Speak");
       p.onclick = () => speak(h.dst, other(h.s));
       li.append(d, a, b, p); ul.append(li);
@@ -481,6 +526,22 @@
     const t = $("src").value.trim(); if (t) setLangs(srcLangFor(t));
   });
   [$("micJa"), $("micEn")].forEach((b) => { b.dataset.label = b.textContent; b.onclick = () => (SR ? startRec(b) : showMicNote(true)); });
+  function applyI18n() {
+    document.documentElement.lang = uiLang;
+    document.querySelectorAll("[data-i18n]").forEach((el) => { el.textContent = t(el.dataset.i18n); });
+    $("uiLangBtn").textContent = uiLang === "ja" ? "English" : "日本語";
+    $("helpLink").href = "manual.html#" + uiLang;
+    $("helpLink").setAttribute("aria-label", t("help")); $("helpLink").title = t("help");
+    $("gearBtn").setAttribute("aria-label", t("settings").replace("⚙︎ ", "")); $("gearBtn").title = t("settings").replace("⚙︎ ", "");
+    const w = $("backend").querySelector('option[value="wasm"]');
+    w.textContent = "In-browser (FuguMT)" + (w.dataset.suffix ? t(w.dataset.suffix) : "");
+    if (state.recBtn) state.recBtn.textContent = t("recStop");
+    if (state.micNote) $("micNote").textContent = t(state.micNote);
+    if (!state.touched) setStatus(t("ready"));
+    renderHistory();
+  }
+  $("uiLangBtn").onclick = () => { uiLang = uiLang === "ja" ? "en" : "ja"; store.set("kb.uiLang", uiLang); applyI18n(); };
+
   $("gearBtn").onclick = () => {
     const open = document.querySelector(".wrap").classList.toggle("show-settings");
     $("gearBtn").setAttribute("aria-expanded", String(open));
@@ -495,8 +556,8 @@
   $("clearBtn").onclick = () => { $("src").value = ""; $("dst").textContent = ""; $("src").focus(); };
   $("swapBtn").onclick = () => { const a = $("src").value; $("src").value = $("dst").textContent; $("dst").textContent = a; const t = $("src").value.trim(); if (t) setLangs(srcLangFor(t)); };
   $("copyBtn").onclick = async () => {
-    try { await navigator.clipboard.writeText($("dst").textContent); setStatus("Copied"); }
-    catch { const r = document.createRange(); r.selectNodeContents($("dst")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); setStatus("選択しました。⌘C でコピー"); }
+    try { await navigator.clipboard.writeText($("dst").textContent); setStatus(t("copied")); }
+    catch { const r = document.createRange(); r.selectNodeContents($("dst")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); setStatus(t("selected")); }
   };
   $("backend").onchange = () => { $("ollamaModel").hidden = $("backend").value !== "ollama"; store.set("kb.backend", $("backend").value); };
   $("ollamaModel").onchange = () => store.set("kb.model", $("ollamaModel").value);
@@ -505,6 +566,8 @@
   $("voiceJa").onchange = () => { store.set("kb.voiceJa", $("voiceJa").value); speak("こんにちは、日本語の音声です。", "ja"); };
 
   // ---------- Init ----------
+  uiLang = store.get("kb.uiLang", (navigator.language || "").toLowerCase().startsWith("ja") ? "ja" : "en");
+  if (!I18N[uiLang]) uiLang = "en";
   $("rate").value = store.get("kb.rate", "1");
   $("ollamaModel").value = store.get("kb.model", "gemma4:e4b");
   state.history = store.get("kb.history", []);
@@ -522,7 +585,7 @@
     $("backend").value = saved === "ollama" ? "ollama" : "wasm";
   } else {
     // The artifact sandbox blocks model downloads from Hugging Face
-    wasmOpt.disabled = true; wasmOpt.textContent += " — standalone only";
+    wasmOpt.disabled = true; wasmOpt.dataset.suffix = "standaloneOnly";
     $("backend").value = store.get("kb.backend", "claude");
     claudeOpt.disabled = true; // enabled once sample resolves
     window.claude.use("sample").then((s) => {
@@ -534,6 +597,8 @@
   }
   $("ollamaModel").hidden = $("backend").value !== "ollama";
   if (!SR || inArtifact) showMicNote(true);
+  if (inArtifact) $("helpLink").hidden = true; // manual ships with the standalone site only
+  applyI18n();
 })();
 </script>
 

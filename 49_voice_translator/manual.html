@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d6e6e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Kotoba">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body>
+<title>Kotoba Booth Manual</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --bg: #eef1f3; --panel: #ffffff; --ink: #172026; --muted: #5b6970; --line: #d5dde1;
+    --accent: #0d6e6e; --accent-ink: #ffffff; --accent-soft: #d9eeec; --warn: #9a5b00; --warn-soft: #fbefd9;
+    --sans: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #0f1518; --panel: #172024; --ink: #e4ecee; --muted: #93a3a9; --line: #2a373c;
+      --accent: #3fb3ad; --accent-ink: #06201f; --accent-soft: #173a3a; --warn: #f0b760; --warn-soft: #3a2d15;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0f1518; --panel: #172024; --ink: #e4ecee; --muted: #93a3a9; --line: #2a373c;
+    --accent: #3fb3ad; --accent-ink: #06201f; --accent-soft: #173a3a; --warn: #f0b760; --warn-soft: #3a2d15;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { background: var(--bg); color: var(--ink); font: 16px/1.75 var(--sans); margin: 0; }
+  .wrap { max-width: 760px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 64px; }
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; position: sticky; top: env(safe-area-inset-top, 0px); background: var(--bg); padding-block: 10px; z-index: 5; border-bottom: 1px solid var(--line); }
+  .brand { font-weight: 700; font-size: 18px; }
+  .brand span { color: var(--accent); }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel); }
+  .seg button { border: 0; background: transparent; color: var(--muted); font: 500 14px var(--sans); padding: 7px 14px; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+  .seg button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  h1 { font-size: 28px; line-height: 1.3; margin: 28px 0 6px; text-wrap: balance; }
+  .lede { color: var(--muted); margin: 0 0 20px; }
+  h2 { font-size: 20px; margin: 40px 0 10px; padding-top: 8px; border-top: 1px solid var(--line); text-wrap: balance; }
+  h3 { font-size: 16px; margin: 22px 0 6px; }
+  p, li { max-width: 65ch; }
+  ol, ul { padding-left: 1.3em; }
+  li + li { margin-top: 4px; }
+  a { color: var(--accent); }
+  code, kbd { font: 14px var(--mono); background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; }
+  .toc { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; }
+  .toc ol { margin: 0; columns: 2; column-gap: 24px; }
+  @media (max-width: 560px) { .toc ol { columns: 1; } }
+  .tip, .warn { border-radius: 8px; padding: 10px 14px; margin: 12px 0; font-size: 15px; }
+  .tip { background: var(--accent-soft); }
+  .warn { background: var(--warn-soft); }
+  .warn b { color: var(--warn); }
+  .table-wrap { overflow-x: auto; margin: 12px 0; }
+  table { border-collapse: collapse; width: 100%; min-width: 520px; font-size: 14.5px; background: var(--panel); }
+  th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { font: 500 12.5px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .ui { display: inline-block; font-weight: 700; color: var(--accent); }
+  dl { margin: 8px 0; }
+  dt { font-weight: 700; margin-top: 12px; }
+  dd { margin: 2px 0 0 0; color: var(--ink); }
+  footer { margin-top: 48px; color: var(--muted); font-size: 13px; }
+</style>
+
+<div class="wrap">
+  <div class="top">
+    <div class="brand">Kotoba <span>Booth</span></div>
+    <div class="seg" role="group" aria-label="Language">
+      <button type="button" data-lang="en" aria-pressed="true">English</button>
+      <button type="button" data-lang="ja" aria-pressed="false">日本語</button>
+    </div>
+  </div>
+
+  <!-- ================= ENGLISH ================= -->
+  <article lang="en" id="en">
+    <h1>User Manual</h1>
+    <p class="lede">Kotoba Booth is a two-way English ⇄ Japanese translator. Speak or type, and it translates and reads the result aloud.</p>
+
+    <nav class="toc" aria-label="Contents">
+      <ol>
+        <li><a href="#en-start">Getting started</a></li>
+        <li><a href="#en-screen">The screen</a></li>
+        <li><a href="#en-voice">Translate by voice</a></li>
+        <li><a href="#en-type">Translate by typing</a></li>
+        <li><a href="#en-speak">Reading aloud</a></li>
+        <li><a href="#en-engine">Translation engines</a></li>
+        <li><a href="#en-settings">Settings</a></li>
+        <li><a href="#en-trouble">Troubleshooting</a></li>
+        <li><a href="#en-privacy">Privacy</a></li>
+        <li><a href="#en-desktop">Mac desktop app</a></li>
+      </ol>
+    </nav>
+
+    <h2 id="en-start">1. Getting started</h2>
+    <h3>On a smartphone</h3>
+    <ol>
+      <li>Open the Kotoba Booth web address in <b>Safari</b> (iPhone) or <b>Chrome</b> (Android). It must be an <code>https://</code> address, or the microphone will not work.</li>
+      <li>Add it to your home screen: Safari → Share → <i>Add to Home Screen</i>; Chrome → ⋮ menu → <i>Add to Home screen</i>. It then opens full screen like an app.</li>
+      <li>Allow microphone access when your phone asks.</li>
+      <li>The first translation downloads the translation model: about 145 MB per direction. Use Wi-Fi for this step. After that it is stored on your phone.</li>
+    </ol>
+    <h3>On a computer</h3>
+    <p>Open the same address in Chrome, Edge or Safari. The interface is the same, with the controls laid out side by side.</p>
+    <div class="tip">To switch the interface language, tap <span class="ui">日本語 / English</span> at the top of the app. Your choice is remembered.</div>
+
+    <h2 id="en-screen">2. The screen</h2>
+    <dl>
+      <dt>Direction: AUTO · JA → EN · EN → JA</dt>
+      <dd>AUTO detects the language of what you type. Choose a fixed direction if detection guesses wrong, for example with short romaji words.</dd>
+      <dt>Source</dt>
+      <dd>The text to translate. You can type, paste or dictate into it. The label shows the detected language.</dd>
+      <dt>⇅ Swap</dt>
+      <dd>Swaps the source and the translation, so you can reply in the other direction.</dd>
+      <dt>Translation</dt>
+      <dd>The result, with <span class="ui">🔊 Speak</span>, <span class="ui">⏹</span> (stop speaking) and <span class="ui">Copy</span>.</dd>
+      <dt>Bottom bar (phone)</dt>
+      <dd><span class="ui">🎤 日本語</span> and <span class="ui">🎤 English</span> start voice input in that language. <span class="ui">🔊</span> reads the source aloud. <span class="ui">Translate</span> runs the translation.</dd>
+      <dt>History</dt>
+      <dd>Your last 30 translations. Tap 🔊 on a row to hear it again. History is kept only in this browser.</dd>
+    </dl>
+
+    <h2 id="en-voice">3. Translate by voice</h2>
+    <ol>
+      <li>Tap the microphone for the language you will <b>speak</b>: <span class="ui">🎤 English</span> to speak English, <span class="ui">🎤 日本語</span> to speak Japanese.</li>
+      <li>Speak one or two sentences. Gray text shows what is being recognised.</li>
+      <li>Stop talking. Recognition ends by itself, or tap <span class="ui">⏺ Stop</span>.</li>
+      <li>The text is translated and read aloud in the other language.</li>
+    </ol>
+    <div class="tip">For a conversation, put the phone between you. Each person taps their own language's microphone before speaking.</div>
+
+    <h2 id="en-type">4. Translate by typing</h2>
+    <ol>
+      <li>Type or paste into <b>Source</b>.</li>
+      <li>Tap <span class="ui">Translate</span>. On a computer you can also press <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Enter</kbd>.</li>
+      <li>Long text is translated sentence by sentence and appears as each sentence finishes. Tap <span class="ui">Stop</span> to cancel.</li>
+    </ol>
+
+    <h2 id="en-speak">5. Reading aloud</h2>
+    <p>Speech uses the voices built into your device. Open <span class="ui">⚙︎ Settings</span> to choose a voice for each language (a sample plays when you pick one) and to set the speed.</p>
+    <div class="warn"><b>English read with a Japanese accent?</b> Your device has no English voice installed, or none was selected. Pick one under <i>EN voice</i>. If the list shows “(none)”, add a voice in your device settings. iPhone: Settings → Accessibility → Spoken Content → Voices. Mac: System Settings → Accessibility → Spoken Content → System Voice → Manage Voices.</div>
+
+    <h2 id="en-engine">6. Translation engines</h2>
+    <p>Choose the engine under <span class="ui">⚙︎ Settings → engine</span>.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Engine</th><th>Where it runs</th><th>Good for</th><th>Needs</th></tr></thead>
+        <tbody>
+          <tr><td><b>In-browser (FuguMT)</b></td><td>On your device. Works offline after the first download</td><td>Phones, travel, privacy</td><td>~145 MB per direction on first use</td></tr>
+          <tr><td><b>Ollama (local)</b></td><td>A local AI model on your computer</td><td>Longer or casual text, better nuance</td><td>Ollama running on the same computer (<code>ollama serve</code>)</td></tr>
+          <tr><td><b>Claude</b></td><td>Claude, when the page is opened inside Claude</td><td>Best overall quality</td><td>Only available in the Claude-hosted version</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>FuguMT is a small model made only for translation, and it works one sentence at a time. It handles clear, standard sentences well. Slang, names and very long sentences can come out awkwardly. For those, use Ollama or Claude when you can.</p>
+
+    <h2 id="en-settings">7. Settings</h2>
+    <dl>
+      <dt>Speak result automatically</dt><dd>Reads each translation aloud as soon as it is ready.</dd>
+      <dt>Translate after voice input</dt><dd>Translates as soon as voice input ends. Turn it off if you want to correct the text first.</dd>
+      <dt>EN voice / JA voice</dt><dd>The voice used for each language. <i>auto</i> picks the best one available.</dd>
+      <dt>Speed</dt><dd>Speaking speed, from 0.6× to 1.6×.</dd>
+      <dt>engine</dt><dd>The translation engine (see section 6). With Ollama, you can also enter the model name, for example <code>gemma4:e4b</code>.</dd>
+    </dl>
+
+    <h2 id="en-trouble">8. Troubleshooting</h2>
+    <dl>
+      <dt>The microphone buttons do nothing / “Microphone permission denied”</dt>
+      <dd>Check that the address starts with <code>https://</code>. Allow the microphone for the site: iPhone Settings → Safari → Microphone, or Chrome → site settings. If you use Kotoba Booth inside Claude, the microphone is blocked there. Use your keyboard's dictation key, or open the standalone version.</dd>
+      <dt>“This browser does not support speech recognition”</dt>
+      <dd>Use Safari on iPhone or Chrome on Android and computers. Firefox does not support it.</dd>
+      <dt>The model download stops or fails</dt>
+      <dd>Connect to Wi-Fi, reload, and try again. Downloads that stop partway resume on the next try. Make sure the phone has about 400 MB of free space.</dd>
+      <dt>Translation is slow</dt>
+      <dd>The first run after opening the app loads the model into memory, which takes a few seconds. After that, each sentence takes about 1–5 seconds, depending on the phone.</dd>
+      <dt>“Cannot reach Ollama”</dt>
+      <dd>Run <code>ollama serve</code> on the computer. If the browser blocks the connection, start it with <code>OLLAMA_ORIGINS="*" ollama serve</code>. Ollama only works from the computer it runs on.</dd>
+      <dt>Wrong direction</dt>
+      <dd>Pick <span class="ui">JA → EN</span> or <span class="ui">EN → JA</span> instead of AUTO.</dd>
+    </dl>
+
+    <h2 id="en-privacy">9. Privacy</h2>
+    <ul>
+      <li><b>In-browser (FuguMT):</b> translation runs on your device. Your text is not sent anywhere.</li>
+      <li><b>Voice input</b> uses your browser's speech recognition. Chrome and some Safari configurations send audio to the browser maker's servers to recognise it.</li>
+      <li><b>Ollama</b> stays on your computer. <b>Claude</b> sends the text to Claude to translate it.</li>
+      <li>Settings and history are stored only in this browser. Clearing site data removes them.</li>
+    </ul>
+
+    <h2 id="en-desktop">10. Mac desktop app</h2>
+    <p><code>voice_translator.py</code> is a separate desktop version for Mac that runs fully offline. It uses Whisper for speech recognition, Ollama for translation and the macOS <code>say</code> command for speech.</p>
+    <ol>
+      <li>In Terminal, in the app folder: <code>python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt</code></li>
+      <li>Start Ollama, then run <code>python voice_translator.py</code></li>
+      <li>Press <span class="ui">🎤 Record</span> (<kbd>⌘R</kbd>), speak, press again to stop. The translation appears and is read aloud.</li>
+    </ol>
+
+    <footer>Translation model: FuguMT by staka (CC BY-SA 4.0), ONNX conversion by Kadonox. Runtime: Transformers.js (Apache-2.0).</footer>
+  </article>
+
+  <!-- ================= JAPANESE ================= -->
+  <article lang="ja" id="ja" hidden>
+    <h1>ユーザーマニュアル</h1>
+    <p class="lede">Kotoba Booth は英語 ⇄ 日本語の双方向翻訳アプリです。話すか入力すると、翻訳して読み上げます。</p>
+
+    <nav class="toc" aria-label="目次">
+      <ol>
+        <li><a href="#ja-start">はじめに</a></li>
+        <li><a href="#ja-screen">画面の見方</a></li>
+        <li><a href="#ja-voice">音声で翻訳する</a></li>
+        <li><a href="#ja-type">文字で翻訳する</a></li>
+        <li><a href="#ja-speak">読み上げ</a></li>
+        <li><a href="#ja-engine">翻訳エンジン</a></li>
+        <li><a href="#ja-settings">設定</a></li>
+        <li><a href="#ja-trouble">困ったときは</a></li>
+        <li><a href="#ja-privacy">プライバシー</a></li>
+        <li><a href="#ja-desktop">Mac デスクトップ版</a></li>
+      </ol>
+    </nav>
+
+    <h2 id="ja-start">1. はじめに</h2>
+    <h3>スマートフォンで使う</h3>
+    <ol>
+      <li>Kotoba Booth のアドレスを <b>Safari</b>（iPhone）または <b>Chrome</b>（Android）で開きます。アドレスは <code>https://</code> で始まる必要があります。そうでないとマイクが使えません。</li>
+      <li>ホーム画面に追加します。Safari は 共有 →「ホーム画面に追加」、Chrome は ⋮ メニュー →「ホーム画面に追加」です。以後はアプリのように全画面で開きます。</li>
+      <li>マイクの使用を求められたら「許可」を選びます。</li>
+      <li>最初の翻訳で翻訳モデルをダウンロードします（1方向あたり約145MB）。この操作は Wi-Fi で行ってください。以後は端末に保存されます。</li>
+    </ol>
+    <h3>パソコンで使う</h3>
+    <p>同じアドレスを Chrome・Edge・Safari で開きます。機能は同じで、横に広い画面向けの配置になります。</p>
+    <div class="tip">画面の言語は、アプリ上部の <span class="ui">English / 日本語</span> で切り替えられます。選んだ言語は記憶されます。</div>
+
+    <h2 id="ja-screen">2. 画面の見方</h2>
+    <dl>
+      <dt>翻訳の向き：AUTO · JA → EN · EN → JA</dt>
+      <dd>AUTO は入力した文の言語を自動で判定します。短いローマ字など、判定を間違えるときは向きを固定してください。</dd>
+      <dt>原文</dt>
+      <dd>翻訳したい文です。入力・貼り付け・音声入力ができます。見出しに判定した言語が表示されます。</dd>
+      <dt>⇅ 入れ替え</dt>
+      <dd>原文と訳文を入れ替えます。相手への返事を逆向きに訳すときに便利です。</dd>
+      <dt>訳文</dt>
+      <dd>翻訳結果です。<span class="ui">🔊 読み上げ</span>、<span class="ui">⏹</span>（読み上げ停止）、<span class="ui">コピー</span> ボタンがあります。</dd>
+      <dt>下部バー（スマホ）</dt>
+      <dd><span class="ui">🎤 日本語</span> と <span class="ui">🎤 English</span> で、その言語の音声入力を始めます。<span class="ui">🔊</span> は原文の読み上げ、<span class="ui">翻訳</span> は翻訳の実行です。</dd>
+      <dt>履歴</dt>
+      <dd>直近30件の翻訳です。各行の 🔊 でもう一度聞けます。履歴はこのブラウザ内にだけ保存されます。</dd>
+    </dl>
+
+    <h2 id="ja-voice">3. 音声で翻訳する</h2>
+    <ol>
+      <li><b>話す言語</b>のマイクを押します。日本語で話すなら <span class="ui">🎤 日本語</span>、英語で話すなら <span class="ui">🎤 English</span> です。</li>
+      <li>1〜2文を話します。認識中の文字が灰色で表示されます。</li>
+      <li>話し終えると自動で認識が終わります。途中で止めるときは <span class="ui">⏺ 停止</span> を押します。</li>
+      <li>自動で翻訳され、相手の言語で読み上げます。</li>
+    </ol>
+    <div class="tip">会話で使うときは、スマホを2人の間に置きます。話す人が、それぞれ自分の言語のマイクを押してから話してください。</div>
+
+    <h2 id="ja-type">4. 文字で翻訳する</h2>
+    <ol>
+      <li><b>原文</b>に文を入力するか、貼り付けます。</li>
+      <li><span class="ui">翻訳</span> を押します。パソコンでは <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Enter</kbd> でも実行できます。</li>
+      <li>長い文は一文ずつ翻訳し、終わった順に表示します。途中でやめるときは <span class="ui">中止</span> を押します。</li>
+    </ol>
+
+    <h2 id="ja-speak">5. 読み上げ</h2>
+    <p>読み上げには端末に入っている音声を使います。<span class="ui">⚙︎ 設定</span> で、言語ごとの音声（選ぶと見本が流れます）と速度を選べます。</p>
+    <div class="warn"><b>英語が日本語なまりで読まれる場合：</b>端末に英語の音声が入っていないか、選ばれていません。「英語の音声」で英語の声を選んでください。一覧が「(none)」のときは、端末の設定で音声を追加します。iPhone は 設定 → アクセシビリティ → 読み上げコンテンツ → 声、Mac は システム設定 → アクセシビリティ → 読み上げコンテンツ → システムの声 → 声を管理 です。</div>
+
+    <h2 id="ja-engine">6. 翻訳エンジン</h2>
+    <p><span class="ui">⚙︎ 設定 → エンジン</span> で切り替えます。</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>エンジン</th><th>動く場所</th><th>向いている用途</th><th>必要なもの</th></tr></thead>
+        <tbody>
+          <tr><td><b>In-browser (FuguMT)</b></td><td>端末の中。初回のダウンロード後はオフラインでも動く</td><td>スマホ、旅行、プライバシー重視</td><td>初回に1方向あたり約145MB</td></tr>
+          <tr><td><b>Ollama (local)</b></td><td>パソコン上のローカルAI</td><td>長文・口語、自然な言い回し</td><td>同じパソコンで Ollama を起動（<code>ollama serve</code>）</td></tr>
+          <tr><td><b>Claude</b></td><td>Claude 上で開いたときの Claude</td><td>いちばん高品質</td><td>Claude 上の版でのみ使用可</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>FuguMT は翻訳専用の小さなモデルで、一文ずつ訳します。標準的なはっきりした文は得意ですが、くだけた言い回し・固有名詞・非常に長い文は不自然になることがあります。そういう文は、使える環境なら Ollama か Claude で訳してください。</p>
+
+    <h2 id="ja-settings">7. 設定</h2>
+    <dl>
+      <dt>翻訳結果を自動で読み上げ</dt><dd>翻訳が終わるたびに自動で読み上げます。</dd>
+      <dt>音声入力後に自動翻訳</dt><dd>音声入力が終わるとすぐ翻訳します。文字を直してから訳したいときはオフにします。</dd>
+      <dt>英語の音声 / 日本語の音声</dt><dd>言語ごとに使う声です。<i>auto</i> を選ぶと、使える中で最適な声を自動で選びます。</dd>
+      <dt>速度</dt><dd>読み上げの速さです（0.6〜1.6倍）。</dd>
+      <dt>エンジン</dt><dd>翻訳エンジンです（6章を参照）。Ollama では、モデル名（例：<code>gemma4:e4b</code>）も指定できます。</dd>
+    </dl>
+
+    <h2 id="ja-trouble">8. 困ったときは</h2>
+    <dl>
+      <dt>マイクボタンが反応しない／「マイクが許可されていません」と出る</dt>
+      <dd>アドレスが <code>https://</code> で始まっているか確認してください。サイトにマイクを許可します（iPhone は 設定 → Safari → マイク、Chrome はサイトの設定）。Claude 上で使っている場合、マイクはブロックされます。キーボードの音声入力キーを使うか、単体版を開いてください。</dd>
+      <dt>「このブラウザは音声認識に対応していません」と出る</dt>
+      <dd>iPhone は Safari、Android とパソコンは Chrome を使ってください。Firefox は対応していません。</dd>
+      <dt>モデルのダウンロードが止まる・失敗する</dt>
+      <dd>Wi-Fi につないで再読み込みし、もう一度試してください。途中まで取得した分は次回に引き継がれます。空き容量が約400MBあるかも確認してください。</dd>
+      <dt>翻訳が遅い</dt>
+      <dd>アプリを開いて最初の翻訳は、モデルをメモリに読み込むので数秒かかります。以後は端末によって1文あたり約1〜5秒です。</dd>
+      <dt>「Ollama に接続できません」と出る</dt>
+      <dd>パソコンで <code>ollama serve</code> を起動してください。ブラウザが接続を拒否するときは <code>OLLAMA_ORIGINS="*" ollama serve</code> で起動します。Ollama は、それが動いているパソコンからしか使えません。</dd>
+      <dt>翻訳の向きが逆になる</dt>
+      <dd>AUTO をやめて <span class="ui">JA → EN</span> か <span class="ui">EN → JA</span> を選んでください。</dd>
+    </dl>
+
+    <h2 id="ja-privacy">9. プライバシー</h2>
+    <ul>
+      <li><b>In-browser (FuguMT)</b>：翻訳は端末の中で行い、入力した文はどこにも送られません。</li>
+      <li><b>音声入力</b>はブラウザの音声認識を使います。Chrome や一部の Safari の設定では、認識のために音声がブラウザ提供元のサーバーに送られます。</li>
+      <li><b>Ollama</b> はパソコン内だけで動きます。<b>Claude</b> を選ぶと、翻訳のために文が Claude に送られます。</li>
+      <li>設定と履歴はこのブラウザ内にだけ保存されます。サイトのデータを消去すると消えます。</li>
+    </ul>
+
+    <h2 id="ja-desktop">10. Mac デスクトップ版</h2>
+    <p><code>voice_translator.py</code> は、完全オフラインで動く Mac 用の別バージョンです。音声認識に Whisper、翻訳に Ollama、読み上げに macOS の <code>say</code> を使います。</p>
+    <ol>
+      <li>ターミナルでアプリのフォルダに移動し、<code>python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt</code> を実行します。</li>
+      <li>Ollama を起動してから <code>python voice_translator.py</code> を実行します。</li>
+      <li><span class="ui">🎤 Record</span>（<kbd>⌘R</kbd>）を押して話し、もう一度押すと止まります。訳文が表示され、読み上げられます。</li>
+    </ol>
+
+    <footer>翻訳モデル：FuguMT（staka、CC BY-SA 4.0）、ONNX 変換：Kadonox。実行環境：Transformers.js（Apache-2.0）。</footer>
+  </article>
+</div>
+
+<script>
+(() => {
+  // Show one language at a time; follow #en / #ja (and #en-xxx / #ja-xxx section links)
+  const arts = { en: document.getElementById("en"), ja: document.getElementById("ja") };
+  const btns = document.querySelectorAll(".seg button");
+  const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
+
+  function show(lang, scroll) {
+    if (!arts[lang]) lang = "en";
+    for (const [k, el] of Object.entries(arts)) el.hidden = k !== lang;
+    btns.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === lang)));
+    document.documentElement.lang = lang;
+    store.set("kb.uiLang", JSON.stringify(lang));
+    if (scroll) window.scrollTo(0, 0);
+  }
+  btns.forEach((b) => b.onclick = () => show(b.dataset.lang, true));
+
+  const fromHash = () => (location.hash.slice(1).split("-")[0] || "");
+  let saved = null; try { saved = JSON.parse(store.get("kb.uiLang")); } catch {}
+  const initial = arts[fromHash()] ? fromHash() : saved || ((navigator.language || "").toLowerCase().startsWith("ja") ? "ja" : "en");
+  show(initial, false);
+  window.addEventListener("hashchange", () => { const l = fromHash(); if (arts[l]) show(l, false); });
+})();
+</script>
+
+</body>
+</html>
