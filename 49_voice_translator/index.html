@@ -255,6 +255,11 @@
       noSR: "This browser does not support speech recognition. Use Chrome or Safari, or your device's dictation key.",
       micBlocked: "The microphone is blocked on this page. Open the standalone version in Chrome/Safari, or use your device's dictation (Mac: press fn twice).",
       standaloneOnly: " — standalone only",
+      libFail: "Could not load the translation library from cdn.jsdelivr.net. Check your connection or content blocker.",
+      modelFail: "Could not download the model from huggingface.co ({e}). Check your connection or content blocker.",
+      ollamaFile: "Ollama rejects pages opened as a file (file://). Run serve.sh and open http://localhost:8000 instead.",
+      fileNote: "Opened as a file (file://): Ollama will refuse it and the model is not cached. Run serve.sh and open http://localhost:8000.",
+      sandboxNote: "This preview blocks network access, so no engine can load here. Open the page in Chrome or Safari.",
     },
     ja: {
       help: "ヘルプ", settings: "⚙︎ 設定", engine: "エンジン", autoSpeak: "翻訳結果を自動で読み上げ",
@@ -273,6 +278,11 @@
       noSR: "このブラウザは音声認識に対応していません。Chrome / Safari を使うか、端末の音声入力キーを使ってください。",
       micBlocked: "このページ内ではマイクが使えません。単体版を Chrome / Safari で開くか、端末の音声入力（Mac: fn キー2回）を使ってください。",
       standaloneOnly: " — 単体版のみ",
+      libFail: "翻訳ライブラリ（cdn.jsdelivr.net）を読み込めません。通信環境やコンテンツブロッカーを確認してください",
+      modelFail: "モデル（huggingface.co）をダウンロードできません（{e}）。通信環境やコンテンツブロッカーを確認してください",
+      ollamaFile: "ファイルとして開いたページ（file://）は Ollama に拒否されます。serve.sh を実行し http://localhost:8000 を開いてください",
+      fileNote: "ファイル（file://）として開いています。Ollama は接続を拒否し、モデルも保存されません。serve.sh を実行し http://localhost:8000 を開いてください。",
+      sandboxNote: "このプレビューは通信が遮断されているため、どのエンジンも動きません。Chrome か Safari でページを開いてください。",
     },
   };
   let uiLang = "en";
@@ -383,7 +393,9 @@
   async function getWasmPipe(target) {
     if (!wasmPipes[target]) {
       wasmPipes[target] = (async () => {
-        const { pipeline, env } = await import(TFJS_URL);
+        let lib;
+        try { lib = await import(TFJS_URL); } catch (e) { throw Object.assign(new Error(String(e?.message || e)), { stage: "lib" }); }
+        const { pipeline, env } = lib;
         env.allowLocalModels = false;
         const files = {};
         const progress_callback = (p) => {
@@ -393,7 +405,14 @@
             setStatus(tx("download", { l: (l / 1e6).toFixed(0), t: (t / 1e6).toFixed(0) }));
           }
         };
-        return pipeline("translation", WASM_MODELS[target], { dtype: "q8", device: "wasm", progress_callback });
+        // Large downloads can drop on mobile networks: retry; files already fetched come from the browser cache
+        let lastErr;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            return await pipeline("translation", WASM_MODELS[target], { dtype: "q8", device: "wasm", progress_callback });
+          } catch (e) { lastErr = e; console.warn("model load attempt", attempt + 1, "failed:", e); await new Promise((r) => setTimeout(r, 1500)); }
+        }
+        throw Object.assign(new Error(String(lastErr?.message || lastErr)), { stage: "model" });
       })().catch((e) => { delete wasmPipes[target]; throw e; });
     }
     return wasmPipes[target];
@@ -441,8 +460,12 @@
     } catch (e) {
       const code = e?.code || e?.name;
       if (code === "cancelled" || code === "AbortError") { setStatus(tx("stopped")); if (e.text) out.textContent = e.text; }
-      else if (backend === "wasm") { console.error(e); setStatus(tx("wasmFail", { e: e?.message || e }), true); }
-      else if (backend === "ollama") setStatus(tx("ollamaFail"), true);
+      else if (backend === "wasm") {
+        console.error(e);
+        const key = e?.stage === "lib" ? "libFail" : e?.stage === "model" ? "modelFail" : "wasmFail";
+        setStatus(tx(key, { e: e?.message || e }), true);
+      }
+      else if (backend === "ollama") setStatus(tx(location.protocol === "file:" ? "ollamaFile" : "ollamaFail"), true);
       else { setStatus(tx(SAMPLE_ERR.has(code) ? code : "failed"), true); if (e?.text) out.textContent = e.text; }
     } finally {
       $("goBtn").disabled = false; $("stopBtn").hidden = true; $("status").classList.remove("pulse");
@@ -597,6 +620,13 @@
   }
   $("ollamaModel").hidden = $("backend").value !== "ollama";
   if (!SR || inArtifact) showMicNote(true);
+  if (!inArtifact) {
+    // Warn about environments where network engines cannot work
+    let sandboxed = false;
+    try { sandboxed = window.self !== window.top && (window.origin === "null" && location.protocol !== "file:"); } catch { sandboxed = true; }
+    const envKey = sandboxed ? "sandboxNote" : location.protocol === "file:" ? "fileNote" : "";
+    if (envKey) { state.micNote = envKey; $("micNote").hidden = false; }
+  }
   if (inArtifact) $("helpLink").hidden = true; // manual ships with the standalone site only
   applyI18n();
 })();
