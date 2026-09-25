@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d6e6e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Kotoba">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body>
+<title>Kotoba Booth</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --bg: #eef1f3;
+    --panel: #ffffff;
+    --ink: #172026;
+    --muted: #5b6970;
+    --line: #d5dde1;
+    --accent: #0d6e6e;
+    --accent-ink: #ffffff;
+    --accent-soft: #d9eeec;
+    --rec: #c2372b;
+    --sans: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #0f1518; --panel: #172024; --ink: #e4ecee; --muted: #93a3a9;
+      --line: #2a373c; --accent: #3fb3ad; --accent-ink: #06201f; --accent-soft: #173a3a; --rec: #ef6b5e;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0f1518; --panel: #172024; --ink: #e4ecee; --muted: #93a3a9;
+    --line: #2a373c; --accent: #3fb3ad; --accent-ink: #06201f; --accent-soft: #173a3a; --rec: #ef6b5e;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.6; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding-inline: 16px; padding-block: 24px 48px; display: grid; gap: 16px; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
+  h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: .02em; }
+  h1 span { color: var(--accent); }
+  .engine { font-family: var(--mono); font-size: 12px; color: var(--muted); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .engine select, .engine input { font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px; }
+  .engine input { width: 120px; }
+
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel); }
+  .seg button { border: 0; background: transparent; color: var(--muted); font: 500 13px var(--mono); padding: 7px 12px; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+  .opts { margin-left: auto; display: flex; gap: 14px; align-items: center; font-size: 13px; color: var(--muted); flex-wrap: wrap; }
+  .opts label { display: inline-flex; gap: 6px; align-items: center; }
+  .vsel { font: 12px var(--sans); color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 3px 4px; max-width: 170px; }
+  .opts input[type=range] { width: 90px; accent-color: var(--accent); }
+
+  .grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: stretch; }
+  .pane { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; display: flex; flex-direction: column; min-height: 260px; }
+  .pane-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  .tag { font: 500 12px var(--mono); letter-spacing: .08em; color: var(--muted); text-transform: uppercase; }
+  .tag b { color: var(--accent); font-weight: 500; }
+  textarea, .out { flex: 1; width: 100%; border: 0; resize: none; background: transparent; color: var(--ink); font: 400 19px/1.65 var(--sans); padding: 14px; outline: none; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .out.dim { color: var(--muted); }
+  .interim { color: var(--muted); font-size: 14px; padding: 0 14px 6px; min-height: 1.4em; }
+  .pane-foot { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--line); align-items: center; }
+  .btn { border: 1px solid var(--line); background: var(--panel); color: var(--ink); font: 500 13px var(--sans); padding: 7px 12px; border-radius: 8px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .btn.mic.on { background: var(--rec); border-color: var(--rec); color: #fff; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn:focus-visible, .seg button:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .spacer { flex: 1; }
+  .kbd { font: 12px var(--mono); color: var(--muted); }
+  .mid { display: flex; flex-direction: column; justify-content: center; gap: 8px; }
+  .swap { width: 40px; height: 40px; border-radius: 50%; padding: 0; justify-content: center; font-size: 17px; }
+
+  .status { font: 12px var(--mono); color: var(--muted); min-height: 1.5em; }
+  .status.err { color: var(--rec); }
+  .note { font-size: 13px; color: var(--muted); background: var(--accent-soft); border-radius: 8px; padding: 8px 12px; }
+
+  section.hist h2 { font: 500 12px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 8px 0; }
+  .hist ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .hist li { background: var(--panel); display: grid; grid-template-columns: 56px 1fr 1fr auto; gap: 12px; padding: 10px 14px; align-items: start; font-size: 14px; }
+  .hist .dir { font: 12px var(--mono); color: var(--accent); padding-top: 2px; }
+  .hist .t { overflow-wrap: anywhere; }
+  .hist .t.muted { color: var(--muted); }
+  .hist .play { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 15px; }
+  .ex { font: 11px var(--mono); color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; margin-left: 6px; }
+
+  .gear { display: none; }
+  @media (max-width: 720px) {
+    body { font-size: 16px; -webkit-text-size-adjust: 100%; }
+    .wrap { padding-block: 12px calc(96px + env(safe-area-inset-bottom, 0px)); gap: 10px; }
+    header { flex-wrap: nowrap; align-items: center; }
+    h1 { font-size: 20px; }
+    .gear { display: inline-flex; margin-left: auto; }
+    /* Settings collapse into a drawer toggled by the gear button */
+    .engine, .opts { display: none; }
+    .wrap.show-settings .engine, .wrap.show-settings .opts { display: flex; }
+    .wrap.show-settings header { flex-wrap: wrap; }
+    .engine { width: 100%; order: 3; font-size: 14px; }
+    .opts { margin-left: 0; width: 100%; flex-direction: column; align-items: stretch; gap: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; font-size: 15px; }
+    .opts label { justify-content: space-between; }
+    .opts input[type=range] { width: 55%; }
+    .vsel, .engine select, .engine input { font-size: 16px; max-width: 60%; } /* >=16px stops iOS focus zoom */
+    .seg { width: 100%; }
+    .seg button { flex: 1; padding: 10px 4px; font-size: 14px; }
+    .grid { grid-template-columns: 1fr; gap: 8px; }
+    .pane { min-height: 0; }
+    .pane-head { padding: 6px 12px; }
+    textarea, .out { font-size: 20px; padding: 10px 12px; min-height: 22vh; }
+    .interim { padding: 0 12px 4px; }
+    .mid { flex-direction: row; justify-content: center; margin-block: -4px; }
+    .swap { transform: rotate(90deg); width: 36px; height: 36px; }
+    .kbd { display: none; }
+    /* Source actions become a thumb-reachable bottom bar */
+    .pane.src .pane-foot {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+      background: var(--panel); border-top: 1px solid var(--line);
+      padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+      display: grid; grid-template-columns: 1fr 1fr auto auto; gap: 8px;
+      box-shadow: 0 -4px 16px rgba(0,0,0,.08);
+    }
+    .pane.src .pane-foot .spacer { display: none; }
+    .pane.src .pane-foot .btn { justify-content: center; padding: 14px 10px; font-size: 16px; border-radius: 12px; }
+    .pane.src .pane-foot .mic { font-weight: 700; }
+    .pane-foot .btn { padding: 10px 12px; font-size: 15px; }
+    .pane.dst .pane-foot .status { width: 100%; order: 5; }
+    .note { font-size: 13px; }
+    .hist li { grid-template-columns: 44px 1fr auto; gap: 4px 10px; padding: 10px 12px; }
+    .hist li .t:nth-child(3) { grid-column: 2; }
+    .hist .play { font-size: 20px; padding: 4px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+  .pulse { animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .55; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Kotoba <span>Booth</span></h1>
+    <button type="button" class="btn gear" id="gearBtn" aria-expanded="false" aria-label="Settings">⚙︎ 設定</button>
+    <div class="engine">
+      <label for="backend">engine</label>
+      <select id="backend">
+        <option value="claude">Claude</option>
+        <option value="wasm">In-browser (FuguMT)</option>
+        <option value="ollama">Ollama (local)</option>
+      </select>
+      <input id="ollamaModel" value="gemma4:e4b" aria-label="Ollama model" hidden>
+    </div>
+  </header>
+
+  <div class="bar">
+    <div class="seg" role="group" aria-label="Direction">
+      <button type="button" data-dir="auto" aria-pressed="true">AUTO</button>
+      <button type="button" data-dir="ja" aria-pressed="false">JA → EN</button>
+      <button type="button" data-dir="en" aria-pressed="false">EN → JA</button>
+    </div>
+    <div class="opts">
+      <label><input type="checkbox" id="autoSpeak" checked> 自動読み上げ</label>
+      <label><input type="checkbox" id="autoTranslate" checked> 音声入力後に自動翻訳</label>
+      <label for="voiceEn">EN 音声 <select id="voiceEn" class="vsel"></select></label>
+      <label for="voiceJa">JA 音声 <select id="voiceJa" class="vsel"></select></label>
+      <label for="rate">速度 <input type="range" id="rate" min="0.6" max="1.6" step="0.1" value="1"></label>
+    </div>
+  </div>
+
+  <div class="note" id="micNote" hidden></div>
+
+  <div class="grid">
+    <div class="pane src">
+      <div class="pane-head">
+        <span class="tag">Source · <b id="srcLang">—</b></span>
+        <button type="button" class="btn" id="clearBtn">Clear</button>
+      </div>
+      <textarea id="src" spellcheck="false" aria-label="Source text">Where is the nearest train station?</textarea>
+      <div class="interim" id="interim"></div>
+      <div class="pane-foot">
+        <button type="button" class="btn mic" id="micJa" data-lang="ja-JP">🎤 日本語</button>
+        <button type="button" class="btn mic" id="micEn" data-lang="en-US">🎤 English</button>
+        <button type="button" class="btn" id="speakSrc">🔊</button>
+        <span class="spacer"></span>
+        <span class="kbd">⌘/Ctrl + Enter</span>
+        <button type="button" class="btn primary" id="goBtn">翻訳</button>
+      </div>
+    </div>
+
+    <div class="mid">
+      <button type="button" class="btn swap" id="swapBtn" aria-label="Swap source and translation">⇄</button>
+    </div>
+
+    <div class="pane dst">
+      <div class="pane-head">
+        <span class="tag">Translation · <b id="dstLang">—</b></span>
+        <button type="button" class="btn" id="stopBtn" hidden>Stop</button>
+      </div>
+      <div class="out dim" id="dst" aria-live="polite">最寄りの駅はどこですか？</div>
+      <div class="pane-foot">
+        <button type="button" class="btn" id="speakDst">🔊 読み上げ</button>
+        <button type="button" class="btn" id="hushBtn">⏹</button>
+        <button type="button" class="btn" id="copyBtn">Copy</button>
+        <span class="spacer"></span>
+        <span class="status" id="status">Example shown · press 翻訳 to run</span>
+      </div>
+    </div>
+  </div>
+
+  <section class="hist">
+    <h2>History</h2>
+    <ul id="histList"></ul>
+  </section>
+</div>
+
+<script>
+(() => {
+  // ---------- State ----------
+  const $ = (id) => document.getElementById(id);
+  const JA_RE = /[぀-ヿ㐀-鿿ｦ-ﾟ]/;
+  const state = { dir: "auto", sample: null, ctl: null, rec: null, recBtn: null, history: [] };
+
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  };
+
+  // ---------- Helpers ----------
+  const detect = (t) => (JA_RE.test(t) ? "ja" : "en");
+  const srcLangFor = (t) => (state.dir === "auto" ? detect(t) : state.dir);
+  const other = (l) => (l === "ja" ? "en" : "ja");
+  const setStatus = (msg, err = false) => { $("status").textContent = msg; $("status").classList.toggle("err", err); };
+  const setLangs = (s) => { $("srcLang").textContent = s.toUpperCase(); $("dstLang").textContent = other(s).toUpperCase(); };
+
+  function buildPrompt(text, target) {
+    const name = target === "ja" ? "natural Japanese" : "natural English";
+    return `You are a professional Japanese-English interpreter. Translate the text between <text> tags into ${name}. ` +
+      `Keep the tone and register. Output ONLY the translation, no quotes, notes or explanations.\n\n<text>\n${text}\n</text>`;
+  }
+
+  // ---------- Speech output (Web Speech synthesis) ----------
+  // Voice list loads asynchronously (Safari/WebKit may never fire onvoiceschanged),
+  // so always re-read it at speak time.
+  const getVoices = () => (window.speechSynthesis ? speechSynthesis.getVoices() : []);
+  const voiceLang = (v) => (v.lang || "").toLowerCase().replace("_", "-");
+  const voicesFor = (lang) => getVoices().filter((v) => voiceLang(v).startsWith(lang + "-") || voiceLang(v) === lang);
+
+  function pickVoice(lang) {
+    const cand = voicesFor(lang);
+    // User-selected voice wins
+    const chosen = $(lang === "ja" ? "voiceJa" : "voiceEn").value;
+    if (chosen) { const v = cand.find((x) => x.voiceURI === chosen); if (v) return v; }
+    const pref = lang === "ja" ? ["Kyoko", "O-Ren", "Google 日本語", "Haruka", "Nanami"] : ["Samantha", "Alex", "Google US English", "Aria", "Jenny", "Daniel"];
+    for (const p of pref) { const v = cand.find((x) => x.name.includes(p)); if (v) return v; }
+    return cand.find((x) => voiceLang(x) === (lang === "ja" ? "ja-jp" : "en-us")) || cand[0] || null;
+  }
+
+  function fillVoiceSelects() {
+    for (const [id, lang] of [["voiceEn", "en"], ["voiceJa", "ja"]]) {
+      const sel = $(id), saved = store.get("kb." + id, "");
+      const list = voicesFor(lang);
+      sel.textContent = "";
+      const auto = document.createElement("option"); auto.value = ""; auto.textContent = list.length ? "auto" : "(none)"; sel.append(auto);
+      for (const v of list) { const o = document.createElement("option"); o.value = v.voiceURI; o.textContent = `${v.name} (${v.lang})`; sel.append(o); }
+      sel.value = list.some((v) => v.voiceURI === saved) ? saved : "";
+    }
+  }
+  if (window.speechSynthesis) {
+    fillVoiceSelects();
+    speechSynthesis.addEventListener?.("voiceschanged", fillVoiceSelects);
+    // Fallback polling for browsers that load voices late without firing the event
+    let tries = 0; const t = setInterval(() => { if (getVoices().length || ++tries > 20) { fillVoiceSelects(); clearInterval(t); } }, 250);
+  }
+
+  function speak(text, lang) {
+    if (!window.speechSynthesis || !text.trim()) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = lang === "ja" ? "ja-JP" : "en-US";
+    const v = pickVoice(lang);
+    if (v) u.voice = v;
+    else setStatus(lang === "en" ? "英語の音声が見つかりません。OS の設定で英語音声を追加してください" : "日本語の音声が見つかりません", true);
+    u.rate = parseFloat($("rate").value);
+    speechSynthesis.speak(u);
+  }
+
+  // ---------- Translation backends ----------
+  async function translateClaude(text, target, onText, signal) {
+    const { text: out } = await state.sample(buildPrompt(text, target), { modelTier: "quick", onText: ({ text }) => onText(text), signal });
+    return out.trim();
+  }
+
+  async function translateOllama(text, target, onText, signal) {
+    const res = await fetch("http://localhost:11434/api/chat", {
+      method: "POST", signal,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: $("ollamaModel").value.trim(), stream: true, options: { temperature: 0.2 },
+        messages: [{ role: "user", content: buildPrompt(text, target) }] }),
+    });
+    if (!res.ok) throw new Error(`Ollama HTTP ${res.status}`);
+    // Parse NDJSON stream
+    const reader = res.body.getReader(); const dec = new TextDecoder();
+    let buf = "", out = "";
+    for (;;) {
+      const { value, done } = await reader.read(); if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split("\n"); buf = lines.pop();
+      for (const ln of lines) {
+        if (!ln.trim()) continue;
+        const j = JSON.parse(ln);
+        if (j.message?.content) { out += j.message.content; onText(out.replace(/<think>[\s\S]*?(<\/think>|$)/g, "").trim()); }
+      }
+    }
+    return out.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+  }
+
+  // In-browser translation: Transformers.js (ONNX Runtime WASM) + FuguMT Marian models.
+  // Models (~145 MB per direction, int8) download once and are cached by the browser.
+  const WASM_MODELS = { ja: "Kadonox/fugumt-en-ja-onnx", en: "Kadonox/fugumt-ja-en-onnx" }; // key = target lang
+  const TFJS_URL = "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1";
+  const wasmPipes = {};
+
+  async function getWasmPipe(target) {
+    if (!wasmPipes[target]) {
+      wasmPipes[target] = (async () => {
+        const { pipeline, env } = await import(TFJS_URL);
+        env.allowLocalModels = false;
+        const files = {};
+        const progress_callback = (p) => {
+          if (p.status === "progress" && p.total) {
+            files[p.file] = [p.loaded, p.total];
+            const [l, t] = Object.values(files).reduce((a, [x, y]) => [a[0] + x, a[1] + y], [0, 0]);
+            setStatus(`Downloading model ${(l / 1e6).toFixed(0)} / ${(t / 1e6).toFixed(0)} MB (first run only)`);
+          }
+        };
+        return pipeline("translation", WASM_MODELS[target], { dtype: "q8", device: "wasm", progress_callback });
+      })().catch((e) => { delete wasmPipes[target]; throw e; });
+    }
+    return wasmPipes[target];
+  }
+
+  function splitSentences(text) {
+    // Split into sentence-sized chunks so each stays well under the model's 512-token limit
+    return text.split(/(?<=[。．！？!?\.])\s*|\n+/).map((s) => s.trim()).filter(Boolean);
+  }
+
+  async function translateWasm(text, target, onText, signal) {
+    const tr = await getWasmPipe(target);
+    setStatus("Translating (in-browser)…");
+    const parts = [];
+    for (const sent of splitSentences(text)) {
+      if (signal.aborted) throw { code: "cancelled", text: parts.join(target === "ja" ? "" : " ") };
+      const [r] = await tr(sent, { max_new_tokens: 256 });
+      parts.push(r.translation_text.trim());
+      onText(parts.join(target === "ja" ? "" : " "));
+    }
+    return parts.join(target === "ja" ? "" : " ");
+  }
+
+  const SAMPLE_ERR = {
+    not_granted: "Claude の利用が許可されていません。Ollama に切り替えてください",
+    sampling_disabled: "このアカウントでは Claude を呼び出せません",
+    rate_limited: "リクエストが多すぎます。少し待ってから再実行してください",
+    session_expired: "サインインし直してください",
+    refused: "この文は翻訳できませんでした",
+  };
+
+  async function runTranslate() {
+    const text = $("src").value.trim();
+    if (!text) return;
+    const s = srcLangFor(text), t = other(s);
+    setLangs(s);
+    state.ctl?.abort();
+    const ctl = new AbortController(); state.ctl = ctl;
+    const out = $("dst");
+    out.classList.add("dim"); out.textContent = "…";
+    $("goBtn").disabled = true; $("stopBtn").hidden = false;
+    setStatus("Translating…"); $("status").classList.add("pulse");
+    const backend = $("backend").value;
+    try {
+      const fn = { claude: translateClaude, wasm: translateWasm, ollama: translateOllama }[backend];
+      const result = await fn(text, t, (partial) => { out.textContent = partial; out.classList.remove("dim"); }, ctl.signal);
+      out.textContent = result; out.classList.remove("dim");
+      setStatus(`${s.toUpperCase()} → ${t.toUpperCase()} · ${backend}`);
+      addHistory({ s, src: text, dst: result });
+      if ($("autoSpeak").checked) speak(result, t);
+    } catch (e) {
+      const code = e?.code || e?.name;
+      if (code === "cancelled" || code === "AbortError") { setStatus("Stopped"); if (e.text) out.textContent = e.text; }
+      else if (backend === "wasm") { console.error(e); setStatus(`モデルの読み込み/推論に失敗しました: ${e?.message || e}`, true); }
+      else if (backend === "ollama") setStatus("Ollama に接続できません。ollama serve を起動し、このページをローカルで開いてください", true);
+      else { setStatus(SAMPLE_ERR[code] || "翻訳に失敗しました。もう一度押してください", true); if (e?.text) out.textContent = e.text; }
+    } finally {
+      $("goBtn").disabled = false; $("stopBtn").hidden = true; $("status").classList.remove("pulse");
+      if (state.ctl === ctl) state.ctl = null;
+    }
+  }
+
+  // ---------- Speech input (Web Speech recognition) ----------
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  function stopRec() { try { state.rec?.stop(); } catch {} }
+
+  function startRec(btn) {
+    if (state.rec) { const same = state.recBtn === btn; stopRec(); if (same) return; }
+    window.speechSynthesis?.cancel();
+    const rec = new SR();
+    rec.lang = btn.dataset.lang; rec.interimResults = true; rec.continuous = false;
+    let finalText = "";
+    rec.onresult = (ev) => {
+      let interim = "";
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        const r = ev.results[i];
+        if (r.isFinal) finalText += r[0].transcript; else interim += r[0].transcript;
+      }
+      $("interim").textContent = interim;
+      if (finalText) $("src").value = finalText;
+    };
+    rec.onerror = (ev) => {
+      const msg = ev.error === "not-allowed" ? "マイクが許可されていません" : ev.error === "no-speech" ? "音声が検出されませんでした" : `音声認識エラー: ${ev.error}`;
+      setStatus(msg, true);
+      if (ev.error === "not-allowed") showMicNote(true);
+    };
+    rec.onend = () => {
+      btn.classList.remove("on"); btn.textContent = btn.dataset.label;
+      $("interim").textContent = "";
+      state.rec = null; state.recBtn = null;
+      if (finalText.trim() && $("autoTranslate").checked) {
+        // Force direction from the mic language when in auto mode
+        const lang = btn.dataset.lang.slice(0, 2);
+        const prev = state.dir; if (prev === "auto") state.dir = lang;
+        runTranslate().finally(() => { state.dir = prev; });
+      }
+    };
+    state.rec = rec; state.recBtn = btn;
+    btn.classList.add("on"); btn.textContent = "⏺ 停止";
+    setStatus("Listening…");
+    try { rec.start(); } catch (e) { setStatus("音声認識を開始できません", true); }
+  }
+
+  function showMicNote(force) {
+    const n = $("micNote");
+    n.hidden = false;
+    n.textContent = !SR
+      ? "このブラウザは音声認識に対応していません。Chrome / Safari でローカルファイルとして開くか、OS の音声入力（Mac: fn キー2回）を使ってください。"
+      : force
+        ? "このページ内ではマイクが使えません。HTML をダウンロードして Chrome / Safari で開くか、OS の音声入力（Mac: fn キー2回）でテキスト欄に話しかけてください。"
+        : "";
+    if (!n.textContent) n.hidden = true;
+  }
+
+  // ---------- History ----------
+  function renderHistory() {
+    const ul = $("histList"); ul.textContent = "";
+    for (const h of state.history) {
+      const li = document.createElement("li");
+      const d = document.createElement("span"); d.className = "dir"; d.textContent = `${h.s.toUpperCase()}→${other(h.s).toUpperCase()}`;
+      const a = document.createElement("span"); a.className = "t muted"; a.textContent = h.src;
+      const b = document.createElement("span"); b.className = "t"; b.textContent = h.dst;
+      if (h.example) { const x = document.createElement("span"); x.className = "ex"; x.textContent = "example"; b.append(x); }
+      const p = document.createElement("button"); p.className = "play"; p.type = "button"; p.textContent = "🔊"; p.setAttribute("aria-label", "Speak");
+      p.onclick = () => speak(h.dst, other(h.s));
+      li.append(d, a, b, p); ul.append(li);
+    }
+  }
+  function addHistory(h) {
+    state.history = [h, ...state.history.filter((x) => !x.example)].slice(0, 30);
+    store.set("kb.history", state.history); renderHistory();
+  }
+
+  // ---------- Wiring ----------
+  document.querySelectorAll(".seg button").forEach((b) => b.onclick = () => {
+    state.dir = b.dataset.dir;
+    document.querySelectorAll(".seg button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+    const t = $("src").value.trim(); if (t) setLangs(srcLangFor(t));
+  });
+  [$("micJa"), $("micEn")].forEach((b) => { b.dataset.label = b.textContent; b.onclick = () => (SR ? startRec(b) : showMicNote(true)); });
+  $("gearBtn").onclick = () => {
+    const open = document.querySelector(".wrap").classList.toggle("show-settings");
+    $("gearBtn").setAttribute("aria-expanded", String(open));
+  };
+  $("goBtn").onclick = runTranslate;
+  $("stopBtn").onclick = () => state.ctl?.abort();
+  $("src").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); runTranslate(); } });
+  $("src").addEventListener("input", () => { const t = $("src").value.trim(); if (t) setLangs(srcLangFor(t)); });
+  $("speakSrc").onclick = () => { const t = $("src").value; speak(t, detect(t)); };
+  $("speakDst").onclick = () => { const t = $("dst").textContent; const l = $("dstLang").textContent.toLowerCase(); speak(t, l === "ja" || l === "en" ? l : detect(t)); };
+  $("hushBtn").onclick = () => window.speechSynthesis?.cancel();
+  $("clearBtn").onclick = () => { $("src").value = ""; $("dst").textContent = ""; $("src").focus(); };
+  $("swapBtn").onclick = () => { const a = $("src").value; $("src").value = $("dst").textContent; $("dst").textContent = a; const t = $("src").value.trim(); if (t) setLangs(srcLangFor(t)); };
+  $("copyBtn").onclick = async () => {
+    try { await navigator.clipboard.writeText($("dst").textContent); setStatus("Copied"); }
+    catch { const r = document.createRange(); r.selectNodeContents($("dst")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); setStatus("選択しました。⌘C でコピー"); }
+  };
+  $("backend").onchange = () => { $("ollamaModel").hidden = $("backend").value !== "ollama"; store.set("kb.backend", $("backend").value); };
+  $("ollamaModel").onchange = () => store.set("kb.model", $("ollamaModel").value);
+  $("rate").onchange = () => store.set("kb.rate", $("rate").value);
+  $("voiceEn").onchange = () => { store.set("kb.voiceEn", $("voiceEn").value); speak("Hello, this is the English voice.", "en"); };
+  $("voiceJa").onchange = () => { store.set("kb.voiceJa", $("voiceJa").value); speak("こんにちは、日本語の音声です。", "ja"); };
+
+  // ---------- Init ----------
+  $("rate").value = store.get("kb.rate", "1");
+  $("ollamaModel").value = store.get("kb.model", "gemma4:e4b");
+  state.history = store.get("kb.history", []);
+  if (!state.history.length) state.history = [{ s: "en", src: "Where is the nearest train station?", dst: "最寄りの駅はどこですか？", example: true }];
+  renderHistory();
+  setLangs("en");
+
+  const inArtifact = !!window.claude;
+  const claudeOpt = $("backend").querySelector('option[value="claude"]');
+  const wasmOpt = $("backend").querySelector('option[value="wasm"]');
+  if (!inArtifact) {
+    // Standalone page (local file or hosted): in-browser model by default, Ollama optional
+    claudeOpt.disabled = true;
+    const saved = store.get("kb.backend", "wasm");
+    $("backend").value = saved === "ollama" ? "ollama" : "wasm";
+  } else {
+    // The artifact sandbox blocks model downloads from Hugging Face
+    wasmOpt.disabled = true; wasmOpt.textContent += " — standalone only";
+    $("backend").value = store.get("kb.backend", "claude");
+    claudeOpt.disabled = true; // enabled once sample resolves
+    window.claude.use("sample").then((s) => {
+      if (s) { state.sample = s; claudeOpt.disabled = false; if (store.get("kb.backend", "claude") === "claude") $("backend").value = "claude"; }
+      else { $("backend").value = "ollama"; }
+      $("backend").onchange();
+    });
+    if (store.get("kb.backend", "claude") === "claude") $("backend").value = "ollama";
+  }
+  $("ollamaModel").hidden = $("backend").value !== "ollama";
+  if (!SR || inArtifact) showMicNote(true);
+})();
+</script>
+
+</body>
+</html>
