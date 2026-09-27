@@ -20,4 +20,6 @@ https://tztechno.github.io/tz_html_works2/30_weather_api/weather_dashboard.html
 
 https://tztechno.github.io/tz_html_works2/46_river_camera/river_cameras.html
 
+https://tztechno.github.io/tz_html_works2/47_drug_list/otc_search.html
+
 https://tztechno.github.io/tz_html_works2/48_shibuya_live/shibuya-crossing-live.html
