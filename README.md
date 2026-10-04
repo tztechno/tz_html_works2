@@ -24,8 +24,9 @@ https://tztechno.github.io/tz_html_works2/47_drug_list/otc_search.html
 
 https://tztechno.github.io/tz_html_works2/48_shibuya_live/shibuya-crossing-live.html
 
-https://tztechno.github.io/tz_html_works2/51_terrian_3d_viewer
+https://tztechno.github.io/tz_html_works2/51_terrian_3d_viewer (plotly version)
 
-https://tztechno.github.io/tz_html_works2/52_terrian_3d_viewer_cesium
+https://tztechno.github.io/tz_html_works2/52_terrian_3d_viewer_cesium (cesiumjs)
 
+https://tztechno.github.io/tz_html_works2/53_terrian_3d_viewer_three (three.js)
 
