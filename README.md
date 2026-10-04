@@ -26,6 +26,6 @@ https://tztechno.github.io/tz_html_works2/48_shibuya_live/shibuya-crossing-live.
 
 https://tztechno.github.io/tz_html_works2/51_terrian_3d_viewer
 
-https://tztechno.github.io/tz_html_works2/52_terrian_3d_viewer_cesiumjs
+https://tztechno.github.io/tz_html_works2/52_terrian_3d_viewer_cesium
 
 
