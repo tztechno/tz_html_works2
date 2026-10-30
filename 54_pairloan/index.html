@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ペアローン返済シミュレーター</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <h1>🏠 ペアローン返済シミュレーター</h1>
+  <div class="layout">
+
+    <!-- 入力パネル -->
+    <div class="panel">
+      <h2>⚙️ パラメータ設定</h2>
+
+      <details open>
+        <summary>ローン条件</summary>
+        <div class="row"><label>借入額（総額・万円）</label><input type="number" id="loanTotal" value="5000" min="0" step="100"></div>
+        <div class="row"><label>返済期間（年）</label><input type="number" id="loanYears" value="35" min="1" max="50"></div>
+        <div class="row"><label>現在の金利（%）</label><input type="number" id="rate" value="1.0" min="0" max="10" step="0.05"></div>
+        <div class="row"><label>金利タイプ</label>
+          <select id="rateType">
+            <option value="fixed">全期間固定</option>
+            <option value="variable" selected>変動金利（5年ルール/125%ルール）</option>
+          </select>
+        </div>
+        <div class="row"><label>金利変動シナリオ</label>
+          <select id="rateScenario">
+            <option value="flat">一定</option>
+            <option value="up" selected>上昇（+0.25%/年、上限3%）</option>
+            <option value="updown">乱高下</option>
+            <option value="down">下落（-0.1%/年、下限0.3%）</option>
+            <option value="step">段階的上昇（5年ごと+0.2%、上限3%）</option>
+          </select>
+        </div>
+        <div class="row"><label>妻の返済負担割合（%）</label><input type="number" id="wifeShare" value="40" min="0" max="100" step="5"></div>
+      </details>
+
+      <details open>
+        <summary>住宅関連費（月額）</summary>
+        <div class="row"><label>管理費（円）</label><input type="number" id="kanri" value="15000" min="0" step="1000"></div>
+        <div class="row"><label>管理費 年間上昇率（%）</label><input type="number" id="kanriUp" value="1.5" min="0" max="10" step="0.1"></div>
+        <div class="row"><label>駐車場代（円）</label><input type="number" id="parking" value="10000" min="0" step="500"></div>
+        <div class="row"><label>駐車場 年間上昇率（%）</label><input type="number" id="parkingUp" value="1.0" min="0" max="10" step="0.1"></div>
+        <div class="row"><label>修繕積立金（円）</label><input type="number" id="shuzen" value="12000" min="0" step="1000"></div>
+        <div class="row"><label>修繕積立 年間上昇率（%）</label><input type="number" id="shuzenUp" value="2.0" min="0" max="10" step="0.1"></div>
+        <div class="row"><label>段階値上げ（何年ごと）</label><input type="number" id="shuzenStepYear" value="5" min="0" max="50" step="1"></div>
+        <div class="row"><label>段階値上げ率（%/回）</label><input type="number" id="shuzenStepRate" value="10" min="0" max="100" step="1"></div>
+      </details>
+
+      <details open>
+        <summary>収入（夫）</summary>
+        <div class="row"><label>現在の月収（手取り・円）</label><input type="number" id="husbandIncome" value="380000" min="0" step="10000"></div>
+        <div class="row"><label>昇給率（%/年）</label><input type="number" id="husbandRaise" value="0.5" min="-10" max="10" step="0.1"></div>
+        <div class="row"><label>収入減少イベント</label>
+          <select id="husbandEvent">
+            <option value="none">なし</option>
+            <option value="temp">一時的減少（3年で回復）</option>
+            <option value="perm" selected>恒久的減少</option>
+          </select>
+        </div>
+        <div class="row"><label>減少開始（年後）</label><input type="number" id="husbandEventYear" value="10" min="1" max="50"></div>
+        <div class="row"><label>減少率（%）</label><input type="number" id="husbandDrop" value="20" min="0" max="100" step="5"></div>
+      </details>
+
+      <details open>
+        <summary>収入（妻）</summary>
+        <div class="row"><label>現在の月収（手取り・円）</label><input type="number" id="wifeIncome" value="250000" min="0" step="10000"></div>
+        <div class="row"><label>昇給率（%/年）</label><input type="number" id="wifeRaise" value="0.5" min="-10" max="10" step="0.1"></div>
+        <div class="row"><label>産休・育休イベント</label>
+          <select id="wifeLeave">
+            <option value="none">なし</option>
+            <option value="one" selected>1回（1年休業、その後復帰）</option>
+            <option value="two">2回（各1年休業）</option>
+          </select>
+        </div>
+        <div class="row"><label>休業開始（年後）</label><input type="number" id="wifeLeaveYear" value="3" min="1" max="50"></div>
+        <div class="row"><label>休業中の収入率（%）</label><input type="number" id="wifeLeaveRate" value="50" min="0" max="100" step="5"></div>
+        <div class="row"><label>介護離職イベント</label>
+          <select id="wifeCare">
+            <option value="none" selected>なし</option>
+            <option value="temp">1年休業</option>
+            <option value="perm">完全離職</option>
+          </select>
+        </div>
+        <div class="row"><label>介護開始（年後）</label><input type="number" id="wifeCareYear" value="15" min="1" max="50"></div>
+      </details>
+
+      <details open>
+        <summary>その他生活費</summary>
+        <div class="row"><label>基本生活費（月・円）</label><input type="number" id="baseLiving" value="180000" min="0" step="10000"></div>
+        <div class="row"><label>子供の人数</label><input type="number" id="kids" value="1" min="0" max="5"></div>
+        <div class="row"><label>子供1人あたり教育費（月・円・平均）</label><input type="number" id="kidCost" value="30000" min="0" step="5000"></div>
+        <div class="row"><label>物価上昇率（%/年）</label><input type="number" id="inflation" value="1.0" min="0" max="10" step="0.1"></div>
+        <div class="row"><label>現在の預貯金（円）</label><input type="number" id="savings" value="3000000" min="0" step="100000"></div>
+      </details>
+
+      <details open>
+        <summary>不足時の一時金</summary>
+        <div class="row"><label>一時金モード</label>
+          <select id="tempMoneyMode">
+            <option value="none" selected>なし（破綻判定）</option>
+            <option value="auto">不足分を自動補填</option>
+            <option value="fixed">指定額を補填</option>
+          </select>
+        </div>
+        <div class="row"><label>一時金額（円）</label><input type="number" id="tempMoneyAmount" value="1000000" min="0" step="100000"></div>
+        <div class="row"><label>一時金 開始（年後）</label><input type="number" id="tempMoneyYear" value="10" min="1" max="50"></div>
+        <div class="row"><label>一時金 上限回数</label><input type="number" id="tempMoneyMaxCount" value="3" min="0" max="50"></div>
+      </details>
+
+      <div class="hint">※ 手取りベースで計算。ボーナスは月収に均して入力してください。</div>
+    </div>
+
+    <!-- 結果パネル -->
+    <div class="panel">
+      <h2>📊 シミュレーション結果</h2>
+      <div class="verdict" id="verdict">計算中...</div>
+      <div class="summary-grid" id="summary"></div>
+      <div class="toolbar">
+        <button class="csv" id="btnCsv" type="button">⬇ CSVダウンロード</button>
+      </div>
+      <div class="tbl-wrap">
+        <table id="tbl">
+          <thead>
+            <tr>
+              <th>年</th><th>金利%</th><th>ローン返済</th><th>夫返済</th><th>妻返済</th><th>年末残高</th>
+              <th>管理費</th><th>駐車場</th><th>修繕</th>
+              <th>住宅計</th><th>生活費</th>
+              <th>夫収入</th><th>妻収入</th><th>収入計</th>
+              <th>収支</th><th>一時金</th><th>貯金残高</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="hint">※ 収支がマイナスで貯金が底をついた時点で「破綻」と判定します。金額は月額換算（貯金残高・一時金を除く）。一時金を注入してもマイナスが続く場合は破綻となります。満期に残った年末残高は最終年の貯金から一括返済します。夫返済・妻返済は負担割合で按分した額で、世帯の返済総額は負担割合では変わりません。</div>
+    </div>
+  </div>
+
+  <!-- file:// で開いても動くよう通常のscriptで読み込む（順序依存） -->
+  <script src="js/config.js"></script>
+  <script src="js/calc.js"></script>
+  <script src="js/csv.js"></script>
+  <script src="js/ui.js"></script>
+</body>
+</html>

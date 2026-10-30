@@ -1,0 +1,43 @@
+* { box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", sans-serif;
+  margin: 0; padding: 16px; background: #f5f6f8; color: #222;
+}
+h1 { font-size: 20px; margin: 0 0 16px; }
+.layout { display: grid; grid-template-columns: 420px minmax(0, 1fr); gap: 16px; }
+@media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+.panel { background: #fff; border-radius: 10px; padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+.panel h2 { font-size: 15px; margin: 0 0 12px; padding-bottom: 6px; border-bottom: 1px solid #eee; }
+.row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 8px; }
+.row label { font-size: 13px; flex: 1; }
+.row input[type=number], .row select {
+  width: 110px; padding: 4px 6px; font-size: 13px; border: 1px solid #ccc; border-radius: 4px; text-align: right;
+}
+.row select { width: auto; max-width: 280px; text-align: left; }
+details { margin-bottom: 8px; }
+summary { cursor: pointer; font-weight: 600; font-size: 13px; padding: 6px 0; color: #345; }
+.verdict { font-size: 22px; font-weight: 700; padding: 14px; border-radius: 8px; text-align: center; margin-bottom: 12px; }
+.ok { background: #e6f7ec; color: #1a7f37; }
+.warn { background: #fff4e0; color: #b26a00; }
+.ng { background: #fde8e8; color: #c0392b; }
+.summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-bottom: 12px; }
+.stat { background: #fafbfc; border: 1px solid #eee; border-radius: 6px; padding: 8px 10px; }
+.stat .k { font-size: 11px; color: #666; }
+.stat .v { font-size: 16px; font-weight: 700; }
+.toolbar { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 8px; }
+button.csv {
+  background: #1a7f37; color: #fff; border: none; border-radius: 6px;
+  padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+button.csv:hover { background: #15652c; }
+button.csv:disabled { background: #aaa; cursor: not-allowed; }
+table { width: 100%; border-collapse: collapse; font-size: 11px; }
+th, td { padding: 3px 4px; border-bottom: 1px solid #eee; text-align: right; white-space: nowrap; }
+th { background: #fafbfc; position: sticky; top: 0; font-size: 10px; }
+td.year { font-weight: 700; text-align: center; background: #fcfcfd; }
+.tbl-wrap { max-height: 420px; overflow: auto; border: 1px solid #eee; border-radius: 6px; }
+tr.fail td { background: #fde8e8; }
+tr.fail td.year { color: #c0392b; }
+.neg { color: #c0392b; }
+.temp-money { color: #b26a00; font-weight: 700; }
+.hint { font-size: 11px; color: #888; margin-top: 4px; }
