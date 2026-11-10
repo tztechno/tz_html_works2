@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>矩形断層モデル 3Dビューア</title>
+<style>
+  body { margin:0; overflow:hidden; font-family:sans-serif; background:#111; color:#eee; }
+  #ui {
+    position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.75);
+    padding:12px 16px; border-radius:8px; font-size:13px; line-height:1.8;
+    max-width:320px;
+  }
+  #ui label { display:flex; justify-content:space-between; gap:8px; }
+  #ui input[type=range] { width:140px; }
+  #ui .val { width:52px; text-align:right; color:#7fd; }
+  h3 { margin:0 0 8px; font-size:14px; color:#7fd; }
+  .note { font-size:11px; color:#aaa; margin-top:8px; }
+</style>
+</head>
+<body>
+<div id="ui">
+  <h3>矩形断層モデル（中心＝原点）</h3>
+  <label>走向 Strike <input id="strike" type="range" min="0" max="360" value="50" step="1"><span class="val" id="strikeV">50°</span></label>
+  <label>傾斜 Dip <input id="dip" type="range" min="1" max="90" value="45" step="1"><span class="val" id="dipV">45°</span></label>
+  <label>すべり角 Rake <input id="rake" type="range" min="-180" max="180" value="90" step="1"><span class="val" id="rakeV">90°</span></label>
+  <label>長さ Length <input id="len" type="range" min="5" max="100" value="40" step="1"><span class="val" id="lenV">40</span></label>
+  <label>幅 Width <input id="wid" type="range" min="5" max="60" value="15" step="1"><span class="val" id="widV">15</span></label>
+  <label>上端深さ Top <input id="top" type="range" min="0" max="20" value="0" step="0.5"><span class="val" id="topV">0</span></label>
+  <div class="note">
+    赤＝走向、緑＝傾斜方向（下向き）、黄矢印＝すべり方向<br>
+    マウスドラッグで回転／ホイールでズーム
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x111111);
+
+const camera = new THREE.PerspectiveCamera(50, innerWidth/innerHeight, 0.1, 2000);
+camera.position.set(60, 60, 90);
+
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, -10, 0);
+controls.update();
+
+// ライト
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+const dl = new THREE.DirectionalLight(0xffffff, 1.0);
+dl.position.set(50, 100, 50);
+scene.add(dl);
+
+// 地面グリッド（水平面）
+const grid = new THREE.GridHelper(120, 24, 0x445, 0x223);
+grid.position.y = 0;
+scene.add(grid);
+
+// 軸ヘルパー（X=赤, Y=緑, Z=青）… 北を-Z方向に取る
+scene.add(new THREE.AxesHelper(20));
+
+// 断層グループ
+const faultGroup = new THREE.Group();
+scene.add(faultGroup);
+
+// 状態
+const state = { strike:50, dip:45, rake:90, length:40, width:15, top:0 };
+
+// 単位ベクトル計算（北=-Z, 東=+X, 上=+Y）
+function deg2rad(d){ return d*Math.PI/180; }
+
+function computeVectors(s){
+  const st = deg2rad(s.strike);
+  const dp = deg2rad(s.dip);
+  const rk = deg2rad(s.rake);
+
+  // 走向方向ベクトル（水平、北から時計回り）
+  // 北 = (0,0,-1), 東 = (1,0,0)  => 走向 = sin(strike)*東 + cos(strike)*北
+  const strikeVec = new THREE.Vector3(Math.sin(st), 0, -Math.cos(st)).normalize();
+
+  // 傾斜方向（走向に直交し、下向き）: 走向を水平面内で90°回転し、傾斜角だけ下げる
+  // 走向の右手側（時計回り90°）: downDip水平成分
+  const downDipHoriz = new THREE.Vector3(Math.cos(st), 0, Math.sin(st)).normalize();
+  const dipVec = new THREE.Vector3(
+    downDipHoriz.x * Math.cos(dp),
+    -Math.sin(dp),
+    downDipHoriz.z * Math.cos(dp)
+  ).normalize();
+
+  // 断層面の法線 = strikeVec × dipVec
+  const normal = new THREE.Vector3().crossVectors(strikeVec, dipVec).normalize();
+
+  // すべり方向ベクトル（断層面上）: rake=0 で走向方向、rake=90 で傾斜方向（逆断層）
+  const slipVec = new THREE.Vector3()
+    .addScaledVector(strikeVec, Math.cos(rk))
+    .addScaledVector(dipVec, Math.sin(rk))
+    .normalize();
+
+  return { strikeVec, dipVec, normal, slipVec };
+}
+
+// 断層面・ベクトルを再構築
+function rebuild(){
+  while(faultGroup.children.length) {
+    const c = faultGroup.children.pop();
+    c.geometry?.dispose();
+    c.material?.dispose?.();
+    faultGroup.remove(c);
+  }
+
+  const { strikeVec, dipVec, normal, slipVec } = computeVectors(state);
+
+  const L = state.length;
+  const W = state.width;
+
+  // 断層面の中心の深さ = 上端深さ + (W/2)*sin(dip)
+  const centerDepth = state.top + (W/2)*Math.sin(deg2rad(state.dip));
+  const center = new THREE.Vector3(0, -centerDepth, 0);
+
+  // 四隅: 中心 ± (L/2)*strikeVec ± (W/2)*dipVec
+  const hL = strikeVec.clone().multiplyScalar(L/2);
+  const hW = dipVec.clone().multiplyScalar(W/2);
+  const corners = [
+    center.clone().add(hL).add(hW.clone().multiplyScalar(-1)), // 左上
+    center.clone().add(hL).add(hW),                            // 左下
+    center.clone().add(hL.clone().multiplyScalar(-1)).add(hW), // 右下
+    center.clone().add(hL.clone().multiplyScalar(-1)).add(hW.clone().multiplyScalar(-1)) // 右上
+  ];
+
+  // 断層面（半透明の四角形）
+  const geo = new THREE.BufferGeometry();
+  const verts = new Float32Array([
+    ...corners[0].toArray(), ...corners[1].toArray(), ...corners[2].toArray(),
+    ...corners[0].toArray(), ...corners[2].toArray(), ...corners[3].toArray()
+  ]);
+  geo.setAttribute('position', new THREE.BufferAttribute(verts, 3));
+  geo.computeVertexNormals();
+  const mat = new THREE.MeshPhongMaterial({
+    color: 0x3399ff, transparent:true, opacity:0.45,
+    side: THREE.DoubleSide, depthWrite:false
+  });
+  faultGroup.add(new THREE.Mesh(geo, mat));
+
+  // 断層面の枠線
+  const lineGeo = new THREE.BufferGeometry().setFromPoints([
+    corners[0], corners[1], corners[2], corners[3], corners[0]
+  ]);
+  faultGroup.add(new THREE.Line(lineGeo, new THREE.LineBasicMaterial({ color:0x66ccff })));
+
+  // 中心点
+  const centerDot = new THREE.Mesh(
+    new THREE.SphereGeometry(Math.max(0.6, L*0.02), 16, 16),
+    new THREE.MeshBasicMaterial({ color:0xffffff })
+  );
+  centerDot.position.copy(center);
+  faultGroup.add(centerDot);
+
+  // 走向ベクトル（赤）
+  const arrowLen = Math.max(L*0.5, 10);
+  faultGroup.add(new THREE.ArrowHelper(strikeVec, center, arrowLen, 0xff4444, arrowLen*0.15, arrowLen*0.08));
+  // 傾斜方向ベクトル（緑、下向き）
+  faultGroup.add(new THREE.ArrowHelper(dipVec, center, arrowLen*0.8, 0x44ff44, arrowLen*0.12, arrowLen*0.07));
+  // すべりベクトル（黄）
+  faultGroup.add(new THREE.ArrowHelper(slipVec, center, arrowLen*0.7, 0xffff44, arrowLen*0.12, arrowLen*0.07));
+
+  // 上端の中心点（参考）
+  const topCenter = center.clone().add(dipVec.clone().multiplyScalar(-W/2));
+  const topDot = new THREE.Mesh(
+    new THREE.SphereGeometry(0.4, 12, 12),
+    new THREE.MeshBasicMaterial({ color:0xffaa00 })
+  );
+  topDot.position.copy(topCenter);
+  faultGroup.add(topDot);
+}
+
+// UI バインド
+const ids = ['strike','dip','rake','len','wid','top'];
+const map = { strike:'strike', dip:'dip', rake:'rake', len:'length', wid:'width', top:'top' };
+ids.forEach(id => {
+  const el = document.getElementById(id);
+  const out = document.getElementById(id+'V');
+  el.addEventListener('input', () => {
+    state[map[id]] = parseFloat(el.value);
+    out.textContent = el.value + (['len','wid','top'].includes(id) ? (id==='top'?' km':' km') : '°');
+    rebuild();
+  });
+  // 初期表示
+  out.textContent = el.value + (['len','wid','top'].includes(id) ? ' km' : '°');
+});
+
+rebuild();
+
+// リサイズ
+addEventListener('resize', () => {
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// アニメーション
+function animate(){
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+</script>
+</body>
+</html>
