@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>1995 兵庫県南部地震 断層モデル (Hashimoto et al., 1996)</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Hiragino Sans", sans-serif; }
+  #map { position: absolute; inset: 0; }
+  .panel {
+    position: absolute; z-index: 1000; background: rgba(255,255,255,0.94);
+    border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.25); padding: 10px 12px; font-size: 12px;
+  }
+  #info { top: 10px; left: 54px; max-width: 360px; }
+  #info h1 { font-size: 14px; margin: 0 0 4px; }
+  #info .src { color: #555; margin-bottom: 6px; }
+  #info table { border-collapse: collapse; width: 100%; }
+  #info td, #info th { padding: 2px 4px; text-align: right; border-bottom: 1px solid #eee; white-space: nowrap; }
+  #info th:first-child, #info td:first-child { text-align: left; }
+  #info tr { cursor: pointer; }
+  #info tbody tr:hover { background: #fff3d6; }
+  #legend { bottom: 24px; left: 10px; }
+  #legend .bar { width: 180px; height: 10px; border-radius: 2px; margin: 4px 0 2px; }
+  #legend .ticks { display: flex; justify-content: space-between; width: 180px; }
+  #loader { top: 10px; right: 10px; }
+  #loader label { display: block; margin-bottom: 4px; }
+  .sym { display: inline-block; vertical-align: middle; margin-right: 4px; }
+  .leaflet-popup-content { font-size: 12px; }
+  .leaflet-popup-content table td { padding: 1px 6px 1px 0; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div id="info" class="panel">
+  <h1 id="title">Fault model</h1>
+  <div class="src" id="src"></div>
+  <table>
+    <thead><tr><th>Segment</th><th>L km</th><th>W km</th><th>Str</th><th>Dip</th><th>Rake</th><th>Slip m</th></tr></thead>
+    <tbody id="segtable"></tbody>
+  </table>
+  <div id="summary" style="margin-top:6px"></div>
+</div>
+
+<div id="legend" class="panel">
+  <b>すべり量 (m)</b>
+  <div class="bar" id="cbar"></div>
+  <div class="ticks" id="cticks"></div>
+  <div style="margin-top:6px">
+    <span class="sym" style="width:22px;border-top:4px solid #111"></span>断層上端
+    <span class="sym" style="width:14px;height:10px;border:1px dashed #333;margin-left:8px"></span>地表投影
+  </div>
+  <div style="margin-top:3px"><span class="sym" style="color:#d00;font-size:16px">★</span>震源 (JMA)
+    <span class="sym" style="margin-left:8px">→</span>上盤のすべり方向(水平成分)</div>
+</div>
+
+<div id="loader" class="panel">
+  <label>別のCSVを読み込む (同じ列構成)</label>
+  <input type="file" id="file" accept=".csv,text/csv">
+</div>
+
+<script>
+// ---------------------------------------------------------------------------
+// Embedded default CSV (same content as kobe_1995_gsi_hashimoto1996.csv)
+// ---------------------------------------------------------------------------
+const DEFAULT_CSV = `# 1995-01-17 Hyogo-ken Nanbu (Great Hanshin-Awaji) earthquake, Mj7.3 / Mw 6.87
+# Source: Hashimoto, M., Sagiya, T., Tsuji, H., Hatanaka, Y., Tada, T. (1996) Co-seismic displacements of the 1995 Hyogo-ken Nanbu earthquake,
+#   J. Phys. Earth 44, 255-279, Table 1 "optimal model" (GSI geodetic data; rigidity 40 GPa; segment Mo sum 2.52e19 N m, while the table lists "Total Mo = 22.4")
+# Converted: NE end of each segment -> center of the surface projection; segments 5-6 (dip 95, positive NW) -> strike 45, dip 85 (SE);
+#   Uh < 0 in the table is right-lateral (Okada U1 sign), Ud > 0 lifts the northwest block; rake = atan2(Ud, Uh)
+# JMA hypocenter: 34.598N 135.037E, 16 km
+# hypocenter_lon=135.037, hypocenter_lat=34.598, hypocenter_depth_km=16
+name,lon,lat,top_depth_km,length_km,width_km,strike_deg,dip_deg,rake_deg,slip_m
+Kobe_1_NE,135.2783,34.7502,3.0,10.0,9.0,225,80,165.7,1.135
+Kobe_2,135.2042,34.7022,3.0,7.5,9.0,240,80,119.4,0.918
+Kobe_3,135.1282,34.6775,2.0,7.5,10.0,240,70,131.9,0.389
+Kobe_4_Suma,135.0611,34.6380,2.0,7.5,10.0,233,70,150.2,2.029
+Awaji_5_Nojima,134.9884,34.5914,0.1,7.5,10.0,45,85,174.4,2.552
+Awaji_6_Nojima_S,134.9381,34.5494,0.1,5.0,10.0,45,85,136.1,1.775
+`;
+
+const RIGIDITY_PA = 40e9;   // rigidity used in Hashimoto et al. (1996)
+const KM_PER_DEG = 111.32;  // km per degree of latitude (flat-earth approximation)
+
+// ---------------------------------------------------------------------------
+// Base map (GSI tiles + OSM)
+// ---------------------------------------------------------------------------
+const gsiAttr = '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>';
+const baseLayers = {
+  "地理院 淡色": L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png", { attribution: gsiAttr, maxZoom: 18 }),
+  "地理院 標準": L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png", { attribution: gsiAttr, maxZoom: 18 }),
+  "地理院 陰影起伏": L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/hillshademap/{z}/{x}/{y}.png", { attribution: gsiAttr, maxZoom: 16 }),
+  "地理院 写真": L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg", { attribution: gsiAttr, maxZoom: 18 }),
+  "OpenStreetMap": L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "&copy; OpenStreetMap contributors", maxZoom: 19 }),
+};
+const map = L.map("map", { zoomControl: true }).setView([34.65, 135.1], 10);
+baseLayers["地理院 淡色"].addTo(map);
+L.control.scale({ imperial: false, position: "bottomright" }).addTo(map);
+
+const layers = {
+  projection: L.layerGroup().addTo(map),
+  trace: L.layerGroup().addTo(map),
+  slipArrow: L.layerGroup().addTo(map),
+  labels: L.layerGroup().addTo(map),
+  hypo: L.layerGroup().addTo(map),
+};
+L.control.layers(baseLayers, {
+  "地表投影 (すべり量で色分け)": layers.projection,
+  "断層上端": layers.trace,
+  "すべり方向": layers.slipArrow,
+  "セグメント名": layers.labels,
+  "震源": layers.hypo,
+}, { position: "topright", collapsed: true }).addTo(map);
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+const rad = d => d * Math.PI / 180;
+
+// Offset a lon/lat point by (east, north) in km using a local flat-earth approximation
+function offset(lon, lat, eastKm, northKm) {
+  return [
+    lat + northKm / KM_PER_DEG,
+    lon + eastKm / (KM_PER_DEG * Math.cos(rad(lat))),
+  ]; // Leaflet order: [lat, lon]
+}
+
+// Simple perceptual colormap (viridis-like) for slip values
+const CMAP = ["#440154", "#3b528b", "#21918c", "#5ec962", "#fde725"];
+function colorFor(t) {
+  t = Math.max(0, Math.min(1, t));
+  const x = t * (CMAP.length - 1);
+  const i = Math.min(Math.floor(x), CMAP.length - 2);
+  const f = x - i;
+  const a = hexToRgb(CMAP[i]), b = hexToRgb(CMAP[i + 1]);
+  const c = a.map((v, k) => Math.round(v + (b[k] - v) * f));
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+function hexToRgb(h) {
+  const n = parseInt(h.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+// Parse CSV text: comment lines (#) become metadata, the rest is a header + rows
+function parseCsv(text) {
+  const comments = [];
+  const dataLines = [];
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) continue;
+    if (line.startsWith("#")) comments.push(line.replace(/^#\s?/, ""));
+    else dataLines.push(line);
+  }
+  const header = dataLines.shift().split(",").map(s => s.trim());
+  const rows = dataLines.map(l => {
+    const cells = l.split(",").map(s => s.trim());
+    const obj = {};
+    header.forEach((h, i) => {
+      const v = cells[i];
+      obj[h] = (h === "name") ? v : parseFloat(v);
+    });
+    return obj;
+  });
+
+  // Extract hypocenter "key=value" pairs from comment lines
+  const meta = {};
+  for (const c of comments) {
+    for (const m of c.matchAll(/(\w+)=([-\d.]+)/g)) meta[m[1]] = parseFloat(m[2]);
+  }
+  return { comments, rows, meta };
+}
+
+// Compute geometry of one rectangular fault segment.
+// (lon, lat) is the center of the surface projection of the fault plane.
+function segmentGeometry(s) {
+  const st = rad(s.strike_deg);
+  const dip = rad(s.dip_deg);
+  const sv = [Math.sin(st), Math.cos(st)];   // strike unit vector (east, north)
+  const dv = [Math.cos(st), -Math.sin(st)];  // dip-direction unit vector (strike + 90)
+  const halfL = s.length_km / 2;
+  const halfWh = s.width_km * Math.cos(dip) / 2; // half of the horizontal projected width
+
+  const pt = (a, b) => offset(s.lon, s.lat, a * sv[0] + b * dv[0], a * sv[1] + b * dv[1]);
+  const corners = [pt(-halfL, -halfWh), pt(halfL, -halfWh), pt(halfL, halfWh), pt(-halfL, halfWh)];
+  const topEdge = [pt(-halfL, -halfWh), pt(halfL, -halfWh)];
+  const topMid = pt(0, -halfWh);
+  // Short tick on the top edge pointing down-dip
+  const dipTick = [topMid, pt(0, -halfWh + Math.max(0.6, 2 * halfWh * 0.6))];
+
+  // Horizontal component of the hanging-wall slip vector:
+  // slip direction in the fault plane = cos(rake)*strike + sin(rake)*up-dip
+  // up-dip horizontal = -dip-direction * cos(dip)
+  const r = rad(s.rake_deg);
+  const he = Math.cos(r) * sv[0] - Math.sin(r) * Math.cos(dip) * dv[0];
+  const hn = Math.cos(r) * sv[1] - Math.sin(r) * Math.cos(dip) * dv[1];
+
+  const bottomDepth = s.top_depth_km + s.width_km * Math.sin(dip);
+  const m0 = RIGIDITY_PA * (s.length_km * 1e3) * (s.width_km * 1e3) * s.slip_m;
+  return { corners, topEdge, dipTick, slipH: [he, hn], bottomDepth, m0 };
+}
+
+// Draw an arrow from a center point along a horizontal (east, north) vector
+function drawArrow(lon, lat, ve, vn, lenKm, color) {
+  const n = Math.hypot(ve, vn);
+  if (n < 1e-6) return;
+  const ue = ve / n, un = vn / n;
+  const tail = offset(lon, lat, -ue * lenKm / 2, -un * lenKm / 2);
+  const head = offset(lon, lat, ue * lenKm / 2, un * lenKm / 2);
+  const hl = lenKm * 0.3;
+  const back = (ang) => {
+    const ca = Math.cos(ang), sa = Math.sin(ang);
+    const be = -(ue * ca - un * sa), bn = -(ue * sa + un * ca);
+    const hlat = head[0], hlon = head[1];
+    return [hlat + bn * hl / KM_PER_DEG, hlon + be * hl / (KM_PER_DEG * Math.cos(rad(hlat)))];
+  };
+  const style = { color, weight: 2.5, opacity: 0.95 };
+  L.polyline([tail, head], style).addTo(layers.slipArrow);
+  L.polyline([back(rad(25)), head, back(rad(-25))], style).addTo(layers.slipArrow);
+}
+
+// ---------------------------------------------------------------------------
+// Render
+// ---------------------------------------------------------------------------
+function render(text) {
+  Object.values(layers).forEach(g => g.clearLayers());
+  const { comments, rows, meta } = parseCsv(text);
+
+  document.getElementById("title").textContent = comments[0] || "Fault model";
+  document.getElementById("src").textContent = (comments.find(c => c.startsWith("Source")) || "").replace(/^Source:\s*/, "");
+
+  const slips = rows.map(r => r.slip_m);
+  const smin = 0, smax = Math.max(...slips);
+
+  // Legend colorbar
+  const stops = Array.from({ length: 11 }, (_, i) => colorFor(i / 10)).join(",");
+  document.getElementById("cbar").style.background = `linear-gradient(to right, ${stops})`;
+  document.getElementById("cticks").innerHTML =
+    [0, 0.25, 0.5, 0.75, 1].map(t => `<span>${(smin + t * (smax - smin)).toFixed(1)}</span>`).join("");
+
+  const tbody = document.getElementById("segtable");
+  tbody.innerHTML = "";
+  const allBounds = L.latLngBounds([]);
+  let m0Total = 0;
+
+  rows.forEach(s => {
+    const g = segmentGeometry(s);
+    m0Total += g.m0;
+    const color = colorFor((s.slip_m - smin) / (smax - smin || 1));
+
+    const popup = `
+      <b>${s.name}</b>
+      <table>
+        <tr><td>中心 (地表投影)</td><td>${s.lat.toFixed(4)}N, ${s.lon.toFixed(4)}E</td></tr>
+        <tr><td>長さ × 幅</td><td>${s.length_km} × ${s.width_km} km</td></tr>
+        <tr><td>深さ</td><td>${s.top_depth_km.toFixed(1)} – ${g.bottomDepth.toFixed(1)} km</td></tr>
+        <tr><td>走向 / 傾斜 / すべり角</td><td>${s.strike_deg}° / ${s.dip_deg}° / ${s.rake_deg}°</td></tr>
+        <tr><td>すべり量</td><td>${s.slip_m.toFixed(3)} m</td></tr>
+        <tr><td>M<sub>0</sub> (μ=40 GPa)</td><td>${g.m0.toExponential(2)} N·m</td></tr>
+      </table>`;
+
+    const poly = L.polygon(g.corners, {
+      color: "#333", weight: 1, dashArray: "4 3", fillColor: color, fillOpacity: 0.55,
+    }).bindPopup(popup).addTo(layers.projection);
+    L.polyline(g.topEdge, { color: "#111", weight: 4 }).bindPopup(popup).addTo(layers.trace);
+    L.polyline(g.dipTick, { color: "#111", weight: 2 }).addTo(layers.trace);
+    drawArrow(s.lon, s.lat, g.slipH[0], g.slipH[1], Math.min(4, s.length_km * 0.45), "#c0392b");
+
+    L.marker([s.lat, s.lon], {
+      icon: L.divIcon({
+        className: "",
+        html: `<div style="font-size:11px;font-weight:600;color:#000;text-shadow:0 0 3px #fff,0 0 3px #fff;white-space:nowrap;transform:translate(8px,-18px)">${s.name}</div>`,
+      }),
+      interactive: false,
+    }).addTo(layers.labels);
+
+    poly.getLatLngs()[0].forEach(ll => allBounds.extend(ll));
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td><span class="sym" style="width:10px;height:10px;background:${color}"></span>${s.name}</td>
+      <td>${s.length_km}</td><td>${s.width_km}</td><td>${s.strike_deg}</td><td>${s.dip_deg}</td>
+      <td>${s.rake_deg}</td><td>${s.slip_m.toFixed(2)}</td>`;
+    tr.onclick = () => { map.fitBounds(poly.getBounds(), { maxZoom: 13, padding: [40, 40] }); poly.openPopup(); };
+    tbody.appendChild(tr);
+  });
+
+  // Hypocenter
+  if (Number.isFinite(meta.hypocenter_lat) && Number.isFinite(meta.hypocenter_lon)) {
+    L.marker([meta.hypocenter_lat, meta.hypocenter_lon], {
+      icon: L.divIcon({
+        className: "",
+        html: '<div style="font-size:24px;color:#d00;text-shadow:0 0 3px #fff;transform:translate(-8px,-14px)">★</div>',
+      }),
+    }).bindPopup(`<b>震源 (JMA)</b><br>${meta.hypocenter_lat}N, ${meta.hypocenter_lon}E<br>深さ ${meta.hypocenter_depth_km ?? "?"} km`)
+      .addTo(layers.hypo);
+    allBounds.extend([meta.hypocenter_lat, meta.hypocenter_lon]);
+  }
+
+  const mw = (Math.log10(m0Total) - 9.1) / 1.5;
+  document.getElementById("summary").innerHTML =
+    `セグメント数 ${rows.length} / ΣM<sub>0</sub> = ${m0Total.toExponential(2)} N·m (μ=40 GPa) → M<sub>w</sub> ${mw.toFixed(2)}`;
+
+  if (allBounds.isValid()) map.fitBounds(allBounds, { padding: [40, 40] });
+}
+
+// ---------------------------------------------------------------------------
+// File loader
+// ---------------------------------------------------------------------------
+document.getElementById("file").addEventListener("change", e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  f.text().then(t => {
+    try { render(t); } catch (err) { console.error(err); document.getElementById("summary").textContent = "CSVの読み込みに失敗しました: " + err.message; }
+  });
+});
+
+render(DEFAULT_CSV);
+</script>
+</body>
+</html>
