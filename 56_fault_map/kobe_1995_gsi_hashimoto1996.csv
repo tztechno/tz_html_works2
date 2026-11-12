@@ -1,0 +1,14 @@
+# 1995-01-17 Hyogo-ken Nanbu (Great Hanshin-Awaji) earthquake, Mj7.3 / Mw 6.87
+# Source: Hashimoto, M., Sagiya, T., Tsuji, H., Hatanaka, Y., Tada, T. (1996) Co-seismic displacements of the 1995 Hyogo-ken Nanbu earthquake,
+#   J. Phys. Earth 44, 255-279, Table 1 "optimal model" (GSI geodetic data; rigidity 40 GPa; segment Mo sum 2.52e19 N m, while the table lists "Total Mo = 22.4")
+# Converted: NE end of each segment -> center of the surface projection; segments 5-6 (dip 95, positive NW) -> strike 45, dip 85 (SE);
+#   Uh < 0 in the table is right-lateral (Okada U1 sign), Ud > 0 lifts the northwest block; rake = atan2(Ud, Uh)
+# JMA hypocenter: 34.598N 135.037E, 16 km
+# hypocenter_lon=135.037, hypocenter_lat=34.598, hypocenter_depth_km=16
+name,lon,lat,top_depth_km,length_km,width_km,strike_deg,dip_deg,rake_deg,slip_m
+Kobe_1_NE,135.2783,34.7502,3.0,10.0,9.0,225,80,165.7,1.135
+Kobe_2,135.2042,34.7022,3.0,7.5,9.0,240,80,119.4,0.918
+Kobe_3,135.1282,34.6775,2.0,7.5,10.0,240,70,131.9,0.389
+Kobe_4_Suma,135.0611,34.6380,2.0,7.5,10.0,233,70,150.2,2.029
+Awaji_5_Nojima,134.9884,34.5914,0.1,7.5,10.0,45,85,174.4,2.552
+Awaji_6_Nojima_S,134.9381,34.5494,0.1,5.0,10.0,45,85,136.1,1.775

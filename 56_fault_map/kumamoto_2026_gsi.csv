@@ -1,0 +1,8 @@
+# 2026-07-28 Kumamoto earthquake (Reiwa 8 Kumamoto earthquake), Mj7.1 / Mw 6.83
+# Source: GSI (Geospatial Information Authority of Japan), source fault model (provisional, rectangular), published 2026-07-29
+#   https://www.gsi.go.jp/cais/topic20260728_kumamoto.html  (https://www.gsi.go.jp/common/000279729.pdf), GNSS, MCMC, rigidity 40 GPa
+# The table gives the upper-left corner (start of the top edge: 32.655N 130.81E); converted to the center of the surface projection
+# JMA hypocenter: 32 deg 37.5 min N, 130 deg 40.7 min E, 16 km
+# hypocenter_lon=130.6783, hypocenter_lat=32.6250, hypocenter_depth_km=16
+name,lon,lat,top_depth_km,length_km,width_km,strike_deg,dip_deg,rake_deg,slip_m
+GSI_Kumamoto_2026,130.6679,32.5684,1.2,32.37,7.86,223.85,41.62,-161.69,2.16
